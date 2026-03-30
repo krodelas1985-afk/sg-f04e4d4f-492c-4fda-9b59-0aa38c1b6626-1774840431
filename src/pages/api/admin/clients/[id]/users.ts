@@ -66,10 +66,10 @@ export default async function handler(
       return res.status(400).json({ error: "Email and role are required" });
     }
 
-    // Check if user exists
+    // Check if user already exists
     const { data: existingUser } = await serviceRoleClient
       .from("profiles")
-      .select("id")
+      .select("id, email, client_id")
       .eq("email", email)
       .single();
 
@@ -85,7 +85,7 @@ export default async function handler(
 
       if (updateError) {
         console.error("Error linking user:", updateError);
-        return res.status(500).json({ error: "Failed to link user" });
+        return res.status(500).json({ error: "Failed to link user to client" });
       }
 
       // Fetch updated user
@@ -95,38 +95,66 @@ export default async function handler(
         .eq("id", existingUser.id)
         .single();
 
-      return res.status(200).json({
+      return res.status(200).json({ 
         ...updatedUser,
-        message: `User ${email} linked to client successfully`
+        message: `User ${email} linked to this client successfully`
       });
     }
 
-    // User doesn't exist - invite them
-    // IMPORTANT: Admin must configure Supabase Auth redirect URL to: /auth/set-password
-    const { data: inviteData, error: inviteError } = await serviceRoleClient.auth.admin.inviteUserByEmail(email, {
-      data: {
-        full_name: full_name || "",
-        role: role,
-        client_id: clientId
-      }
-    });
+    // User doesn't exist, invite new user
+    try {
+      // Step 1: Send invitation email
+      const { data: inviteData, error: inviteError } = await serviceRoleClient.auth.admin.inviteUserByEmail(email, {
+        data: {
+          full_name: full_name || email.split('@')[0],
+          role: role,
+          client_id: clientId
+        },
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`
+      });
 
-    if (inviteError) {
-      console.error("Error inviting user:", inviteError);
+      if (inviteError) {
+        console.error("Error inviting user:", inviteError);
+        return res.status(500).json({ error: "Failed to send invitation email" });
+      }
+
+      // Step 2: Immediately upsert profile with client_id and role
+      // This ensures the profile has the correct client_id even if the trigger doesn't set it
+      const { error: upsertError } = await serviceRoleClient
+        .from("profiles")
+        .upsert({
+          id: inviteData.user.id,
+          email: email,
+          full_name: full_name || email.split('@')[0],
+          role: role,
+          client_id: clientId,
+          is_active: true
+        }, {
+          onConflict: 'id'
+        });
+
+      if (upsertError) {
+        console.error("Error updating profile after invite:", upsertError);
+        return res.status(500).json({ 
+          error: "User invited but failed to set client association. Please contact support." 
+        });
+      }
+
+      // Fetch the complete profile to return
+      const { data: profile } = await serviceRoleClient
+        .from("profiles")
+        .select("*")
+        .eq("id", inviteData.user.id)
+        .single();
+
+      return res.status(201).json({
+        ...profile,
+        message: `Invitation sent to ${email}. They will receive an email to set their password.`
+      });
+    } catch (error) {
+      console.error("Error in user invitation flow:", error);
       return res.status(500).json({ error: "Failed to invite user" });
     }
-
-    // Fetch the created profile
-    const { data: newProfile } = await serviceRoleClient
-      .from("profiles")
-      .select("*")
-      .eq("id", inviteData.user.id)
-      .single();
-
-    return res.status(201).json({ 
-      ...newProfile,
-      message: `Invitation sent to ${email}. They will receive an email to set their password.`
-    });
   }
 
   if (req.method === "DELETE") {
