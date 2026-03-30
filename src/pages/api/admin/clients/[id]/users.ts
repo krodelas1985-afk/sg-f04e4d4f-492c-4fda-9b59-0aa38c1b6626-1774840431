@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Send password reset email for new user to set their password
       try {
-        await adminClient.auth.admin.resetPasswordForEmail(email);
+        await adminClient.auth.resetPasswordForEmail(email);
         console.log(`Password reset email sent to ${email}`);
       } catch (emailError) {
         console.error("Error sending password reset email:", emailError);
