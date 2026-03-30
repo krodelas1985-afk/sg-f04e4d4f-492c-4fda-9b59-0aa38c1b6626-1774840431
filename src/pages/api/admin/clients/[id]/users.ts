@@ -60,55 +60,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { email, full_name, role, phone } = req.body;
+      const { email, role } = req.body;
 
       if (!email || !role) {
         return res.status(400).json({ error: "Email and role are required" });
       }
 
-      // Check if user already exists
+      // Check if user exists
       const { data: existingUser } = await adminClient
         .from("profiles")
-        .select("*")
+        .select("id")
         .eq("email", email)
         .single();
 
       if (existingUser) {
         // User exists, link to this client
-        const { data: updatedUser, error } = await adminClient
+        const { error: updateError } = await adminClient
           .from("profiles")
-          .update({ client_id: id, role })
-          .eq("id", existingUser.id)
-          .select()
-          .single();
+          .update({ 
+            client_id: id,
+            role: role 
+          })
+          .eq("id", existingUser.id);
 
-        if (error) {
-          console.error("Error linking user:", error);
+        if (updateError) {
+          console.error("Error linking user:", updateError);
           return res.status(500).json({ error: "Failed to link user" });
         }
 
-        return res.status(200).json({ user: updatedUser, linked: true });
+        // Fetch updated user
+        const { data: updatedUser } = await adminClient
+          .from("profiles")
+          .select("*")
+          .eq("id", existingUser.id)
+          .single();
+
+        return res.status(200).json(updatedUser);
       }
 
-      // Create new auth user
+      // User doesn't exist, create new user
       const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
         email,
         email_confirm: true,
       });
 
-      if (authError || !authUser.user) {
+      if (authError) {
         console.error("Error creating auth user:", authError);
         return res.status(500).json({ error: "Failed to create user" });
       }
 
-      // Update profile with client_id and role
-      const { data: newUser, error: profileError } = await adminClient
+      // Update the profile with client_id and role
+      const { data: profile, error: profileError } = await adminClient
         .from("profiles")
         .update({
           client_id: id,
-          role,
-          full_name,
-          phone,
+          role: role,
         })
         .eq("id", authUser.user.id)
         .select()
@@ -116,10 +122,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (profileError) {
         console.error("Error updating profile:", profileError);
-        return res.status(500).json({ error: "Failed to update profile" });
+        return res.status(500).json({ error: "Failed to update user profile" });
       }
 
-      return res.status(201).json({ user: newUser, created: true });
+      // Send password reset email for new user to set their password
+      try {
+        await adminClient.auth.admin.resetPasswordForEmail(email);
+        console.log(`Password reset email sent to ${email}`);
+      } catch (emailError) {
+        console.error("Error sending password reset email:", emailError);
+        // Don't fail the request if email fails - user was created successfully
+      }
+
+      return res.status(201).json({ 
+        ...profile,
+        message: `User added successfully. A password setup email has been sent to ${email}`
+      });
     }
 
     return res.status(405).json({ error: "Method not allowed" });

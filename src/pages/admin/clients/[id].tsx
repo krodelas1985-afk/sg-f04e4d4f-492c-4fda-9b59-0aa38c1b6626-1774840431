@@ -147,6 +147,39 @@ export default function ClientDetail() {
     }
   };
 
+  const addUser = async () => {
+    if (!newUserEmail || !newUserRole) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    setIsAddingUser(true);
+    try {
+      const response = await fetch(`/api/admin/clients/${id}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newUserEmail, role: newUserRole }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add user");
+
+      const result = await response.json();
+      
+      // Show success message with email notification info
+      const successMessage = result.message || `User ${newUserEmail} added successfully`;
+      alert(successMessage);
+
+      setNewUserEmail("");
+      setNewUserRole("agent");
+      fetchClientData();
+    } catch (error) {
+      console.error("Error adding user:", error);
+      alert("Failed to add user");
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
