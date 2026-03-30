@@ -35,6 +35,9 @@ export default function LoginPage() {
         throw new Error("No user returned after authentication");
       }
 
+      // Wait a moment for session cookies to be fully set
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Fetch user role from API route (uses service role client to bypass RLS)
       const profileResponse = await fetch("/api/auth/profile");
       
