@@ -35,20 +35,17 @@ export default function LoginPage() {
         throw new Error("No user returned after authentication");
       }
 
-      // Fetch user role from profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profileError) {
-        console.error("Profile fetch error:", profileError);
+      // Fetch user role from API route (uses service role client to bypass RLS)
+      const profileResponse = await fetch("/api/auth/profile");
+      
+      if (!profileResponse.ok) {
         throw new Error("Failed to fetch user profile");
       }
 
+      const { role } = await profileResponse.json();
+
       // Determine redirect based on role
-      const redirectTo = profileData?.role === "baymo_admin" ? "/admin" : "/dashboard";
+      const redirectTo = role === "baymo_admin" ? "/admin" : "/dashboard";
       
       // Use window.location for reliable redirect after auth
       window.location.href = redirectTo;
