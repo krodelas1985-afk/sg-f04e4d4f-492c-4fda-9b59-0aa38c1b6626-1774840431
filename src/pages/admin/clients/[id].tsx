@@ -30,11 +30,11 @@ interface User {
   created_at: string;
 }
 
-export default function ClientDetail() {
+export default function AdminClientDetail() {
   const router = useRouter();
   const { id } = router.query;
-  const [client, setClient] = useState<Client | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [client, setClient] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,7 +47,7 @@ export default function ClientDetail() {
   
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("agent");
-  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [addingUser, setAddingUser] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -126,7 +126,7 @@ export default function ClientDetail() {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsAddingUser(true);
+    setAddingUser(true);
     try {
       const res = await fetch(`/api/admin/clients/${id}/users`, {
         method: "POST",
@@ -143,7 +143,7 @@ export default function ClientDetail() {
     } catch (err) {
       alert("Failed to add user");
     } finally {
-      setIsAddingUser(false);
+      setAddingUser(false);
     }
   };
 
@@ -153,7 +153,7 @@ export default function ClientDetail() {
       return;
     }
 
-    setIsAddingUser(true);
+    setAddingUser(true);
     try {
       const response = await fetch(`/api/admin/clients/${id}/users`, {
         method: "POST",
@@ -180,7 +180,7 @@ export default function ClientDetail() {
       console.error("Error adding user:", error);
       alert("Failed to add user");
     } finally {
-      setIsAddingUser(false);
+      setAddingUser(false);
     }
   };
 
@@ -194,6 +194,18 @@ export default function ClientDetail() {
       if (res.ok) fetchClientData();
     } catch (err) {
       alert("Failed to update user status");
+    }
+  };
+
+  const fetchClientUsers = async () => {
+    try {
+      const response = await fetch(`/api/admin/clients/${id}/users`);
+      if (!response.ok) throw new Error("Failed to fetch users");
+      const data = await response.json();
+      setUsers(data ?? []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
     }
   };
 
@@ -392,7 +404,7 @@ export default function ClientDetail() {
                       <option value="viewer">Viewer</option>
                     </select>
                   </div>
-                  <Button type="submit" disabled={isAddingUser}>
+                  <Button type="submit" disabled={addingUser}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add User
                   </Button>
