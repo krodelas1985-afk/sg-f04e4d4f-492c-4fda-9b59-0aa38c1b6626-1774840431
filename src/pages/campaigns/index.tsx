@@ -58,6 +58,20 @@ export default function CampaignsPage() {
       if (authData?.user) {
         const { data: p } = await supabase.from("profiles").select("role, client_id").eq("id", authData.user.id).single();
         setProfile(p);
+
+        if (p?.role === "baymo_admin") {
+          try {
+            const response = await fetch("/api/admin/clients");
+            if (response.ok) {
+              const data = await response.json();
+              setClients(data.clients || []);
+            } else {
+              console.error("Failed to fetch clients:", response.status);
+            }
+          } catch (error) {
+            console.error("Error fetching clients:", error);
+          }
+        }
       }
 
       const res = await fetch("/api/campaigns");
@@ -68,42 +82,6 @@ export default function CampaignsPage() {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchUserRole = async () => {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        
-        if (profile) {
-          setUserRole(profile.role);
-          
-          // Fetch clients if baymo_admin
-          if (profile.role === "baymo_admin") {
-            try {
-              const response = await fetch("/api/admin/clients");
-              if (response.ok) {
-                const clientsData = await response.json();
-                console.log("Fetched clients:", clientsData);
-                setClients(clientsData);
-              } else {
-                console.error("Failed to fetch clients:", response.status);
-              }
-            } catch (error) {
-              console.error("Error fetching clients:", error);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching user role:", error);
     }
   };
 
