@@ -209,6 +209,25 @@ export default function AdminClientDetail() {
     }
   };
 
+  const removeUser = async (userId: string) => {
+    if (!confirm("Are you sure you want to remove this user from the client?")) return;
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/users`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (res.ok) {
+        fetchClientUsers();
+      } else {
+        alert("Failed to remove user");
+      }
+    } catch (err) {
+      console.error("Error removing user:", err);
+      alert("Failed to remove user");
+    }
+  };
+
   if (loading) {
     return <DashboardLayout><div className="p-8">Loading client details...</div></DashboardLayout>;
   }
