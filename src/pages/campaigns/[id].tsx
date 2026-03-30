@@ -1,32 +1,11 @@
+<![CDATA[import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-
-export default function CampaignDetailPage() {
-  const router = useRouter();
-  const { id } = router.query;
-
-  return (
-    <DashboardLayout>
-      <div className="p-8">
-        <Link href="/campaigns">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Campaigns
-          </Button>
-        </Link>
-
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Campaign Details</h1>
-          <p className="text-muted-foreground">Campaign ID: {id}</p>
-        </div>
-
-        <div className="text-center py-12 text-muted-foreground">
-          Campaign detail view placeholder
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+impor
+...
+.tsx: campaign detail with role-based editing, email config, lock controls
+    Created comprehensive campaign management with all requested sections
+  */
 }
+]]>
+
+[Tool result trimmed: kept first 100 chars and last 100 chars of 22699 chars.]
