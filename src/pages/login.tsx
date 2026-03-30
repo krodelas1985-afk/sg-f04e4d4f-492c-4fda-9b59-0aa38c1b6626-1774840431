@@ -20,26 +20,41 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      
+      // Sign in with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
-
-      if (data.session) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", data.session.user.id)
-          .single();
-
-        const redirectTo = profile?.role === "baymo_admin" ? "/admin" : "/dashboard";
-        router.push(redirectTo);
+      if (authError) {
+        throw authError;
       }
+
+      if (!authData.user) {
+        throw new Error("No user returned after authentication");
+      }
+
+      // Fetch user role from profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Profile fetch error:", profileError);
+        throw new Error("Failed to fetch user profile");
+      }
+
+      // Determine redirect based on role
+      const redirectTo = profileData?.role === "baymo_admin" ? "/admin" : "/dashboard";
+      
+      // Use window.location for reliable redirect after auth
+      window.location.href = redirectTo;
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message || "Failed to sign in");
-    } finally {
       setLoading(false);
     }
   };
