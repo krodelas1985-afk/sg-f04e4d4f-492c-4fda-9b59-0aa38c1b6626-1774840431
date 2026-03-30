@@ -71,6 +71,42 @@ export default function CampaignsPage() {
     }
   };
 
+  const fetchUserRole = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile) {
+          setUserRole(profile.role);
+          
+          // Fetch clients if baymo_admin
+          if (profile.role === "baymo_admin") {
+            try {
+              const response = await fetch("/api/admin/clients");
+              if (response.ok) {
+                const clientsData = await response.json();
+                console.log("Fetched clients:", clientsData);
+                setClients(clientsData);
+              } else {
+                console.error("Failed to fetch clients:", response.status);
+              }
+            } catch (error) {
+              console.error("Error fetching clients:", error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+    }
+  };
+
   const handleCreate = async () => {
     try {
       setCreating(true);
