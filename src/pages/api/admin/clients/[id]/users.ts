@@ -128,7 +128,7 @@ export default async function handler(
           role: role,
           client_id: clientId
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`
+        redirectTo: "https://3000-f04e4d4f-492c-4fda-9b59-0aa38c1b6626.softgen.dev/auth/set-password"
       });
 
       if (inviteError) {
