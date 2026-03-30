@@ -33,6 +33,8 @@ interface User {
 export default function AdminClientDetail() {
   const router = useRouter();
   const { id } = router.query;
+  const clientId = id as string;
+
   const [client, setClient] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,41 +49,46 @@ export default function AdminClientDetail() {
   
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("agent");
+  const [newUserFullName, setNewUserFullName] = useState("");
   const [addingUser, setAddingUser] = useState(false);
 
+  // Fetch client details
   useEffect(() => {
-    if (id) {
-      fetchClientData();
-    }
-  }, [id]);
+    if (!clientId) return;
+    fetchClient();
+  }, [clientId]);
 
-  const fetchClientData = async () => {
+  // Fetch users when clientId is available
+  useEffect(() => {
+    if (!clientId) return;
+    console.log("📋 Fetching users for clientId:", clientId);
+    fetchUsers(clientId);
+  }, [clientId]);
+
+  const fetchClient = async () => {
     try {
-      const [clientRes, usersRes] = await Promise.all([
-        fetch(`/api/admin/clients/${id}`),
-        fetch(`/api/admin/clients/${id}/users`)
-      ]);
-
-      if (clientRes.ok) {
-        const data = await clientRes.json();
-        setClient(data.client);
-        setFormData({
-          name: data.client.name || "",
-          company_name: data.client.company_name || "",
-          email: data.client.email || "",
-          phone: data.client.phone || "",
-          is_active: data.client.is_active,
-        });
-      }
-
-      if (usersRes.ok) {
-        const data = await usersRes.json();
-        setUsers(data.users);
-      }
-    } catch (err) {
-      console.error("Failed to fetch client data", err);
+      const response = await fetch(`/api/admin/clients/${clientId}`);
+      if (!response.ok) throw new Error("Failed to fetch client");
+      const data = await response.json();
+      setClient(data);
+    } catch (error) {
+      console.error("Error fetching client:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async (clientId: string) => {
+    try {
+      console.log("🔍 Fetching users for client:", clientId);
+      const response = await fetch(`/api/admin/clients/${clientId}/users`);
+      if (!response.ok) throw new Error("Failed to fetch users");
+      const data = await response.json();
+      console.log("✅ Users fetched:", data);
+      setUsers(data || []);
+    } catch (error) {
+      console.error("❌ Error fetching users:", error);
+      setUsers([]);
     }
   };
 
@@ -135,7 +142,7 @@ export default function AdminClientDetail() {
       });
       if (res.ok) {
         setNewUserEmail("");
-        fetchClientData();
+        fetchClient();
       } else {
         const error = await res.json();
         alert(`Error: ${error.error}`);
@@ -148,34 +155,32 @@ export default function AdminClientDetail() {
   };
 
   const addUser = async () => {
-    if (!newUserEmail || !newUserRole) {
-      alert("Please fill in all fields");
-      return;
-    }
+    if (!newUserEmail || !newUserRole) return;
 
     setAddingUser(true);
     try {
-      const response = await fetch(`/api/admin/clients/${id}/users`, {
+      const response = await fetch(`/api/admin/clients/${clientId}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: newUserEmail, 
+        body: JSON.stringify({
+          email: newUserEmail,
           role: newUserRole,
-          full_name: "" // Can be updated later by user
+          full_name: newUserFullName || newUserEmail.split("@")[0],
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to add user");
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || "Failed to add user");
+        return;
+      }
 
       const result = await response.json();
-      
-      // Show success message with invitation info
-      const successMessage = result.message || `User invitation sent to ${newUserEmail}`;
-      alert(successMessage);
-
+      alert(result.message || "User added successfully");
       setNewUserEmail("");
       setNewUserRole("agent");
-      fetchClientData();
+      setNewUserFullName("");
+      fetchUsers(clientId);
     } catch (error) {
       console.error("Error adding user:", error);
       alert("Failed to add user");
@@ -191,34 +196,22 @@ export default function AdminClientDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_active: !currentStatus }),
       });
-      if (res.ok) fetchClientData();
+      if (res.ok) fetchClient();
     } catch (err) {
       alert("Failed to update user status");
-    }
-  };
-
-  const fetchClientUsers = async () => {
-    try {
-      const response = await fetch(`/api/admin/clients/${id}/users`);
-      if (!response.ok) throw new Error("Failed to fetch users");
-      const data = await response.json();
-      setUsers(data || []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      setUsers([]);
     }
   };
 
   const removeUser = async (userId: string) => {
     if (!confirm("Are you sure you want to remove this user from the client?")) return;
     try {
-      const res = await fetch(`/api/admin/clients/${id}/users`, {
+      const res = await fetch(`/api/admin/clients/${clientId}/users`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
       if (res.ok) {
-        fetchClientUsers();
+        fetchUsers(clientId);
       } else {
         alert("Failed to remove user");
       }
