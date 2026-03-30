@@ -35,11 +35,16 @@ export default function CampaignDetailPage() {
   // Config states
   const [budgetMin, setBudgetMin] = useState(0);
   const [budgetMax, setBudgetMax] = useState(0);
+  const [currency, setCurrency] = useState("PHP");
   const [locations, setLocations] = useState<string[]>([]);
   const [locationInput, setLocationInput] = useState("");
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [propertyTypeInput, setPropertyTypeInput] = useState("");
   const [buyerType, setBuyerType] = useState("");
+  const [targetIndustries, setTargetIndustries] = useState<string[]>([]);
+  const [industryInput, setIndustryInput] = useState("");
+  const [jobTitles, setJobTitles] = useState<string[]>([]);
+  const [jobTitleInput, setJobTitleInput] = useState("");
   
   const [qualificationQuestions, setQualificationQuestions] = useState<string[]>([]);
   const [tonePersona, setTonePersona] = useState("");
@@ -48,6 +53,11 @@ export default function CampaignDetailPage() {
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [emailSources, setEmailSources] = useState<string[]>([]);
   const [emailTemplateId, setEmailTemplateId] = useState<string>("");
+  
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [successMetric, setSuccessMetric] = useState("");
+  const [sourceDetail, setSourceDetail] = useState("");
   
   const [isLocked, setIsLocked] = useState(false);
 
@@ -81,6 +91,13 @@ export default function CampaignDetailPage() {
       setStatus(data.status || "draft");
       setTargetAction(data.target_action || "");
       setIsLocked(data.is_locked || false);
+      setCurrency(data.currency || "PHP");
+      setStartDate(data.start_date ? data.start_date.split('T')[0] : "");
+      setEndDate(data.end_date ? data.end_date.split('T')[0] : "");
+      setSuccessMetric(data.success_metric || "");
+      setSourceDetail(data.source_detail || "");
+      setTargetIndustries(Array.isArray(data.target_industries) ? data.target_industries : []);
+      setJobTitles(Array.isArray(data.job_titles) ? data.job_titles : []);
       
       const config = data.config || {};
       const targetAudience = config.target_audience || {};
@@ -135,6 +152,28 @@ export default function CampaignDetailPage() {
     setPropertyTypes(propertyTypes.filter(p => p !== pt));
   };
 
+  const addIndustry = () => {
+    if (industryInput.trim() && !targetIndustries.includes(industryInput.trim())) {
+      setTargetIndustries([...targetIndustries, industryInput.trim()]);
+      setIndustryInput("");
+    }
+  };
+
+  const removeIndustry = (industry: string) => {
+    setTargetIndustries(targetIndustries.filter(i => i !== industry));
+  };
+
+  const addJobTitle = () => {
+    if (jobTitleInput.trim() && !jobTitles.includes(jobTitleInput.trim())) {
+      setJobTitles([...jobTitles, jobTitleInput.trim()]);
+      setJobTitleInput("");
+    }
+  };
+
+  const removeJobTitle = (title: string) => {
+    setJobTitles(jobTitles.filter(t => t !== title));
+  };
+
   const addQuestion = () => {
     setQualificationQuestions([...qualificationQuestions, ""]);
   };
@@ -160,6 +199,12 @@ export default function CampaignDetailPage() {
   };
 
   const handleSave = async () => {
+    // Validate dates if both are provided
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      toast({ title: "Error", description: "End date must be after start date", variant: "destructive" });
+      return;
+    }
+
     try {
       setSaving(true);
       const updateData = {
@@ -168,6 +213,13 @@ export default function CampaignDetailPage() {
         status,
         target_action: targetAction,
         is_locked: isLocked,
+        currency: currency || "PHP",
+        start_date: startDate || null,
+        end_date: endDate || null,
+        success_metric: successMetric || null,
+        source_detail: sourceDetail || null,
+        target_industries: targetIndustries,
+        job_titles: jobTitles,
         config: {
           target_audience: {
             budget_min: budgetMin,
@@ -306,7 +358,7 @@ export default function CampaignDetailPage() {
               <CardTitle>Section 3: Target Audience</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Budget Min</Label>
                   <Input type="number" value={budgetMin} onChange={e => setBudgetMin(Number(e.target.value))} disabled={!canEdit} />
@@ -314,6 +366,16 @@ export default function CampaignDetailPage() {
                 <div className="space-y-2">
                   <Label>Budget Max</Label>
                   <Input type="number" value={budgetMax} onChange={e => setBudgetMax(Number(e.target.value))} disabled={!canEdit} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Select value={currency} onValueChange={setCurrency} disabled={!canEdit}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PHP">PHP (₱)</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -356,6 +418,48 @@ export default function CampaignDetailPage() {
                     <div key={pt} className="bg-slate-100 px-3 py-1 rounded-full text-sm flex items-center">
                       {pt}
                       {canEdit && <button type="button" className="ml-2 text-slate-500 hover:text-slate-800" onClick={() => removePropertyType(pt)}>×</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Target Industries</Label>
+                <div className="flex gap-2 mb-2">
+                  <Input 
+                    value={industryInput} 
+                    onChange={e => setIndustryInput(e.target.value)} 
+                    disabled={!canEdit}
+                    placeholder="e.g. Real Estate, Technology"
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addIndustry())}
+                  />
+                  <Button type="button" onClick={addIndustry} disabled={!canEdit}>Add</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {targetIndustries.map(ind => (
+                    <div key={ind} className="bg-slate-100 px-3 py-1 rounded-full text-sm flex items-center">
+                      {ind}
+                      {canEdit && <button type="button" className="ml-2 text-slate-500 hover:text-slate-800" onClick={() => removeIndustry(ind)}>×</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Job Titles</Label>
+                <div className="flex gap-2 mb-2">
+                  <Input 
+                    value={jobTitleInput} 
+                    onChange={e => setJobTitleInput(e.target.value)} 
+                    disabled={!canEdit}
+                    placeholder="e.g. Property Manager, Sales Director"
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addJobTitle())}
+                  />
+                  <Button type="button" onClick={addJobTitle} disabled={!canEdit}>Add</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {jobTitles.map(jt => (
+                    <div key={jt} className="bg-slate-100 px-3 py-1 rounded-full text-sm flex items-center">
+                      {jt}
+                      {canEdit && <button type="button" className="ml-2 text-slate-500 hover:text-slate-800" onClick={() => removeJobTitle(jt)}>×</button>}
                     </div>
                   ))}
                 </div>
@@ -419,7 +523,53 @@ export default function CampaignDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Section 7: Email Triggers</CardTitle>
+              <CardTitle>Section 7: Campaign Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={e => setStartDate(e.target.value)} 
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={e => setEndDate(e.target.value)} 
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Success Metric (KPI)</Label>
+                <Input 
+                  value={successMetric} 
+                  onChange={e => setSuccessMetric(e.target.value)} 
+                  disabled={!canEdit}
+                  placeholder="e.g. 10 booked viewings per month"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Source Detail</Label>
+                <Input 
+                  value={sourceDetail} 
+                  onChange={e => setSourceDetail(e.target.value)} 
+                  disabled={!canEdit}
+                  placeholder="e.g. Facebook Ads, LinkedIn Outreach"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Section 8: Email Triggers</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-2">
@@ -469,7 +619,7 @@ export default function CampaignDetailPage() {
           {profile?.role === "baymo_admin" && (
             <Card className="border-red-200 bg-red-50/50">
               <CardHeader>
-                <CardTitle className="text-red-700">Section 8: Lock Campaign</CardTitle>
+                <CardTitle className="text-red-700">Section 9: Lock Campaign</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
