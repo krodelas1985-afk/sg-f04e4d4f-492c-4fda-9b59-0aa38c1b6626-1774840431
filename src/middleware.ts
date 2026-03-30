@@ -1,11 +1,10 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
-      headers: req.headers,
+      headers: request.headers,
     },
   });
 
@@ -15,17 +14,17 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return req.cookies.get(name)?.value;
+          return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          req.cookies.set({
+          request.cookies.set({
             name,
             value,
             ...options,
           });
           response = NextResponse.next({
             request: {
-              headers: req.headers,
+              headers: request.headers,
             },
           });
           response.cookies.set({
@@ -35,14 +34,14 @@ export async function middleware(req: NextRequest) {
           });
         },
         remove(name: string, options: CookieOptions) {
-          req.cookies.set({
+          request.cookies.set({
             name,
             value: "",
             ...options,
           });
           response = NextResponse.next({
             request: {
-              headers: req.headers,
+              headers: request.headers,
             },
           });
           response.cookies.set({
@@ -59,27 +58,35 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const isAuthPage = req.nextUrl.pathname === "/login";
-  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
+  const { pathname } = request.nextUrl;
 
-  if (!session && !isAuthPage) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Allow access to login page and API routes
+  if (pathname === "/login" || pathname.startsWith("/api/")) {
+    // If user is already authenticated and tries to access /login, redirect to appropriate home
+    if (session && pathname === "/login") {
+      // Don't fetch role here - let the login page handle the redirect
+      // Just redirect to dashboard as default, login page will re-redirect if needed
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    return response;
   }
 
-  if (session) {
+  // Require authentication for all other routes
+  if (!session) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Admin route protection - fetch role to check access
+  if (pathname.startsWith("/admin")) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", session.user.id)
       .single();
 
-    if (isAuthPage) {
-      const redirectTo = profile?.role === "baymo_admin" ? "/admin" : "/dashboard";
-      return NextResponse.redirect(new URL(redirectTo, req.url));
-    }
-
-    if (isAdminRoute && profile?.role !== "baymo_admin") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    // If not baymo_admin, redirect to dashboard
+    if (profile?.role !== "baymo_admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
