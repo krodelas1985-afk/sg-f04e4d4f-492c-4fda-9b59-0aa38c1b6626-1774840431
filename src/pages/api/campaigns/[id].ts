@@ -1,81 +1,116 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabase/server";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const supabase = createServerClient(req, res);
   const { id } = req.query;
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return req.cookies[name]; },
-        set() {},
-        remove() {},
-      },
-    }
-  );
 
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (!id || typeof id !== "string") {
+    return res.status(400).json({ error: "Campaign ID required" });
+  }
 
-  if (authError || !authData.user) {
+  // Verify authentication
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { data: profile } = await supabase
+  // Get user profile with role and client_id
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, client_id")
-    .eq("id", authData.user.id)
+    .eq("id", session.user.id)
     .single();
 
-  if (!profile || !profile.client_id) {
-    return res.status(403).json({ error: "Forbidden" });
+  if (profileError || !profile) {
+    return res.status(403).json({ error: "Profile not found" });
   }
 
   if (req.method === "GET") {
-    const { data, error } = await supabase
+    try {
+      let query = supabase
+        .from("campaigns")
+        .select("*")
+        .eq("id", id);
+
+      // If NOT baymo_admin, filter by client_id
+      if (profile.role !== "baymo_admin") {
+        if (!profile.client_id) {
+          return res.status(403).json({ error: "No client assigned" });
+        }
+        query = query.eq("client_id", profile.client_id);
+      }
+      // If baymo_admin, no client_id filter (can access any campaign)
+
+      const { data, error } = await query.single();
+
+      if (error) throw error;
+      if (!data) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      return res.status(200).json(data);
+    } catch (error) {
+      console.error("Fetch campaign error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  if (req.method === "PUT") {
+    const updates = req.body;
+
+    // Fetch the campaign first to check permissions
+    let query = supabase
       .from("campaigns")
       .select("*")
-      .eq("id", id)
-      .eq("client_id", profile.client_id)
-      .single();
+      .eq("id", id);
 
-    if (error) return res.status(500).json({ error: error.message });
-    if (!data) return res.status(404).json({ error: "Not found" });
-
-    return res.status(200).json(data);
-  } else if (req.method === "PUT") {
-    const isUpdatingLock = req.body.hasOwnProperty("is_locked");
-    
-    const { data: currentCampaign } = await supabase
-      .from("campaigns")
-      .select("is_locked")
-      .eq("id", id)
-      .eq("client_id", profile.client_id)
-      .single();
-
-    if (!currentCampaign) return res.status(404).json({ error: "Not found" });
-
-    if (currentCampaign.is_locked && profile.role !== "baymo_admin") {
-      return res.status(403).json({ error: "Campaign is locked" });
-    }
-    
-    if (isUpdatingLock && profile.role !== "baymo_admin") {
-      return res.status(403).json({ error: "Only baymo_admin can lock/unlock campaigns" });
+    // If NOT baymo_admin, filter by client_id
+    if (profile.role !== "baymo_admin") {
+      if (!profile.client_id) {
+        return res.status(403).json({ error: "No client assigned" });
+      }
+      query = query.eq("client_id", profile.client_id);
     }
 
+    const { data: campaign, error: fetchError } = await query.single();
+
+    if (fetchError || !campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    // Check if campaign is locked and user is not admin
+    if (campaign.is_locked && profile.role !== "baymo_admin") {
+      return res
+        .status(403)
+        .json({ error: "Campaign is locked. Contact admin to edit." });
+    }
+
+    // Check permissions: viewer and agent cannot edit
     if (profile.role === "viewer" || profile.role === "agent") {
-      return res.status(403).json({ error: "Viewers and agents cannot edit campaigns" });
+      return res.status(403).json({ error: "Insufficient permissions" });
     }
 
+    // Update campaign
     const { data, error } = await supabase
       .from("campaigns")
-      .update(req.body)
+      .update(updates)
       .eq("id", id)
-      .eq("client_id", profile.client_id)
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      console.error("Update campaign error:", error);
+      return res.status(500).json({ error: "Failed to update campaign" });
+    }
+
     return res.status(200).json(data);
   }
 

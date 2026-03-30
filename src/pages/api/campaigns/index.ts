@@ -1,95 +1,118 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabase/server";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies[name];
-        },
-        set(name: string, value: string, options: any) {},
-        remove(name: string, options: any) {},
-      },
-    }
-  );
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const supabase = createServerClient(req, res);
 
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+  // Verify authentication
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (authError || !authData.user) {
+  if (sessionError || !session) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { data: profile } = await supabase
+  // Get user profile with role and client_id
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, client_id")
-    .eq("id", authData.user.id)
+    .eq("id", session.user.id)
     .single();
 
-  if (!profile || !profile.client_id) {
-    return res.status(403).json({ error: "Forbidden: No client associated" });
+  if (profileError || !profile) {
+    return res.status(403).json({ error: "Profile not found" });
   }
 
   if (req.method === "GET") {
-    // Get campaigns with lead counts
-    const { data: campaigns, error: campaignsError } = await supabase
-      .from("campaigns")
-      .select("*, leads(count)")
-      .eq("client_id", profile.client_id)
-      .order("created_at", { ascending: false });
+    try {
+      let query = supabase
+        .from("campaigns")
+        .select(
+          `
+          *,
+          created_by_profile:profiles!campaigns_created_by_fkey(full_name)
+        `
+        )
+        .order("created_at", { ascending: false });
 
-    if (campaignsError) {
-      return res.status(500).json({ error: campaignsError.message });
+      // If NOT baymo_admin, filter by client_id
+      if (profile.role !== "baymo_admin") {
+        if (!profile.client_id) {
+          return res.status(403).json({ error: "No client assigned" });
+        }
+        query = query.eq("client_id", profile.client_id);
+      }
+      // If baymo_admin, fetch ALL campaigns (no client_id filter)
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Get leads count for each campaign
+      const campaignsWithCounts = await Promise.all(
+        (data || []).map(async (campaign) => {
+          const { count } = await supabase
+            .from("leads")
+            .select("*", { count: "exact", head: true })
+            .eq("campaign_id", campaign.id);
+
+          return {
+            ...campaign,
+            leads_count: count || 0,
+          };
+        })
+      );
+
+      return res.status(200).json(campaignsWithCounts);
+    } catch (error) {
+      console.error("Fetch campaigns error:", error);
+      return res.status(500).json({ error: "Internal server error" });
     }
+  }
 
-    // Format leads count
-    const formattedCampaigns = campaigns.map((c: any) => ({
-      ...c,
-      leads_count: c.leads?.[0]?.count || 0
-    }));
-
-    return res.status(200).json(formattedCampaigns);
-  } else if (req.method === "POST") {
+  if (req.method === "POST") {
+    // Only baymo_admin can create campaigns
     if (profile.role !== "baymo_admin") {
-      return res.status(403).json({ error: "Forbidden: Only baymo_admin can create campaigns" });
+      return res.status(403).json({ error: "Only admin can create campaigns" });
     }
 
-    const { name, channel } = req.body;
+    const { name, channel, client_id } = req.body;
+
+    if (!name || !channel || !client_id) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
     const { data, error } = await supabase
       .from("campaigns")
       .insert({
-        client_id: profile.client_id,
         name,
         channel,
+        client_id,
         status: "draft",
-        created_by: authData.user.id,
+        created_by: session.user.id,
         config: {
-          target_audience: {
-            budget_min: 0,
-            budget_max: 0,
-            locations: [],
-            property_types: [],
-            buyer_type: "",
-            custom_fields: []
-          },
+          target_audience: {},
           qualification_questions: [],
           tone_persona: "",
           additional_instructions: "",
           email_triggers: {
             enabled: false,
             allowed_sources: [],
-            template_id: null
-          }
-        }
+            template_id: null,
+          },
+        },
       })
       .select()
       .single();
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("Create campaign error:", error);
+      return res.status(500).json({ error: "Failed to create campaign" });
     }
 
     return res.status(201).json(data);
