@@ -18,36 +18,51 @@ export default function SetPassword() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        console.log("Auth state changed:", event, newSession ? "session exists" : "no session");
-        if (newSession) {
-          setSession(newSession);
-          setLoading(false);
-        }
+    // Step 1: Force Supabase to process URL hash and create session
+    supabase.auth.getSessionFromUrl({ storeSession: true }).then(({ data, error }) => {
+      if (error) {
+        console.error("Error processing URL:", error);
+        setLoading(false);
+        return;
       }
-    );
 
-    // Fallback check
-    supabase.auth.getSession().then(({ data }) => {
-      console.log("getSession result:", data.session ? "session exists" : "no session");
       if (data.session) {
+        console.log("Session created from URL:", data.session);
         setSession(data.session);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-    });
 
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
+      // Step 2: If no session from URL, listen for auth changes
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (event, newSession) => {
+          console.log("Auth state change:", event, newSession);
+          if (newSession) {
+            setSession(newSession);
+            setLoading(false);
+          }
+        }
+      );
+
+      // Step 3: Fallback check for existing session
+      supabase.auth.getSession().then(({ data: sessionData }) => {
+        console.log("Fallback session check:", sessionData);
+        if (sessionData.session) {
+          setSession(sessionData.session);
+        }
+        setLoading(false);
+      });
+
+      return () => {
+        listener?.subscription.unsubscribe();
+      };
+    });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Validation
     if (password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
@@ -60,26 +75,19 @@ export default function SetPassword() {
 
     setSubmitting(true);
 
-    try {
-      const supabase = createClient();
-      
-      // Update password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: password,
+    });
 
-      if (updateError) {
-        setError(updateError.message);
-        setSubmitting(false);
-        return;
-      }
-
-      // Success - redirect to dashboard
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to set password");
+    if (updateError) {
+      setError(updateError.message);
       setSubmitting(false);
+      return;
     }
+
+    // Redirect to dashboard after successful password set
+    router.push("/dashboard");
   };
 
   // Loading state
@@ -98,23 +106,21 @@ export default function SetPassword() {
     );
   }
 
-  // No session - invalid link
+  // Invalid/expired link state
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0D1829]">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl text-center text-[#1B2F4E]">
-              Invalid or Expired Link
-            </CardTitle>
+            <CardTitle className="text-center text-xl">Invalid or Expired Link</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-center text-gray-600">
+            <p className="text-gray-600 text-center">
               This invitation link is invalid or has expired. Please contact your administrator for a new invitation.
             </p>
             <Button
               onClick={() => router.push("/login")}
-              className="w-full bg-[#E8702A] hover:bg-[#d66224]"
+              className="w-full bg-[#E8702A] hover:bg-[#d66424]"
             >
               Go to Login
             </Button>
@@ -126,66 +132,53 @@ export default function SetPassword() {
 
   // Valid session - show password form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0D1829] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0D1829]">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-2">
-          <div className="flex justify-center mb-4">
-            <div className="text-4xl font-bold text-[#1B2F4E]">BayMo</div>
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <div className="text-3xl font-bold text-[#E8702A]">BayMo</div>
           </div>
-          <CardTitle className="text-2xl text-[#1B2F4E]">
-            Welcome to BayMo — Set Your Password
-          </CardTitle>
-          <p className="text-sm text-gray-600">
-            Create a secure password to complete your account setup
-          </p>
+          <CardTitle className="text-center text-xl">Welcome to BayMo — Set Your Password</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
                 {error}
               </div>
             )}
-
+            
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                New Password
-              </label>
+              <label className="text-sm font-medium">New Password</label>
               <Input
-                id="password"
                 type="password"
+                placeholder="Enter your new password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
                 required
                 minLength={8}
                 disabled={submitting}
-                className="w-full"
               />
               <p className="text-xs text-gray-500">Minimum 8 characters</p>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
+              <label className="text-sm font-medium">Confirm Password</label>
               <Input
-                id="confirmPassword"
                 type="password"
+                placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
                 required
                 minLength={8}
                 disabled={submitting}
-                className="w-full"
               />
             </div>
 
             <Button
               type="submit"
+              className="w-full bg-[#E8702A] hover:bg-[#d66424]"
               disabled={submitting}
-              className="w-full bg-[#E8702A] hover:bg-[#d66224] text-white"
             >
               {submitting ? (
                 <>
