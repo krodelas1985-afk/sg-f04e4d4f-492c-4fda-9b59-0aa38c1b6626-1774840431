@@ -76,7 +76,21 @@ export default async function handler(
   }
 
   if (req.method === "PUT") {
-    const updates = req.body;
+    const { 
+      name, 
+      channel, 
+      status, 
+      target_action, 
+      config, 
+      is_locked,
+      currency,
+      start_date,
+      end_date,
+      success_metric,
+      source_detail,
+      target_industries,
+      job_titles
+    } = req.body;
 
     // Fetch the campaign first to check permissions
     let query = supabase
@@ -98,22 +112,44 @@ export default async function handler(
       return res.status(404).json({ error: "Campaign not found" });
     }
 
-    // Check if campaign is locked and user is not admin
+    // Access control
     if (campaign.is_locked && profile.role !== "baymo_admin") {
-      return res
-        .status(403)
-        .json({ error: "Campaign is locked. Contact admin to edit." });
+      return res.status(403).json({ error: "Campaign is locked. Only BayMo admin can edit." });
     }
 
-    // Check permissions: viewer and agent cannot edit
-    if (profile.role === "viewer" || profile.role === "agent") {
-      return res.status(403).json({ error: "Insufficient permissions" });
+    const canEdit = profile.role === "baymo_admin" || 
+                    profile.role === "client_admin" || 
+                    profile.role === "manager";
+    
+    if (!canEdit) {
+      return res.status(403).json({ error: "You do not have permission to edit this campaign" });
     }
 
-    // Update campaign
+    // Build update object
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (channel !== undefined) updateData.channel = channel;
+    if (status !== undefined) updateData.status = status;
+    if (target_action !== undefined) updateData.target_action = target_action;
+    if (config !== undefined) updateData.config = config;
+    if (currency !== undefined) updateData.currency = currency || "PHP";
+    if (start_date !== undefined) updateData.start_date = start_date;
+    if (end_date !== undefined) updateData.end_date = end_date;
+    if (success_metric !== undefined) updateData.success_metric = success_metric;
+    if (source_detail !== undefined) updateData.source_detail = source_detail;
+    if (target_industries !== undefined) updateData.target_industries = Array.isArray(target_industries) ? target_industries : [];
+    if (job_titles !== undefined) updateData.job_titles = Array.isArray(job_titles) ? job_titles : [];
+    
+    // Only baymo_admin can update is_locked
+    if (is_locked !== undefined && profile.role === "baymo_admin") {
+      updateData.is_locked = is_locked;
+    }
+
+    updateData.updated_at = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("campaigns")
-      .update(updates)
+      .update(updateData)
       .eq("id", id)
       .select()
       .single();
