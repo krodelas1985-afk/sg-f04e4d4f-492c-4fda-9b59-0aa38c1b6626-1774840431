@@ -3,9 +3,8 @@ import { useRouter } from "next/router";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Login() {
   const router = useRouter();
@@ -22,7 +21,7 @@ export default function Login() {
     try {
       const supabase = createClient();
 
-      // Sign in with Supabase Auth
+      // Sign in with email and password
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -35,12 +34,12 @@ export default function Login() {
       }
 
       if (!authData.user) {
-        setError("Authentication failed");
+        setError("Login failed - no user data returned");
         setLoading(false);
         return;
       }
 
-      // Fetch user role from profiles table using the authenticated session
+      // Fetch user role from profiles table
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
@@ -54,18 +53,9 @@ export default function Login() {
         return;
       }
 
-      if (!profile) {
-        setError("User profile not found");
-        setLoading(false);
-        return;
-      }
-
       // Redirect based on role
-      if (profile.role === "baymo_admin") {
-        window.location.href = "/admin";
-      } else {
-        window.location.href = "/dashboard";
-      }
+      const redirectPath = profile?.role === "baymo_admin" ? "/admin" : "/dashboard";
+      window.location.href = redirectPath;
     } catch (err) {
       console.error("Login error:", err);
       setError("An unexpected error occurred");
@@ -74,48 +64,61 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-bg px-4">
+    <div className="min-h-screen bg-slate-bg flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">BayMo Campaign Engine</CardTitle>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-col items-center space-y-1">
+            <h1 className="text-2xl font-bold text-foreground">
+              BayMo
+            </h1>
+            <p className="text-lg font-semibold text-primary">
+              Campaign Engine
+            </p>
+          </div>
+          <CardTitle className="text-center">Sign In</CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
+                {error}
+              </div>
             )}
+            
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                placeholder="you@example.com"
               />
             </div>
+            
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                placeholder="••••••••"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
