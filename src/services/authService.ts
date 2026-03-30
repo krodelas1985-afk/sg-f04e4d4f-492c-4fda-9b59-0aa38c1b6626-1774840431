@@ -1,181 +1,91 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  user_metadata?: any;
-  created_at?: string;
-}
-
-export interface AuthError {
-  message: string;
-  code?: string;
-}
-
-// Dynamic URL Helper
-const getURL = () => {
-  let url = process?.env?.NEXT_PUBLIC_VERCEL_URL ?? 
-           process?.env?.NEXT_PUBLIC_SITE_URL ?? 
-           'http://localhost:3000'
-  
-  // Handle undefined or null url
-  if (!url) {
-    url = 'http://localhost:3000';
+// Helper to get redirect URL dynamically for auth flows
+const getRedirectURL = (path: string = "/dashboard") => {
+  if (typeof window !== "undefined") {
+    const { protocol, host } = window.location;
+    return `${protocol}//${host}${path}`;
   }
-  
-  // Ensure url has protocol
-  url = url.startsWith('http') ? url : `https://${url}`
-  
-  // Ensure url ends with slash
-  url = url.endsWith('/') ? url : `${url}/`
-  
-  return url
-}
+  return process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL}${path}`
+    : `http://localhost:3000${path}`;
+};
 
 export const authService = {
-  // Get current user
-  async getCurrentUser(): Promise<AuthUser | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user ? {
-      id: user.id,
-      email: user.email || "",
-      user_metadata: user.user_metadata,
-      created_at: user.created_at
-    } : null;
-  },
-
-  // Get current session
-  async getCurrentSession(): Promise<Session | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
-  },
-
-  // Sign up with email and password
-  async signUp(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${getURL()}auth/confirm-email`
-        }
-      });
-
-      if (error) {
-        return { user: null, error: { message: error.message, code: error.status?.toString() } };
-      }
-
-      const authUser = data.user ? {
-        id: data.user.id,
-        email: data.user.email || "",
-        user_metadata: data.user.user_metadata,
-        created_at: data.user.created_at
-      } : null;
-
-      return { user: authUser, error: null };
-    } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during sign up" } 
-      };
-    }
-  },
-
   // Sign in with email and password
-  async signIn(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  async signIn(email: string, password: string) {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        return { user: null, error: { message: error.message, code: error.status?.toString() } };
-      }
-
-      const authUser = data.user ? {
-        id: data.user.id,
-        email: data.user.email || "",
-        user_metadata: data.user.user_metadata,
-        created_at: data.user.created_at
-      } : null;
-
-      return { user: authUser, error: null };
-    } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during sign in" } 
-      };
-    }
+    if (error) throw error;
+    return data;
   },
 
   // Sign out
-  async signOut(): Promise<{ error: AuthError | null }> {
-    try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        return { error: { message: error.message } };
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { 
-        error: { message: "An unexpected error occurred during sign out" } 
-      };
-    }
+  async signOut() {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   },
 
-  // Reset password
-  async resetPassword(email: string): Promise<{ error: AuthError | null }> {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getURL()}auth/reset-password`,
-      });
-
-      if (error) {
-        return { error: { message: error.message } };
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { 
-        error: { message: "An unexpected error occurred during password reset" } 
-      };
-    }
+  // Get current session
+  async getSession() {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data.session;
   },
 
-  // Confirm email (REQUIRED)
-  async confirmEmail(token: string, type: 'signup' | 'recovery' | 'email_change' = 'signup'): Promise<{ user: AuthUser | null; error: AuthError | null }> {
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: token,
-        type: type
-      });
-
-      if (error) {
-        return { user: null, error: { message: error.message, code: error.status?.toString() } };
-      }
-
-      const authUser = data.user ? {
-        id: data.user.id,
-        email: data.user.email || "",
-        user_metadata: data.user.user_metadata,
-        created_at: data.user.created_at
-      } : null;
-
-      return { user: authUser, error: null };
-    } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during email confirmation" } 
-      };
-    }
+  // Get current user
+  async getUser() {
+    const supabase = createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return user;
   },
 
-  // Listen to auth state changes
-  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
-    return supabase.auth.onAuthStateChange(callback);
-  }
+  // Get user profile with role and client_id
+  async getUserProfile() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return null;
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw error;
+    return profile;
+  },
+
+  // Update user password (for invited users on /auth/set-password)
+  async updatePassword(newPassword: string) {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // OAuth sign in (Google, etc.) - if needed in the future
+  async signInWithOAuth(provider: "google" | "github") {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: getRedirectURL("/dashboard"),
+      },
+    });
+
+    if (error) throw error;
+    return data;
+  },
 };

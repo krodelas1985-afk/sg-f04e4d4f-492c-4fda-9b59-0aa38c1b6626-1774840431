@@ -158,15 +158,19 @@ export default function ClientDetail() {
       const response = await fetch(`/api/admin/clients/${id}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newUserEmail, role: newUserRole }),
+        body: JSON.stringify({ 
+          email: newUserEmail, 
+          role: newUserRole,
+          full_name: "" // Can be updated later by user
+        }),
       });
 
       if (!response.ok) throw new Error("Failed to add user");
 
       const result = await response.json();
       
-      // Show success message with email notification info
-      const successMessage = result.message || `User ${newUserEmail} added successfully`;
+      // Show success message with invitation info
+      const successMessage = result.message || `User invitation sent to ${newUserEmail}`;
       alert(successMessage);
 
       setNewUserEmail("");
