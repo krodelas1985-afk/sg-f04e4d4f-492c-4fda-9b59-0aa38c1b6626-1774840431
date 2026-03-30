@@ -202,7 +202,7 @@ export default function AdminClientDetail() {
       const response = await fetch(`/api/admin/clients/${id}/users`);
       if (!response.ok) throw new Error("Failed to fetch users");
       const data = await response.json();
-      setUsers(data ?? []);
+      setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsers([]);
@@ -410,45 +410,61 @@ export default function AdminClientDetail() {
                   </Button>
                 </form>
 
-                <div className="border rounded-md">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-muted/50 text-muted-foreground border-b">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">Name</th>
-                        <th className="px-4 py-3 font-medium">Email</th>
-                        <th className="px-4 py-3 font-medium">Role</th>
-                        <th className="px-4 py-3 font-medium">Status</th>
-                        <th className="px-4 py-3 font-medium text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {users.length === 0 ? (
-                        <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No users found for this client.</td></tr>
-                      ) : (
-                        users.map(user => (
-                          <tr key={user.id}>
-                            <td className="px-4 py-3 font-medium">{user.full_name || "-"}</td>
-                            <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                            <td className="px-4 py-3 capitalize">{user.role.replace('_', ' ')}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-0.5 rounded-full text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                {user.is_active ? 'Active' : 'Inactive'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => toggleUserStatus(user.id, user.is_active)}
-                              >
-                                {user.is_active ? "Deactivate" : "Activate"}
-                              </Button>
+                <div className="bg-white rounded-lg shadow">
+                  <div className="p-6 border-b">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-xl font-semibold">Users ({(users?.length || 0)})</h2>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {(users?.length || 0) === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                              No users found for this client
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          (users || []).map((user: any) => (
+                            <tr key={user.id}>
+                              <td className="px-6 py-4 whitespace-nowrap">{user.full_name || "—"}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {user.is_active ? (
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>
+                                ) : (
+                                  <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <button
+                                  onClick={() => removeUser(user.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </CardContent>
             </Card>
