@@ -295,7 +295,7 @@ export default function ClientDetail() {
                 </div>
 
                 <div className="pt-6 border-t">
-                  <Button variant="destructive" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={regenerateSecret}>
+                  <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={regenerateSecret}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Regenerate Secret
                   </Button>
