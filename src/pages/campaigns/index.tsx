@@ -7,14 +7,31 @@ import { Plus, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { createBrowserClient } from "@supabase/ssr";
 
+interface Campaign {
+  id: string;
+  name: string;
+  channel: string;
+  status: string;
+  leads_count: number;
+  created_at: string;
+  is_locked: boolean;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  company_name: string;
+}
+
 export default function CampaignsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -23,6 +40,8 @@ export default function CampaignsPage() {
   const [newCampaignName, setNewCampaignName] = useState("");
   const [newCampaignChannel, setNewCampaignChannel] = useState("webform");
   const [creating, setCreating] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
 
   useEffect(() => {
     fetchProfileAndCampaigns();
@@ -55,10 +74,20 @@ export default function CampaignsPage() {
   const handleCreate = async () => {
     try {
       setCreating(true);
+      const payload: any = {
+        name: newCampaignName,
+        channel: newCampaignChannel,
+      };
+
+      // Add client_id for baymo_admin
+      if (profile?.role === "baymo_admin") {
+        payload.client_id = selectedClientId;
+      }
+
       const res = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCampaignName, channel: newCampaignChannel })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const errorData = await res.json();
@@ -152,6 +181,23 @@ export default function CampaignsPage() {
             <DialogTitle>Create Campaign</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {profile?.role === "baymo_admin" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Client</label>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name} ({client.company_name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Name</Label>
               <Input 

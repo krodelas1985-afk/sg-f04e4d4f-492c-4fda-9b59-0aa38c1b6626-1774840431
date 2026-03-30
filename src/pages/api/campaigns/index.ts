@@ -88,15 +88,26 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    // Only baymo_admin can create campaigns
-    if (profile.role !== "baymo_admin") {
-      return res.status(403).json({ error: "Only admin can create campaigns" });
-    }
-
     const { name, channel, client_id } = req.body;
 
-    if (!name || !channel || !client_id) {
+    if (!name || !channel) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Determine client_id
+    let campaignClientId = client_id;
+
+    // If not baymo_admin, use profile's client_id
+    if (profile.role !== "baymo_admin") {
+      if (!profile.client_id) {
+        return res.status(400).json({ error: "User has no client association" });
+      }
+      campaignClientId = profile.client_id;
+    } else {
+      // baymo_admin must provide client_id
+      if (!client_id) {
+        return res.status(400).json({ error: "Client ID required for admin users" });
+      }
     }
 
     const { data, error } = await supabase
@@ -104,7 +115,7 @@ export default async function handler(
       .insert({
         name,
         channel,
-        client_id,
+        client_id: campaignClientId,
         status: "draft",
         created_by: session.user.id,
         config: {
