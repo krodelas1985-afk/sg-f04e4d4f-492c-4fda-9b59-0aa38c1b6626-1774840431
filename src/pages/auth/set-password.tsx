@@ -17,46 +17,49 @@ export default function SetPassword() {
 
   useEffect(() => {
     const supabase = createClient();
+    let isMounted = true;
 
-    // Step 1: Force Supabase to process URL hash and create session
-    supabase.auth.getSessionFromUrl({ storeSession: true }).then(({ data, error }) => {
-      if (error) {
-        console.error("Error processing URL:", error);
-        setLoading(false);
-        return;
+    // Listen for auth changes to catch the session once URL hash is processed
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        if (!isMounted) return;
+        if (newSession) {
+          setSession(newSession);
+          setLoading(false);
+        }
       }
+    );
 
+    // Initial session check
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return;
+      
       if (data.session) {
-        console.log("Session created from URL:", data.session);
         setSession(data.session);
         setLoading(false);
-        return;
+      } else {
+        // If URL contains access_token, Supabase needs time to process it
+        if (window.location.hash && window.location.hash.includes("access_token")) {
+          // Wait up to 3 seconds for onAuthStateChange to fire
+          setTimeout(() => {
+            if (isMounted) {
+              setLoading(false);
+            }
+          }, 3000);
+        } else {
+          // No session and no token in URL, safe to show error
+          setLoading(false);
+        }
       }
-
-      // Step 2: If no session from URL, listen for auth changes
-      const { data: listener } = supabase.auth.onAuthStateChange(
-        (event, newSession) => {
-          console.log("Auth state change:", event, newSession);
-          if (newSession) {
-            setSession(newSession);
-            setLoading(false);
-          }
-        }
-      );
-
-      // Step 3: Fallback check for existing session
-      supabase.auth.getSession().then(({ data: sessionData }) => {
-        console.log("Fallback session check:", sessionData);
-        if (sessionData.session) {
-          setSession(sessionData.session);
-        }
-        setLoading(false);
-      });
-
-      return () => {
-        listener?.subscription.unsubscribe();
-      };
+    }).catch((err) => {
+      console.error("Error checking session:", err);
+      if (isMounted) setLoading(false);
     });
+
+    return () => {
+      isMounted = false;
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
