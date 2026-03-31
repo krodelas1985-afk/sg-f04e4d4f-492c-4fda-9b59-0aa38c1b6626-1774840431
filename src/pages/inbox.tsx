@@ -669,12 +669,63 @@ export default function Inbox() {
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[#1B3A5C]">{selectedLead.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {getStageBadge(selectedLead.lead_temperature || "Cold")}
-                      <Badge className="bg-blue-100 text-blue-800 text-xs">
+                    <h2 className="text-xl font-bold text-[#1B3A5C] mb-2">
+                      {selectedLead.name}
+                    </h2>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          selectedLead.lead_temperature === "Hot" && "bg-red-100 text-red-700 border-red-300",
+                          selectedLead.lead_temperature === "Warm" && "bg-orange-100 text-orange-700 border-orange-300",
+                          selectedLead.lead_temperature === "Cold" && "bg-blue-100 text-blue-700 border-blue-300",
+                          selectedLead.lead_temperature === "Unqualified" && "bg-gray-100 text-gray-700 border-gray-300"
+                        )}
+                      >
+                        {selectedLead.lead_temperature === "Hot" && "🔥"}
+                        {selectedLead.lead_temperature === "Warm" && "🟠"}
+                        {selectedLead.lead_temperature === "Cold" && "❄️"}
+                        {selectedLead.lead_temperature === "Unqualified" && "⚫"}
+                        {" "}
+                        {selectedLead.lead_temperature || "Cold"}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          selectedLead.status === "New" && "bg-blue-100 text-blue-700 border-blue-300",
+                          selectedLead.status === "Active" && "bg-green-100 text-green-700 border-green-300",
+                          selectedLead.status === "In Contact" && "bg-yellow-100 text-yellow-700 border-yellow-300",
+                          selectedLead.status === "Inactive" && "bg-gray-100 text-gray-700 border-gray-300",
+                          selectedLead.status === "Closed" && "bg-red-100 text-red-700 border-red-300"
+                        )}
+                      >
                         {selectedLead.status || "New"}
                       </Badge>
+                      
+                      {/* Campaign Indicator - Inline */}
+                      {selectedLead.campaign ? (
+                        <>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
+                            ✅ Campaign: {typeof selectedLead.campaign === "object" && selectedLead.campaign.name 
+                              ? selectedLead.campaign.name 
+                              : "Active Campaign"}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowStopCampaignDialog(true)}
+                            className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            Stop Campaign
+                          </Button>
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-300 text-xs">
+                          ⚠️ No Campaign Assigned
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="text-sm text-gray-600">
