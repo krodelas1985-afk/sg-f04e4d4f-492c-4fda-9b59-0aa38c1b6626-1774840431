@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Inbox() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -53,6 +54,7 @@ export default function Inbox() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [showStopCampaignDialog, setShowStopCampaignDialog] = useState(false);
 
   // Template modal
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -109,6 +111,41 @@ export default function Inbox() {
       );
       setLeads(updatedLeads);
       setSelectedLead({ ...selectedLead, primary_channel: channel });
+    }
+  };
+
+  const handleStopCampaign = async () => {
+    if (!selectedLead) return;
+
+    try {
+      const supabase = createClient();
+      
+      await supabase
+        .from("leads")
+        .update({ campaign_id: null })
+        .eq("id", selectedLead.id);
+
+      // Update local state
+      setSelectedLead({ ...selectedLead, campaign_id: null, campaign: null });
+      
+      const updatedLeads = leads.map(lead =>
+        lead.id === selectedLead.id ? { ...lead, campaign_id: null, campaign: null } : lead
+      );
+      setLeads(updatedLeads);
+
+      setShowStopCampaignDialog(false);
+      
+      toast({
+        title: "Campaign stopped",
+        description: `Campaign stopped for ${selectedLead.name}`,
+      });
+    } catch (error) {
+      console.error("Error stopping campaign:", error);
+      toast({
+        title: "Error",
+        description: "Failed to stop campaign. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -963,6 +1000,31 @@ export default function Inbox() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stop Campaign Confirmation Dialog */}
+      <Dialog open={showStopCampaignDialog} onOpenChange={setShowStopCampaignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Stop Campaign</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600">
+              Are you sure you want to stop this campaign for <span className="font-semibold">{selectedLead?.name}</span>?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowStopCampaignDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStopCampaign}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Stop Campaign
             </Button>
           </DialogFooter>
         </DialogContent>
