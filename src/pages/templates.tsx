@@ -445,7 +445,7 @@ export default function TemplatesPage() {
             {isAdmin && (
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => setShowCreatePanel(true)}
+                  onClick={handleCreateNew}
                   className="bg-[#1B3A5C] hover:bg-[#152d47] text-white"
                 >
                   + New Template
