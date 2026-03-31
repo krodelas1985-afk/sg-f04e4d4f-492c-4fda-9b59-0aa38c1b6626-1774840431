@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Loader2, Search, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS = ["New", "Active", "In Contact", "Inactive", "Closed"];
 const STAGE_OPTIONS = [
@@ -461,40 +462,44 @@ export default function LeadsPage() {
           
           <div className="flex gap-4 flex-wrap items-center">
             <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Stage" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All">All Stages</SelectItem>
-                {STAGE_OPTIONS.map((stage) => (
-                  <SelectItem key={stage.value} value={stage.value}>
-                    {stage.emoji} {stage.value}
-                  </SelectItem>
-                ))}
+                <SelectItem value="Hot">🔥 Hot</SelectItem>
+                <SelectItem value="Warm">🟠 Warm</SelectItem>
+                <SelectItem value="Cold">❄️ Cold</SelectItem>
+                <SelectItem value="Unqualified">Unqualified</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Source" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All">All Sources</SelectItem>
-                {SOURCE_OPTIONS.map((source) => (
-                  <SelectItem key={source} value={source}>
-                    {source}
-                  </SelectItem>
-                ))}
+                <SelectItem value="FB Messenger">FB Messenger</SelectItem>
+                <SelectItem value="Viber">Viber</SelectItem>
+                <SelectItem value="BaMo Marketplace">BaMo Marketplace</SelectItem>
+                <SelectItem value="Website Chat">Website Chat</SelectItem>
+                <SelectItem value="Web Form">Web Form</SelectItem>
+                <SelectItem value="Quick Form">Quick Form</SelectItem>
+                <SelectItem value="Manually Added">Manually Added</SelectItem>
+                <SelectItem value="Referral">Referral</SelectItem>
+                <SelectItem value="Phone Call">Phone Call</SelectItem>
+                <SelectItem value="Event / Open House">Event / Open House</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={assignedAgentFilter} onValueChange={setAssignedAgentFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Assigned Agent" />
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Agent" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All">All Agents</SelectItem>
-                {agents.map((agent) => (
+                {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
                   <SelectItem key={agent.id} value={agent.id}>
                     {agent.full_name}
                   </SelectItem>
@@ -503,13 +508,13 @@ export default function LeadsPage() {
             </Select>
             
             <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Campaign" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All">All Campaigns</SelectItem>
                 <SelectItem value="No Campaign">No Campaign</SelectItem>
-                {campaigns.map((campaign) => (
+                {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
                   <SelectItem key={campaign.id} value={campaign.id}>
                     {campaign.name}
                   </SelectItem>
@@ -656,7 +661,7 @@ export default function LeadsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">Unassigned</SelectItem>
-                          {agents.map((agent) => (
+                          {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.full_name}
                             </SelectItem>
@@ -675,7 +680,7 @@ export default function LeadsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">No Campaign</SelectItem>
-                          {campaigns.map((campaign) => (
+                          {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
                             <SelectItem key={campaign.id} value={campaign.id}>
                               {campaign.name}
                             </SelectItem>
@@ -723,50 +728,54 @@ export default function LeadsPage() {
             <div>
               <Label>Source</Label>
               <Select
-                value={quickAddData.source}
-                onValueChange={(value) => setQuickAddData({ ...quickAddData, source: value })}
+                value={quickSource}
+                onValueChange={setQuickSource}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SOURCE_OPTIONS.map((source) => (
-                    <SelectItem key={source} value={source}>
-                      {source}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="FB Messenger">FB Messenger</SelectItem>
+                  <SelectItem value="Viber">Viber</SelectItem>
+                  <SelectItem value="BaMo Marketplace">BaMo Marketplace</SelectItem>
+                  <SelectItem value="Website Chat">Website Chat</SelectItem>
+                  <SelectItem value="Web Form">Web Form</SelectItem>
+                  <SelectItem value="Quick Form">Quick Form</SelectItem>
+                  <SelectItem value="Manually Added">Manually Added</SelectItem>
+                  <SelectItem value="Referral">Referral</SelectItem>
+                  <SelectItem value="Phone Call">Phone Call</SelectItem>
+                  <SelectItem value="Event / Open House">Event / Open House</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Stage</Label>
               <Select
-                value={quickAddData.lead_temperature}
-                onValueChange={(value) => setQuickAddData({ ...quickAddData, lead_temperature: value })}
+                value={quickStage}
+                onValueChange={setQuickStage}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select stage" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STAGE_OPTIONS.map((stage) => (
-                    <SelectItem key={stage.value} value={stage.value}>
-                      {stage.emoji} {stage.value}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="Hot">🔥 Hot</SelectItem>
+                  <SelectItem value="Warm">🟠 Warm</SelectItem>
+                  <SelectItem value="Cold">❄️ Cold</SelectItem>
+                  <SelectItem value="Unqualified">Unqualified</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Assigned Agent</Label>
               <Select
-                value={quickAddData.assigned_user_id}
-                onValueChange={(value) => setQuickAddData({ ...quickAddData, assigned_user_id: value })}
+                value={quickAgent}
+                onValueChange={setQuickAgent}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  {agents.map((agent) => (
+                  {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.full_name}
                     </SelectItem>
@@ -974,7 +983,7 @@ export default function LeadsPage() {
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent>
-                      {agents.map((agent) => (
+                      {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           {agent.full_name}
                         </SelectItem>
@@ -992,7 +1001,8 @@ export default function LeadsPage() {
                       <SelectValue placeholder="Select campaign" />
                     </SelectTrigger>
                     <SelectContent>
-                      {campaigns.map((campaign) => (
+                      <SelectItem value="">No Campaign</SelectItem>
+                      {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
                         <SelectItem key={campaign.id} value={campaign.id}>
                           {campaign.name}
                         </SelectItem>
@@ -1090,5 +1100,50 @@ function InlineEditableText({
     >
       {value || placeholder || ""}
     </div>
+  );
+}
+
+// Inline Dropdown Component
+function InlineDropdown({
+  value,
+  options,
+  onSelect,
+  placeholder,
+  className,
+}: {
+  value: string | null;
+  options: Array<{ value: string; label: string }>;
+  onSelect: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Select
+      value={value || undefined}
+      onValueChange={(val) => {
+        onSelect(val);
+        setIsOpen(false);
+      }}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+    >
+      <SelectTrigger
+        className={cn(
+          "h-7 px-2 text-sm border-transparent hover:border-gray-200 bg-transparent hover:bg-gray-50",
+          className
+        )}
+      >
+        <SelectValue placeholder={placeholder || "Select..."} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.filter(opt => opt.value && opt.value.trim() !== "").map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
