@@ -109,13 +109,36 @@ export default function TemplatesPage() {
   const fetchTemplates = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+
+      let query = supabase
         .from("message_templates")
         .select(`
           *,
-          creator:profiles!message_templates_created_by_fkey(full_name)
-        `)
-        .order("created_at", { ascending: false });
+          creator:profiles!message_templates_created_by_fkey(full_name, role)
+        `);
+
+      // Apply filters
+      if (activeFilter !== "all") {
+        if (["email", "messenger", "sms"].includes(activeFilter)) {
+          query = query.eq("channel", activeFilter);
+        } else {
+          query = query.eq("category", activeFilter);
+        }
+      }
+
+      // Apply search
+      if (searchQuery) {
+        query = query.ilike("title", `%${searchQuery}%`);
+      }
+
+      // Apply sort - FIX: Use correct Supabase syntax
+      if (sortBy === "created_at") {
+        query = query.order("created_at", { ascending: false });
+      } else {
+        query = query.order("last_used_at", { ascending: false, nullsFirst: false });
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -410,9 +433,9 @@ export default function TemplatesPage() {
   return (
     <DashboardLayout>
       <div className="p-6">
-        {/* Page Header */}
+        {/* Page Header - FIX: Add missing buttons */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-start justify-between mb-2">
             <div>
               <h1 className="text-3xl font-bold text-[#1B3A5C]">Message Templates</h1>
               <p className="text-gray-600 mt-1">
@@ -420,13 +443,12 @@ export default function TemplatesPage() {
               </p>
             </div>
             {isAdmin && (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
-                  onClick={handleCreateNew}
+                  onClick={() => setShowCreatePanel(true)}
                   className="bg-[#1B3A5C] hover:bg-[#152d47] text-white"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Template
+                  + New Template
                 </Button>
                 <Button
                   onClick={() => setShowAIGenerator(true)}
