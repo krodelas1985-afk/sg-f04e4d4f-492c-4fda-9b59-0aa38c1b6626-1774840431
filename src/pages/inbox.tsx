@@ -808,10 +808,10 @@ export default function Inbox() {
                       variant="outline"
                       size="sm"
                       onClick={handleAISuggest}
-                      disabled={loadingAI}
+                      disabled={generating}
                       className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
                     >
-                      {loadingAI ? (
+                      {generating ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Generating...
@@ -826,12 +826,12 @@ export default function Inbox() {
                   </div>
 
                   {/* Attachment Preview */}
-                  {attachmentPreview && (
+                  {(attachmentPreview || attachment) && (
                     <div className="mb-3 p-3 bg-white border rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {attachmentPreview.type === "image" ? (
+                        {attachment?.type.startsWith("image/") && attachmentPreview ? (
                           <img
-                            src={attachmentPreview.url}
+                            src={attachmentPreview}
                             alt="Preview"
                             className="h-16 w-16 object-cover rounded"
                           />
@@ -903,7 +903,7 @@ export default function Inbox() {
             <DialogTitle>Insert Template</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {templates.map((template) => (
+            {messageTemplates.map((template) => (
               <button
                 key={template.id}
                 onClick={() => {
@@ -918,7 +918,7 @@ export default function Inbox() {
                 </div>
               </button>
             ))}
-            {templates.length === 0 && (
+            {messageTemplates.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 No templates found. Create templates in Settings.
               </div>
