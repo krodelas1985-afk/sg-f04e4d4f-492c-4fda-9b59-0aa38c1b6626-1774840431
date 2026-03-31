@@ -653,14 +653,14 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Select
-                        value={lead.assigned_user_id || ""}
-                        onValueChange={(value) => handleInlineEdit(lead.id, "assigned_user_id", value)}
+                        value={lead.assigned_user_id || "none"}
+                        onValueChange={(value) => handleInlineEdit(lead.id, "assigned_user_id", value === "none" ? null : value)}
                       >
                         <SelectTrigger className="w-40 h-8">
                           <SelectValue placeholder="Unassigned" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
+                          <SelectItem value="none">Unassigned</SelectItem>
                           {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.full_name}
@@ -672,14 +672,14 @@ export default function LeadsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.agent_role || "—"}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Select
-                        value={lead.campaign_id || ""}
-                        onValueChange={(value) => handleInlineEdit(lead.id, "campaign_id", value || null)}
+                        value={lead.campaign_id || "none"}
+                        onValueChange={(value) => handleInlineEdit(lead.id, "campaign_id", value === "none" ? null : value)}
                       >
                         <SelectTrigger className="w-40 h-8">
                           <SelectValue placeholder="No Campaign" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No Campaign</SelectItem>
+                          <SelectItem value="none">No Campaign</SelectItem>
                           {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
                             <SelectItem key={campaign.id} value={campaign.id}>
                               {campaign.name}
@@ -728,8 +728,8 @@ export default function LeadsPage() {
             <div>
               <Label>Source</Label>
               <Select
-                value={quickSource}
-                onValueChange={setQuickSource}
+                value={quickAddData.source}
+                onValueChange={(val) => setQuickAddData({ ...quickAddData, source: val })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select source" />
@@ -751,8 +751,8 @@ export default function LeadsPage() {
             <div>
               <Label>Stage</Label>
               <Select
-                value={quickStage}
-                onValueChange={setQuickStage}
+                value={quickAddData.lead_temperature}
+                onValueChange={(val) => setQuickAddData({ ...quickAddData, lead_temperature: val })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select stage" />
@@ -768,8 +768,8 @@ export default function LeadsPage() {
             <div>
               <Label>Assigned Agent</Label>
               <Select
-                value={quickAgent}
-                onValueChange={setQuickAgent}
+                value={quickAddData.assigned_user_id}
+                onValueChange={(val) => setQuickAddData({ ...quickAddData, assigned_user_id: val })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select agent" />
@@ -818,7 +818,7 @@ export default function LeadsPage() {
                   />
                 </div>
                 <div>
-                  <Label>Phone</Label>
+                  <Label>Phone *</Label>
                   <Input
                     value={fullAddData.phone}
                     onChange={(e) => setFullAddData({ ...fullAddData, phone: e.target.value })}
@@ -976,13 +976,14 @@ export default function LeadsPage() {
                 <div>
                   <Label>Assigned Agent</Label>
                   <Select
-                    value={fullAddData.assigned_user_id}
-                    onValueChange={(value) => setFullAddData({ ...fullAddData, assigned_user_id: value })}
+                    value={fullAddData.assigned_user_id || "none"}
+                    onValueChange={(value) => setFullAddData({ ...fullAddData, assigned_user_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
                       {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           {agent.full_name}
@@ -994,14 +995,14 @@ export default function LeadsPage() {
                 <div>
                   <Label>Campaign</Label>
                   <Select
-                    value={fullAddData.campaign_id}
-                    onValueChange={(value) => setFullAddData({ ...fullAddData, campaign_id: value })}
+                    value={fullAddData.campaign_id || "none"}
+                    onValueChange={(value) => setFullAddData({ ...fullAddData, campaign_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select campaign" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Campaign</SelectItem>
+                      <SelectItem value="none">No Campaign</SelectItem>
                       {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
                         <SelectItem key={campaign.id} value={campaign.id}>
                           {campaign.name}
