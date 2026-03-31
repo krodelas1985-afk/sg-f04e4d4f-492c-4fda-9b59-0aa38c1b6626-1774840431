@@ -728,7 +728,7 @@ export default function Inbox() {
                     </div>
                   )}
 
-                  {/* Channel Selector */}
+                  {/* Channel Selector Row */}
                   <div className="mb-3 flex items-center gap-2">
                     <span className="text-sm text-gray-600">Sending via:</span>
                     <Select value={selectedChannel} onValueChange={handleChannelChange}>
@@ -777,15 +777,70 @@ export default function Inbox() {
                     </Select>
                   </div>
 
+                  {/* Action Buttons Row */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("file-upload")?.click()}
+                      className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                    >
+                      <Paperclip className="h-4 w-4 mr-2" />
+                      Attach
+                    </Button>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*,.pdf,.docx"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowTemplateDialog(true)}
+                      className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Insert Template
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAISuggest}
+                      disabled={loadingAI}
+                      className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                    >
+                      {loadingAI ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          AI Suggest
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Attachment Preview */}
                   {attachmentPreview && (
                     <div className="mb-3 p-3 bg-white border rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {attachmentPreview ? (
-                          <img src={attachmentPreview} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                        {attachmentPreview.type === "image" ? (
+                          <img
+                            src={attachmentPreview.url}
+                            alt="Preview"
+                            className="h-16 w-16 object-cover rounded"
+                          />
                         ) : (
-                          <FileText className="h-12 w-12 text-gray-400" />
+                          <Paperclip className="h-5 w-5 text-gray-400" />
                         )}
-                        <span className="text-sm text-gray-700">{attachment.name}</span>
+                        <span className="text-sm text-gray-600">
+                          {attachment?.name || "Attachment"}
+                        </span>
                       </div>
                       <Button
                         variant="ghost"
@@ -795,16 +850,17 @@ export default function Inbox() {
                           setAttachmentPreview(null);
                         }}
                       >
-                        <X className="h-4 w-4" />
+                        ×
                       </Button>
                     </div>
                   )}
 
+                  {/* Message Input */}
                   <Textarea
-                    placeholder="Type your message..."
                     value={replyMessage}
                     onChange={(e) => setReplyMessage(e.target.value)}
-                    className="flex-1 min-h-[80px]"
+                    placeholder="Type your message..."
+                    className="min-h-[100px] mb-3 resize-none"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -812,26 +868,69 @@ export default function Inbox() {
                       }
                     }}
                   />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={(!replyMessage.trim() && !attachment) || sending || uploadingAttachment}
-                    className="bg-[#E87722] hover:bg-[#d66a1e] text-white self-end"
-                  >
-                    {sending || uploadingAttachment ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-1" />
-                        Send
-                      </>
-                    )}
-                  </Button>
+
+                  {/* Send Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={(!replyMessage.trim() && !attachment) || sending}
+                      className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                    >
+                      {sending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          Send
+                          <Send className="h-4 w-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
+
+      {/* Message Template Dialog */}
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Insert Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {templates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => {
+                  setReplyMessage(template.content);
+                  setShowTemplateDialog(false);
+                }}
+                className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="font-medium text-[#1B3A5C]">{template.name}</div>
+                <div className="text-sm text-gray-600 mt-1 line-clamp-2">
+                  {template.content}
+                </div>
+              </button>
+            ))}
+            {templates.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No templates found. Create templates in Settings.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Template Modal */}
       <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
