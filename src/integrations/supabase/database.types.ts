@@ -383,6 +383,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          industry: string | null
           last_contacted_at: string | null
           last_message_at: string | null
           lead_score: number | null
@@ -393,6 +394,7 @@ export type Database = {
           next_follow_up_date: string | null
           phone: string | null
           preferred_location: string | null
+          primary_channel: string | null
           property_type: string | null
           source: string | null
           source_override: boolean | null
@@ -415,6 +417,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          industry?: string | null
           last_contacted_at?: string | null
           last_message_at?: string | null
           lead_score?: number | null
@@ -425,6 +428,7 @@ export type Database = {
           next_follow_up_date?: string | null
           phone?: string | null
           preferred_location?: string | null
+          primary_channel?: string | null
           property_type?: string | null
           source?: string | null
           source_override?: boolean | null
@@ -447,6 +451,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          industry?: string | null
           last_contacted_at?: string | null
           last_message_at?: string | null
           lead_score?: number | null
@@ -457,6 +462,7 @@ export type Database = {
           next_follow_up_date?: string | null
           phone?: string | null
           preferred_location?: string | null
+          primary_channel?: string | null
           property_type?: string | null
           source?: string | null
           source_override?: boolean | null
@@ -723,10 +729,13 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          last_contacted_at: string
           last_message: string
           lead_score: number
           lead_temperature: string
+          metadata: Json
           name: string
+          next_follow_up_date: string
           next_task_title: string
           phone: string
           preferred_location: string
