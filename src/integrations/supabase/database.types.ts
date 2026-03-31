@@ -504,25 +504,46 @@ export type Database = {
       }
       message_templates: {
         Row: {
+          body: string | null
+          category: string | null
+          channel: string | null
           client_id: string
           content: string
           created_at: string | null
+          created_by: string | null
           id: string
+          last_used_at: string | null
           name: string
+          title: string | null
+          updated_at: string | null
         }
         Insert: {
+          body?: string | null
+          category?: string | null
+          channel?: string | null
           client_id: string
           content: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          last_used_at?: string | null
           name: string
+          title?: string | null
+          updated_at?: string | null
         }
         Update: {
+          body?: string | null
+          category?: string | null
+          channel?: string | null
           client_id?: string
           content?: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          last_used_at?: string | null
           name?: string
+          title?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -530,6 +551,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

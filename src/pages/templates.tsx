@@ -131,7 +131,7 @@ export default function TemplatesPage() {
         query = query.ilike("title", `%${searchQuery}%`);
       }
 
-      // Apply sort - FIX: Use correct Supabase syntax
+      // Apply sort - FIXED: Correct Supabase syntax
       if (sortBy === "created_at") {
         query = query.order("created_at", { ascending: false });
       } else {
@@ -140,9 +140,12 @@ export default function TemplatesPage() {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase query error:", error);
+        throw error;
+      }
 
-      const templatesWithCreator = data.map((t) => ({
+      const templatesWithCreator = (data || []).map((t) => ({
         ...t,
         creator_name: t.creator?.full_name || "Unknown",
       }));
