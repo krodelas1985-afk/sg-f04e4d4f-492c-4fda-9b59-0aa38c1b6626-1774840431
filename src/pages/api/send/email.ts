@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,7 +16,7 @@ export default async function handler(
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const supabase = createClient(req, res);
+    const supabase = createServerClient();
 
     // Get lead details
     const { data: lead } = await supabase
