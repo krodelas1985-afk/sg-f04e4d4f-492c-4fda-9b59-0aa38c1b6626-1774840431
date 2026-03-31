@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import DashboardLayout from "@/components/DashboardLayout";
+import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,6 +241,20 @@ export default function LeadsPage() {
     } catch (err) {
       console.error("Error fetching campaigns:", err);
     }
+  };
+
+  // Debounced text update
+  const handleTextEdit = async (leadId: string, field: string, value: string, originalValue: string | null) => {
+    if (value === (originalValue || "")) return;
+    
+    const supabase = createClient();
+    
+    // Optimistic update
+    setLeads((prev) =>
+      prev.map((lead) => (lead.id === leadId ? { ...lead, [field]: value } : lead))
+    );
+    
+    await supabase.from("leads").update({ [field]: value }).eq("id", leadId);
   };
   
   const handleInlineEdit = async (leadId: string, field: string, value: any) => {
@@ -556,9 +570,27 @@ export default function LeadsPage() {
                         {lead.name}
                       </button>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.phone || "—"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.email || "—"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.company || "—"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <InlineEditableText 
+                        value={lead.phone || ""} 
+                        onSave={(val) => handleTextEdit(lead.id, "phone", val, lead.phone)} 
+                        placeholder="—"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <InlineEditableText 
+                        value={lead.email || ""} 
+                        onSave={(val) => handleTextEdit(lead.id, "email", val, lead.email)} 
+                        placeholder="—"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <InlineEditableText 
+                        value={lead.company || ""} 
+                        onSave={(val) => handleTextEdit(lead.id, "company", val, lead.company)} 
+                        placeholder="—"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Select
                         value={lead.status}
@@ -996,5 +1028,67 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+// Inline Editable Text Component
+function InlineEditableText({ 
+  value, 
+  onSave, 
+  placeholder 
+}: { 
+  value: string; 
+  onSave: (val: string) => void;
+  placeholder?: string;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setEditValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    onSave(editValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleBlur();
+    } else if (e.key === "Escape") {
+      setEditValue(value);
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <Input
+        ref={inputRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="h-7 py-1 px-2 text-sm w-32"
+      />
+    );
+  }
+
+  return (
+    <div 
+      onClick={() => setIsEditing(true)} 
+      className="cursor-text hover:bg-gray-100 px-2 py-1 -mx-2 rounded border border-transparent hover:border-gray-200 min-w-[3rem] min-h-[1.75rem] flex items-center"
+      title="Click to edit"
+    >
+      {value || placeholder || ""}
+    </div>
   );
 }
