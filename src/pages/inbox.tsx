@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Search, Send, Paperclip, Sparkles, MessageSquare, 
-  FileText, Loader2, Download, X, AlertCircle
+  FileText, Loader2, Download, X, AlertCircle, Mail, Phone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Inbox() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -44,6 +45,10 @@ export default function Inbox() {
 
   // Reply input
   const [replyMessage, setReplyMessage] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [aiSuggestionWarning, setAiSuggestionWarning] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<"email" | "messenger" | "sms">("email");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -67,9 +72,15 @@ export default function Inbox() {
 
   useEffect(() => {
     if (selectedLead) {
-      fetchConversations(selectedLead.id);
+      fetchConversations();
+      fetchTemplates();
+      
+      // Determine channel from latest inbound message or lead's primary_channel
+      const latestInbound = conversations.find(c => c.direction === "inbound");
+      const detectedChannel = latestInbound?.channel || selectedLead.primary_channel || "email";
+      setSelectedChannel(detectedChannel as "email" | "messenger" | "sms");
     }
-  }, [selectedLead]);
+  }, [selectedLead?.id]);
 
   useEffect(() => {
     scrollToBottom();
@@ -77,6 +88,27 @@ export default function Inbox() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleChannelChange = async (channel: "email" | "messenger" | "sms") => {
+    setSelectedChannel(channel);
+    
+    if (selectedLead) {
+      const supabase = createClient();
+      
+      // Update lead's primary_channel
+      await supabase
+        .from("leads")
+        .update({ primary_channel: channel })
+        .eq("id", selectedLead.id);
+      
+      // Optimistic update
+      const updatedLeads = leads.map(lead =>
+        lead.id === selectedLead.id ? { ...lead, primary_channel: channel } : lead
+      );
+      setLeads(updatedLeads);
+      setSelectedLead({ ...selectedLead, primary_channel: channel });
+    }
   };
 
   const fetchCurrentUser = async () => {
@@ -156,7 +188,7 @@ export default function Inbox() {
     }
   };
 
-  const fetchConversations = async (leadId: string) => {
+  const fetchConversations = async () => {
     const supabase = createClient();
 
     const { data } = await supabase
@@ -165,7 +197,7 @@ export default function Inbox() {
         *,
         sender:profiles(full_name, role)
       `)
-      .eq("lead_id", leadId)
+      .eq("lead_id", selectedLead.id)
       .order("created_at", { ascending: true });
 
     setConversations(data || []);
@@ -174,7 +206,7 @@ export default function Inbox() {
     await supabase
       .from("leads")
       .update({ unread_count: 0 })
-      .eq("id", leadId);
+      .eq("id", selectedLead.id);
   };
 
   const fetchMessageTemplates = async () => {
@@ -262,28 +294,15 @@ export default function Inbox() {
   };
 
   const handleSendMessage = async () => {
-    if (!replyMessage.trim() && !attachment) return;
-    if (!selectedLead || !currentUserId) return;
+    if (!replyMessage.trim() || !selectedLead) return;
 
     setSending(true);
 
     try {
-      // Upload attachment if present
-      let attachmentData = null;
-      if (attachment) {
-        attachmentData = await uploadAttachment(selectedLead.id);
-        if (!attachmentData) {
-          setSending(false);
-          return;
-        }
-      }
+      const supabase = createClient();
 
-      // Determine channel from latest inbound message
-      const latestInbound = conversations
-        .filter(c => c.direction === "inbound")
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-      
-      const channel = latestInbound?.channel || "email";
+      // Use the selected channel
+      const channel = selectedChannel;
 
       if (channel === "email") {
         // Send via email
@@ -293,43 +312,91 @@ export default function Inbox() {
           body: JSON.stringify({
             lead_id: selectedLead.id,
             message: replyMessage,
-            attachment: attachmentData,
+            subject: `Message from ${selectedLead.name}`,
+            attachment: attachmentPreview,
           }),
         });
 
         if (!response.ok) {
           throw new Error("Failed to send email");
         }
-      } else {
+
+        // Optimistically add to conversations
+        const newMessage = {
+          id: `temp-${Date.now()}`,
+          lead_id: selectedLead.id,
+          client_id: selectedLead.client_id,
+          message_content: replyMessage,
+          channel: "email",
+          direction: "outbound" as const,
+          sent_via: aiGenerated ? "baymo" : "resend",
+          delivery_status: "sent",
+          sender_id: null,
+          attachment_url: attachmentPreview?.url,
+          attachment_type: attachmentPreview?.type,
+          created_at: new Date().toISOString(),
+          sender_name: "You",
+          sender_role: null,
+        };
+
+        setConversations([...conversations, newMessage]);
+      } else if (channel === "messenger") {
         // Messenger - save as pending
-        const supabase = createClient();
+        const { data: session } = await supabase.auth.getSession();
+        const currentUserId = session.session?.user?.id;
+
         await supabase.from("conversations").insert({
           lead_id: selectedLead.id,
-          client_id: clientId,
+          client_id: selectedLead.client_id,
           message_content: replyMessage,
           channel: "messenger",
           direction: "outbound",
-          sent_via: "manual",
+          sent_via: aiGenerated ? "baymo" : "manual",
           delivery_status: "pending",
           sender_id: currentUserId,
-          attachment_url: attachmentData?.url,
-          attachment_type: attachmentData?.type,
+          attachment_url: attachmentPreview?.url,
+          attachment_type: attachmentPreview?.type,
         });
 
-        alert("Message saved. Messenger sending coming soon.");
+        // Show notification
+        alert("Messenger sending coming soon. Message saved.");
+
+        // Refresh conversations
+        await fetchConversations();
+      } else if (channel === "sms") {
+        // SMS - save as pending
+        const { data: session } = await supabase.auth.getSession();
+        const currentUserId = session.session?.user?.id;
+
+        await supabase.from("conversations").insert({
+          lead_id: selectedLead.id,
+          client_id: selectedLead.client_id,
+          message_content: replyMessage,
+          channel: "sms",
+          direction: "outbound",
+          sent_via: aiGenerated ? "baymo" : "manual",
+          delivery_status: "pending",
+          sender_id: currentUserId,
+        });
+
+        // Show notification
+        alert("SMS sending coming soon. Message saved.");
+
+        // Refresh conversations
+        await fetchConversations();
       }
 
-      // Clear input and attachment
+      // Clear form
       setReplyMessage("");
-      setAttachment(null);
       setAttachmentPreview(null);
+      setAiGenerated(false);
+      setAiSuggestionWarning(null);
 
-      // Refresh conversation
-      await fetchConversations(selectedLead.id);
+      // Refresh data
       await fetchLeads();
     } catch (error) {
       console.error("Error sending message:", error);
-      alert("Failed to send message");
+      alert("Failed to send message. Please try again.");
     } finally {
       setSending(false);
     }
@@ -643,75 +710,86 @@ export default function Inbox() {
               </div>
 
               {/* Reply Box */}
-              <div className="bg-white border-t border-gray-200 p-4">
-                {/* Attachment Preview */}
-                {attachment && (
-                  <div className="mb-2 p-2 bg-gray-100 rounded flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {attachmentPreview ? (
-                        <img src={attachmentPreview} alt="Preview" className="h-12 w-12 object-cover rounded" />
-                      ) : (
-                        <FileText className="h-12 w-12 text-gray-400" />
-                      )}
-                      <span className="text-sm text-gray-700">{attachment.name}</span>
+              {selectedLead && (
+                <div className="border-t p-4 bg-gray-50">
+                  {aiSuggestionWarning && (
+                    <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+                      {aiSuggestionWarning}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setAttachment(null);
-                        setAttachmentPreview(null);
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                  )}
+
+                  {/* Channel Selector */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Sending via:</span>
+                    <Select value={selectedChannel} onValueChange={handleChannelChange}>
+                      <SelectTrigger className="w-[160px] h-8">
+                        <SelectValue>
+                          {selectedChannel === "email" && (
+                            <span className="flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              Email
+                            </span>
+                          )}
+                          {selectedChannel === "messenger" && (
+                            <span className="flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4" />
+                              Messenger
+                            </span>
+                          )}
+                          {selectedChannel === "sms" && (
+                            <span className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              SMS
+                            </span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="email">
+                          <span className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            Email
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="messenger">
+                          <span className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4" />
+                            Messenger
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="sms">
+                          <span className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            SMS
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
 
-                <div className="flex gap-2 mb-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.gif,.pdf,.docx"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingAttachment}
-                    className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
-                  >
-                    <Paperclip className="h-4 w-4 mr-1" />
-                    Attach
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowTemplateModal(true)}
-                    className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
-                  >
-                    <FileText className="h-4 w-4 mr-1" />
-                    Insert Template
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAISuggest}
-                    disabled={generating}
-                    className="text-[#E87722] border-[#E87722]/20 hover:bg-[#E87722]/5"
-                  >
-                    {generating ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-1" />
-                    )}
-                    AI Suggest
-                  </Button>
-                </div>
+                  {attachmentPreview && (
+                    <div className="mb-3 p-3 bg-white border rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {attachmentPreview ? (
+                          <img src={attachmentPreview} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                        ) : (
+                          <FileText className="h-12 w-12 text-gray-400" />
+                        )}
+                        <span className="text-sm text-gray-700">{attachment.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setAttachment(null);
+                          setAttachmentPreview(null);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
 
-                <div className="flex gap-2">
                   <Textarea
                     placeholder="Type your message..."
                     value={replyMessage}
@@ -739,7 +817,7 @@ export default function Inbox() {
                     )}
                   </Button>
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
