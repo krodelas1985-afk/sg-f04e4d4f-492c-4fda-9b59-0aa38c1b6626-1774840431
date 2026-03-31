@@ -77,7 +77,7 @@ export default function UsersPage() {
 
   // Fetch users with proper client_id filtering
   const fetchUsers = async () => {
-    if (!currentUserRole || !currentUserClientId) return;
+    if (!currentUserRole) return;
 
     try {
       const supabase = createClient();
@@ -108,7 +108,9 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    if (currentUserRole && currentUserClientId) {
+    if (currentUserRole === "baymo_admin") {
+      fetchUsers();
+    } else if (currentUserRole === "client_admin" && currentUserClientId) {
       fetchUsers();
     }
   }, [currentUserRole, currentUserClientId]);
