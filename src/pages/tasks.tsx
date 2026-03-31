@@ -155,13 +155,22 @@ export default function TasksPage() {
     }
   };
 
+  // Fetch profiles for Assigned To dropdown
   const fetchProfiles = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+
+      let query = supabase
         .from("profiles")
         .select("id, full_name")
         .order("full_name", { ascending: true });
+
+      // Add client_id filter for non-baymo_admin users
+      if (currentUserClientId) {
+        query = query.eq("client_id", currentUserClientId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setProfiles(data || []);
