@@ -59,6 +59,8 @@ export default function Inbox() {
   // Template modal
   const [showTemplateModal, setShowTemplateModal] = useState(false);
 
+  const { toast } = useToast();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
