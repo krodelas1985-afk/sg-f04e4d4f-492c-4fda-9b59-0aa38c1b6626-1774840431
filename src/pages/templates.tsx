@@ -794,7 +794,7 @@ export default function TemplatesPage() {
                   <Label htmlFor="ai-channel">Channel *</Label>
                   <Select
                     value={aiFormData.channel}
-                    onValueChange={(value) => setAiFormData({ ...aiFormData, channel: value })}
+                    onValueChange={(value) => setAiFormData({ ...aiFormData, channel: value as "email" | "messenger" | "sms" })}
                   >
                     <SelectTrigger id="ai-channel">
                       <SelectValue placeholder="Select channel" />
@@ -861,7 +861,7 @@ export default function TemplatesPage() {
 
                 {/* Generate Button */}
                 <Button
-                  onClick={handleGenerateTemplate}
+                  onClick={handleGenerateWithAI}
                   disabled={generating || !aiFormData.template_goal || !aiFormData.channel || !aiFormData.tone || !aiFormData.language}
                   className="w-full bg-[#E87722] hover:bg-[#d66a1e] text-white"
                 >
