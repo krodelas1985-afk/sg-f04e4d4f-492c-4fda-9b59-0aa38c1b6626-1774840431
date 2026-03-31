@@ -585,28 +585,17 @@ export default function TasksPage() {
               </Select>
             </div>
 
+            {/* Due Date */}
             <div>
-              <Label htmlFor="task-due-date">Due Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.due_date ? format(new Date(formData.due_date), "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.due_date ? new Date(formData.due_date) : undefined}
-                    onSelect={(date) => setFormData({ ...formData, due_date: date ? format(date, "yyyy-MM-dd") : "" })}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="due_date">Due Date *</Label>
+              <input
+                type="date"
+                id="due_date"
+                value={formData.due_date || ""}
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                min={new Date().toISOString().split("T")[0]}
+              />
             </div>
 
             <div>
