@@ -696,6 +696,47 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_leads_with_details: {
+        Args: {
+          p_assigned_user_id?: string
+          p_campaign_id?: string
+          p_client_id: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_source?: string
+          p_stage?: string
+          p_status?: string
+        }
+        Returns: {
+          agent_name: string
+          agent_role: string
+          assigned_user_id: string
+          bedrooms: number
+          budget_max: number
+          budget_min: number
+          buyer_type: string
+          campaign_id: string
+          campaign_name: string
+          client_id: string
+          company: string
+          created_at: string
+          email: string
+          id: string
+          last_message: string
+          lead_score: number
+          lead_temperature: string
+          name: string
+          next_task_title: string
+          phone: string
+          preferred_location: string
+          property_type: string
+          source: string
+          source_override: boolean
+          status: string
+          updated_at: string
+        }[]
+      }
       get_my_client_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
     }
