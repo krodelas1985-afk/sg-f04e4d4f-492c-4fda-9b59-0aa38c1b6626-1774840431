@@ -159,6 +159,19 @@ export default function TasksPage() {
   const fetchProfiles = async () => {
     try {
       const supabase = createClient();
+      
+      // Get current user's client_id first
+      const { data: { session } } = await supabase.auth.getSession();
+      let clientId = null;
+      
+      if (session?.user?.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", session.user.id)
+          .single();
+        clientId = profile?.client_id;
+      }
 
       let query = supabase
         .from("profiles")
@@ -166,8 +179,8 @@ export default function TasksPage() {
         .order("full_name", { ascending: true });
 
       // Add client_id filter for non-baymo_admin users
-      if (currentUserClientId) {
-        query = query.eq("client_id", currentUserClientId);
+      if (clientId) {
+        query = query.eq("client_id", clientId);
       }
 
       const { data, error } = await query;
