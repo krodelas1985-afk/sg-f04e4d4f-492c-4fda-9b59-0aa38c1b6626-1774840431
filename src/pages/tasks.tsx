@@ -159,31 +159,11 @@ export default function TasksPage() {
   const fetchProfiles = async () => {
     try {
       const supabase = createClient();
-      
-      // Get current user's client_id first
-      const { data: { session } } = await supabase.auth.getSession();
-      let clientId = null;
-      
-      if (session?.user?.id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", session.user.id)
-          .single();
-        clientId = profile?.client_id;
-      }
-
-      let query = supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, client_id")
+        .not("full_name", "is", null)
         .order("full_name", { ascending: true });
-
-      // Add client_id filter for non-baymo_admin users
-      if (clientId) {
-        query = query.eq("client_id", clientId);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
       setProfiles(data || []);
