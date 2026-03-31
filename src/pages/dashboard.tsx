@@ -132,9 +132,11 @@ export default function DashboardPage() {
       const uniqueLeads = new Map();
       (conversations || []).forEach((conv) => {
         if (conv.lead && !uniqueLeads.has(conv.lead_id)) {
+          const leadData = Array.isArray(conv.lead) ? conv.lead[0] : conv.lead;
+          
           uniqueLeads.set(conv.lead_id, {
             lead_id: conv.lead_id,
-            lead_name: conv.lead.name,
+            lead_name: leadData?.name || "Unknown Lead",
             message_content: conv.message_content,
             channel: conv.channel,
             created_at: conv.created_at,
