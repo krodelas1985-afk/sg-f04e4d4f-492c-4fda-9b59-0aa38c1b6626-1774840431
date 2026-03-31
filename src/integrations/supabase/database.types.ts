@@ -207,6 +207,8 @@ export type Database = {
       }
       conversations: {
         Row: {
+          attachment_type: string | null
+          attachment_url: string | null
           channel: string | null
           client_id: string
           created_at: string | null
@@ -222,6 +224,8 @@ export type Database = {
           sent_via: string | null
         }
         Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           channel?: string | null
           client_id: string
           created_at?: string | null
@@ -237,6 +241,8 @@ export type Database = {
           sent_via?: string | null
         }
         Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           channel?: string | null
           client_id?: string
           created_at?: string | null

@@ -1,18 +1,785 @@
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Search, Send, Paperclip, Sparkles, MessageSquare, 
+  FileText, Loader2, Download, X, AlertCircle
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export default function InboxPage() {
+export default function Inbox() {
+  const [leads, setLeads] = useState<any[]>([]);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [messageTemplates, setMessageTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Filters
+  const [filterType, setFilterType] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Reply input
+  const [replyMessage, setReplyMessage] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  // Template modal
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchLeads();
+      fetchMessageTemplates();
+    }
+  }, [clientId, filterType, searchQuery]);
+
+  useEffect(() => {
+    if (selectedLead) {
+      fetchConversations(selectedLead.id);
+    }
+  }, [selectedLead]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [conversations]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchCurrentUser = async () => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, client_id")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (profile) {
+        setCurrentUserId(profile.id);
+        setClientId(profile.client_id);
+      }
+    }
+  };
+
+  const fetchLeads = async () => {
+    if (!clientId) return;
+    
+    setLoading(true);
+    const supabase = createClient();
+
+    try {
+      // Get leads with their latest conversation
+      const { data: leadsData } = await supabase
+        .from("leads")
+        .select(`
+          *,
+          latest_conversation:conversations(
+            created_at,
+            message_content,
+            channel
+          )
+        `)
+        .eq("client_id", clientId)
+        .order("updated_at", { ascending: false });
+
+      let filtered = leadsData || [];
+
+      // Apply filters
+      if (filterType === "Unread") {
+        filtered = filtered.filter(lead => (lead.unread_count || 0) > 0);
+      } else if (filterType === "Hot") {
+        filtered = filtered.filter(lead => lead.lead_temperature === "Hot");
+      } else if (filterType === "Warm") {
+        filtered = filtered.filter(lead => lead.lead_temperature === "Warm");
+      }
+
+      // Apply search
+      if (searchQuery) {
+        filtered = filtered.filter(lead =>
+          lead.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      // Sort by latest message
+      filtered.sort((a, b) => {
+        const aTime = a.latest_conversation?.[0]?.created_at || a.created_at;
+        const bTime = b.latest_conversation?.[0]?.created_at || b.created_at;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      });
+
+      setLeads(filtered);
+      
+      // Auto-select first lead if none selected
+      if (!selectedLead && filtered.length > 0) {
+        setSelectedLead(filtered[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchConversations = async (leadId: string) => {
+    const supabase = createClient();
+
+    const { data } = await supabase
+      .from("conversations")
+      .select(`
+        *,
+        sender:profiles(full_name, role)
+      `)
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: true });
+
+    setConversations(data || []);
+
+    // Mark as read
+    await supabase
+      .from("leads")
+      .update({ unread_count: 0 })
+      .eq("id", leadId);
+  };
+
+  const fetchMessageTemplates = async () => {
+    if (!clientId) return;
+
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("message_templates")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("name", { ascending: true });
+
+    setMessageTemplates(data || []);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only images (.jpg, .png, .gif) and files (.pdf, .docx) are allowed.");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size must not exceed 5MB.");
+      return;
+    }
+
+    setAttachment(file);
+
+    // Create preview for images
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAttachmentPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setAttachmentPreview(null);
+    }
+  };
+
+  const uploadAttachment = async (leadId: string): Promise<{ url: string; type: string } | null> => {
+    if (!attachment || !clientId) return null;
+
+    setUploadingAttachment(true);
+    const supabase = createClient();
+
+    try {
+      const fileExt = attachment.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${clientId}/${leadId}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from("conversation-attachments")
+        .upload(filePath, attachment);
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from("conversation-attachments")
+        .getPublicUrl(filePath);
+
+      const attachmentType = attachment.type.startsWith("image/") ? "image" : "file";
+
+      return { url: urlData.publicUrl, type: attachmentType };
+    } catch (error) {
+      console.error("Error uploading attachment:", error);
+      alert("Failed to upload attachment");
+      return null;
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!replyMessage.trim() && !attachment) return;
+    if (!selectedLead || !currentUserId) return;
+
+    setSending(true);
+
+    try {
+      // Upload attachment if present
+      let attachmentData = null;
+      if (attachment) {
+        attachmentData = await uploadAttachment(selectedLead.id);
+        if (!attachmentData) {
+          setSending(false);
+          return;
+        }
+      }
+
+      // Determine channel from latest inbound message
+      const latestInbound = conversations
+        .filter(c => c.direction === "inbound")
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      
+      const channel = latestInbound?.channel || "email";
+
+      if (channel === "email") {
+        // Send via email
+        const response = await fetch("/api/send/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lead_id: selectedLead.id,
+            message: replyMessage,
+            attachment: attachmentData,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send email");
+        }
+      } else {
+        // Messenger - save as pending
+        const supabase = createClient();
+        await supabase.from("conversations").insert({
+          lead_id: selectedLead.id,
+          client_id: clientId,
+          message_content: replyMessage,
+          channel: "messenger",
+          direction: "outbound",
+          sent_via: "manual",
+          delivery_status: "pending",
+          sender_id: currentUserId,
+          attachment_url: attachmentData?.url,
+          attachment_type: attachmentData?.type,
+        });
+
+        alert("Message saved. Messenger sending coming soon.");
+      }
+
+      // Clear input and attachment
+      setReplyMessage("");
+      setAttachment(null);
+      setAttachmentPreview(null);
+
+      // Refresh conversation
+      await fetchConversations(selectedLead.id);
+      await fetchLeads();
+    } catch (error) {
+      console.error("Error sending message:", error);
+      alert("Failed to send message");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleAISuggest = async () => {
+    if (!selectedLead) return;
+
+    setGenerating(true);
+
+    try {
+      const response = await fetch("/api/ai/suggest-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: selectedLead.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate suggestion");
+      }
+
+      const data = await response.json();
+      setReplyMessage(data.suggestion || "");
+
+      // Show warning note if no campaign
+      if (data.warning) {
+        alert(data.warning);
+      }
+    } catch (error) {
+      console.error("Error generating AI reply:", error);
+      alert("AI reply failed. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const insertTemplate = (template: any) => {
+    setReplyMessage(template.content);
+    setShowTemplateModal(false);
+  };
+
+  const getStageBadge = (stage: string) => {
+    const styles = {
+      Hot: "bg-red-100 text-red-800",
+      Warm: "bg-amber-100 text-amber-800",
+      Cold: "bg-gray-100 text-gray-800",
+      Unqualified: "bg-gray-100 text-gray-600",
+    };
+    const icons = {
+      Hot: "🔥",
+      Warm: "🟠",
+      Cold: "❄️",
+      Unqualified: "",
+    };
+
+    return (
+      <Badge className={cn("text-xs", styles[stage as keyof typeof styles] || "bg-gray-100")}>
+        {icons[stage as keyof typeof icons]} {stage}
+      </Badge>
+    );
+  };
+
+  const getChannelBadge = (channel: string) => {
+    const styles = {
+      email: "bg-blue-100 text-blue-800",
+      messenger: "bg-purple-100 text-purple-800",
+      manual: "bg-gray-100 text-gray-800",
+    };
+
+    return (
+      <Badge className={cn("text-xs", styles[channel as keyof typeof styles] || "bg-gray-100")}>
+        {channel}
+      </Badge>
+    );
+  };
+
+  const getSenderLabel = (msg: any) => {
+    if (msg.direction === "inbound") {
+      return "Lead";
+    }
+
+    if (msg.sent_via === "baymo") {
+      return "BaMo";
+    }
+
+    if (msg.sent_via === "system") {
+      return "System";
+    }
+
+    if (msg.sender?.full_name) {
+      return `${msg.sender.full_name} (${msg.sender.role || "Agent"})`;
+    }
+
+    return "Agent";
+  };
+
+  const formatTimeAgo = (date: string) => {
+    const now = new Date();
+    const messageDate = new Date(date);
+    const diffMs = now.getTime() - messageDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return messageDate.toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-[#E87722]" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Inbox</h1>
-          <p className="text-muted-foreground">Manage conversations with your leads</p>
+      <div className="flex h-[calc(100vh-4rem)]">
+        {/* LEFT PANEL - Lead List */}
+        <div className="w-[35%] border-r border-gray-200 flex flex-col bg-white">
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-[#1B3A5C] mb-4">Inbox</h2>
+            
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search leads..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-2">
+              {["All", "Unread", "Hot", "Warm"].map((filter) => (
+                <Button
+                  key={filter}
+                  variant={filterType === filter ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType(filter)}
+                  className={cn(
+                    "text-xs",
+                    filterType === filter
+                      ? "bg-[#1B3A5C] text-white hover:bg-[#152d47]"
+                      : "text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                  )}
+                >
+                  {filter}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Lead List */}
+          <div className="flex-1 overflow-y-auto">
+            {leads.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p>No conversations yet</p>
+              </div>
+            ) : (
+              leads.map((lead) => (
+                <div
+                  key={lead.id}
+                  onClick={() => setSelectedLead(lead)}
+                  className={cn(
+                    "p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors",
+                    selectedLead?.id === lead.id && "bg-[#1B3A5C]/5 border-l-4 border-l-[#E87722]"
+                  )}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="font-medium text-[#1B3A5C]">{lead.name}</div>
+                    <div className="text-xs text-gray-500">
+                      {lead.latest_conversation?.[0]?.created_at
+                        ? formatTimeAgo(lead.latest_conversation[0].created_at)
+                        : formatTimeAgo(lead.created_at)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {getStageBadge(lead.lead_temperature || "Cold")}
+                    {lead.latest_conversation?.[0]?.channel &&
+                      getChannelBadge(lead.latest_conversation[0].channel)}
+                    {(lead.unread_count || 0) > 0 && (
+                      <Badge className="bg-[#E87722] text-white text-xs">
+                        {lead.unread_count}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 truncate">
+                    {lead.latest_conversation?.[0]?.message_content || "No messages yet"}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        <div className="text-center py-12 text-muted-foreground">
-          No conversations yet
+        {/* RIGHT PANEL - Conversation Thread */}
+        <div className="w-[65%] flex flex-col bg-gray-50">
+          {!selectedLead ? (
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p>Select a conversation to start</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="bg-white border-b border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#1B3A5C]">{selectedLead.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getStageBadge(selectedLead.lead_temperature || "Cold")}
+                      <Badge className="bg-blue-100 text-blue-800 text-xs">
+                        {selectedLead.status || "New"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {selectedLead.email && <div>{selectedLead.email}</div>}
+                    {selectedLead.phone && <div>{selectedLead.phone}</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {conversations.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    No messages yet.
+                  </div>
+                ) : (
+                  conversations.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={cn(
+                        "flex",
+                        msg.direction === "inbound" ? "justify-start" : "justify-end"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-[70%] rounded-lg p-3",
+                          msg.direction === "inbound"
+                            ? "bg-white border border-gray-200"
+                            : "bg-[#1B3A5C] text-white"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium">
+                            {getSenderLabel(msg)}
+                          </span>
+                          {getChannelBadge(msg.channel)}
+                          {msg.sent_via === "baymo" && (
+                            <Badge className="bg-[#E87722] text-white text-xs">
+                              AI suggestion
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{msg.message_content}</p>
+                        
+                        {/* Attachment Display */}
+                        {msg.attachment_url && (
+                          <div className="mt-2">
+                            {msg.attachment_type === "image" ? (
+                              <img
+                                src={msg.attachment_url}
+                                alt="Attachment"
+                                className="max-w-full h-auto rounded border"
+                              />
+                            ) : (
+                              <a
+                                href={msg.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm underline"
+                              >
+                                <Download className="h-4 w-4" />
+                                Download File
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div
+                          className={cn(
+                            "text-xs mt-1",
+                            msg.direction === "inbound" ? "text-gray-500" : "text-white/70"
+                          )}
+                        >
+                          {new Date(msg.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Reply Box */}
+              <div className="bg-white border-t border-gray-200 p-4">
+                {/* Attachment Preview */}
+                {attachment && (
+                  <div className="mb-2 p-2 bg-gray-100 rounded flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {attachmentPreview ? (
+                        <img src={attachmentPreview} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                      ) : (
+                        <FileText className="h-12 w-12 text-gray-400" />
+                      )}
+                      <span className="text-sm text-gray-700">{attachment.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAttachment(null);
+                        setAttachmentPreview(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex gap-2 mb-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.gif,.pdf,.docx"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAttachment}
+                    className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                  >
+                    <Paperclip className="h-4 w-4 mr-1" />
+                    Attach
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTemplateModal(true)}
+                    className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                  >
+                    <FileText className="h-4 w-4 mr-1" />
+                    Insert Template
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAISuggest}
+                    disabled={generating}
+                    className="text-[#E87722] border-[#E87722]/20 hover:bg-[#E87722]/5"
+                  >
+                    {generating ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-1" />
+                    )}
+                    AI Suggest
+                  </Button>
+                </div>
+
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Type your message..."
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    className="flex-1 min-h-[80px]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={(!replyMessage.trim() && !attachment) || sending || uploadingAttachment}
+                    className="bg-[#E87722] hover:bg-[#d66a1e] text-white self-end"
+                  >
+                    {sending || uploadingAttachment ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-1" />
+                        Send
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Template Modal */}
+      <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Insert Message Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {messageTemplates.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No templates available
+              </p>
+            ) : (
+              messageTemplates.map((template) => (
+                <Card
+                  key={template.id}
+                  className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => insertTemplate(template)}
+                >
+                  <div className="font-medium text-sm text-[#1B3A5C] mb-1">
+                    {template.name}
+                  </div>
+                  <p className="text-xs text-gray-600 line-clamp-2">
+                    {template.content}
+                  </p>
+                </Card>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
