@@ -5,7 +5,8 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { 
   ArrowLeft, MessageSquare, Activity, CheckSquare, Home, 
-  Paperclip, Sparkles, UserPlus, Bot, FileText, StickyNote 
+  Paperclip, Sparkles, UserPlus, Bot, FileText, StickyNote,
+  X, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -933,9 +934,7 @@ export default function LeadDetailPage() {
                                   Due: {new Date(task.due_date).toLocaleDateString()}
                                 </p>
                               </div>
-                              <Button size="sm" onClick={() => handleCompleteTask(task.id)} variant="outline" className="h-8 text-xs border-gray-300">
-                                <CheckSquare className="w-3 h-3 mr-1" /> Complete
-                              </Button>
+                              <Button size="sm" onClick={() => handleCompleteTask(task.id)} variant="outline" className="h-8 text-xs text-gray-600">Complete</Button>
                             </div>
                           ))}
                         </div>
