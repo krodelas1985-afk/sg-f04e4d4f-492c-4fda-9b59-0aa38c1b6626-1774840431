@@ -433,7 +433,7 @@ export default function TemplatesPage() {
   return (
     <DashboardLayout>
       <div className="p-6">
-        {/* Page Header - FIX: Add missing buttons */}
+        {/* Page Header */}
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
             <div>
@@ -442,23 +442,22 @@ export default function TemplatesPage() {
                 Manage reusable message templates for Email, Messenger, and SMS
               </p>
             </div>
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleCreateNew}
-                  className="bg-[#1B3A5C] hover:bg-[#152d47] text-white"
-                >
-                  + New Template
-                </Button>
-                <Button
-                  onClick={() => setShowAIGenerator(true)}
-                  className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate with AI
-                </Button>
-              </div>
-            )}
+            {/* Temporarily show for all users to test visibility */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleCreateNew}
+                className="bg-[#1B3A5C] hover:bg-[#152d47] text-white"
+              >
+                + New Template
+              </Button>
+              <Button
+                onClick={() => setShowAIGenerator(true)}
+                className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate with AI
+              </Button>
+            </div>
           </div>
 
           {/* Filters */}
