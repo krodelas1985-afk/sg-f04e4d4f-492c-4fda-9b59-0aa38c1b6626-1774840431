@@ -614,6 +614,7 @@ export type Database = {
           id: string
           lead_id: string
           notes: string | null
+          source: string | null
           status: string | null
           task_type: string | null
           title: string
@@ -630,6 +631,7 @@ export type Database = {
           id?: string
           lead_id: string
           notes?: string | null
+          source?: string | null
           status?: string | null
           task_type?: string | null
           title: string
@@ -646,6 +648,7 @@ export type Database = {
           id?: string
           lead_id?: string
           notes?: string | null
+          source?: string | null
           status?: string | null
           task_type?: string | null
           title?: string
