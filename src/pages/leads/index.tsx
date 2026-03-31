@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Loader2, Search, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LeadSlideOver } from "@/components/LeadSlideOver";
 
 const STATUS_OPTIONS = ["New", "Active", "In Contact", "Inactive", "Closed"];
 const STAGE_OPTIONS = [
@@ -95,6 +96,7 @@ export default function LeadsPage() {
   // Modals
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showFullAdd, setShowFullAdd] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   
   // Quick Add form
   const [quickAddData, setQuickAddData] = useState({
@@ -569,8 +571,8 @@ export default function LeadsPage() {
                   <tr key={lead.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => router.push(`/leads/${lead.id}`)}
-                        className="text-[#1D9E75] hover:underline font-medium"
+                        onClick={() => setSelectedLeadId(lead.id)}
+                        className="text-[#1B3A5C] hover:text-[#E87722] hover:underline font-medium"
                       >
                         {lead.name}
                       </button>
@@ -1038,6 +1040,15 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedLeadId && (
+        <LeadSlideOver
+          leadId={selectedLeadId}
+          isOpen={!!selectedLeadId}
+          onClose={() => setSelectedLeadId(null)}
+          onUpdate={fetchLeads}
+        />
+      )}
     </DashboardLayout>
   );
 }
