@@ -22,21 +22,16 @@ export default function UsersPage() {
   // State
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    role: "agent" as "client_admin" | "manager" | "agent" | "viewer",
-  });
+  const [formData, setFormData] = useState({ email: "", role: "agent" });
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserClientId, setCurrentUserClientId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Check if user is client_admin
-  const isClientAdmin = userRole === "client_admin";
-
-  // Fetch current user
+  // Fetch current user and enforce access control
   useEffect(() => {
-    const fetchCurrentUser = async () => {
+    const checkAccess = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -45,36 +40,62 @@ export default function UsersPage() {
         return;
       }
 
-      const { data: profile } = await supabase
+      // Get user profile with role and client_id
+      const { data: profile, error } = await supabase
         .from("profiles")
-        .select("role, id")
+        .select("id, role, client_id")
         .eq("id", session.user.id)
         .single();
 
-      setUserRole(profile?.role || null);
-      setCurrentUserId(session.user.id);
-
-      // Redirect if not client_admin
-      if (profile?.role !== "client_admin") {
+      if (error || !profile) {
+        console.error("Error fetching profile:", error);
         router.push("/dashboard");
+        return;
       }
+
+      setCurrentUserId(profile.id);
+      setCurrentUserRole(profile.role);
+      setCurrentUserClientId(profile.client_id);
+
+      // CRITICAL: Access control enforcement
+      // Only baymo_admin and client_admin can access this page
+      if (profile.role !== "baymo_admin" && profile.role !== "client_admin") {
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to access user management",
+          variant: "destructive",
+        });
+        router.push("/dashboard");
+        return;
+      }
+
+      setLoading(false);
     };
 
-    fetchCurrentUser();
+    checkAccess();
   }, [router]);
 
-  // Fetch users
+  // Fetch users with proper client_id filtering
   const fetchUsers = async () => {
+    if (!currentUserRole || !currentUserClientId) return;
+
     try {
       const supabase = createClient();
-
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from("profiles")
-        .select("*")
+        .select("id, full_name, email, role, is_active, created_at, client_id")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      // CRITICAL: Filter by client_id for client_admin
+      // baymo_admin sees all users, client_admin sees only their client's users
+      if (currentUserRole === "client_admin") {
+        query = query.eq("client_id", currentUserClientId);
+      }
 
+      const { data, error } = await query;
+
+      if (error) throw error;
       setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -83,27 +104,41 @@ export default function UsersPage() {
         description: "Failed to load users",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (userRole === "client_admin") {
+    if (currentUserRole && currentUserClientId) {
       fetchUsers();
     }
-  }, [userRole]);
+  }, [currentUserRole, currentUserClientId]);
 
   // Handle role change
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       const supabase = createClient();
 
-      await supabase
+      // CRITICAL: Verify user belongs to current client (except baymo_admin)
+      if (currentUserRole === "client_admin") {
+        const userToUpdate = users.find((u) => u.id === userId);
+        if (!userToUpdate || userToUpdate.client_id !== currentUserClientId) {
+          toast({
+            title: "Access Denied",
+            description: "You can only modify users in your organization",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      const { error } = await supabase
         .from("profiles")
         .update({ role: newRole })
         .eq("id", userId);
 
+      if (error) throw error;
+
+      // Optimistic UI update
       setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
 
       toast({
@@ -114,7 +149,7 @@ export default function UsersPage() {
       console.error("Error updating role:", error);
       toast({
         title: "Error",
-        description: "Failed to update role",
+        description: "Failed to update user role",
         variant: "destructive",
       });
     }
@@ -125,11 +160,27 @@ export default function UsersPage() {
     try {
       const supabase = createClient();
 
-      await supabase
+      // CRITICAL: Verify user belongs to current client (except baymo_admin)
+      if (currentUserRole === "client_admin") {
+        const userToUpdate = users.find((u) => u.id === userId);
+        if (!userToUpdate || userToUpdate.client_id !== currentUserClientId) {
+          toast({
+            title: "Access Denied",
+            description: "You can only modify users in your organization",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      const { error } = await supabase
         .from("profiles")
         .update({ is_active: !currentStatus })
         .eq("id", userId);
 
+      if (error) throw error;
+
+      // Optimistic UI update
       setUsers(users.map((u) => (u.id === userId ? { ...u, is_active: !currentStatus } : u)));
 
       toast({
@@ -137,26 +188,41 @@ export default function UsersPage() {
         description: !currentStatus ? "User activated" : "User deactivated",
       });
     } catch (error) {
-      console.error("Error toggling status:", error);
+      console.error("Error toggling user status:", error);
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description: "Failed to update user status",
         variant: "destructive",
       });
     }
   };
 
   // Handle resend invite
-  const handleResendInvite = async (email: string) => {
+  const handleResendInvite = async (email: string, userId: string) => {
     try {
-      // Call API route to resend invite
+      // CRITICAL: Verify user belongs to current client (except baymo_admin)
+      if (currentUserRole === "client_admin") {
+        const userToUpdate = users.find((u) => u.id === userId);
+        if (!userToUpdate || userToUpdate.client_id !== currentUserClientId) {
+          toast({
+            title: "Access Denied",
+            description: "You can only resend invites for users in your organization",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       const response = await fetch("/api/admin/users/resend-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
-      if (!response.ok) throw new Error("Failed to resend invite");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error);
+      }
 
       toast({
         title: "Success",
@@ -245,7 +311,7 @@ export default function UsersPage() {
       .join(" ");
   };
 
-  if (!isClientAdmin && !loading) {
+  if (!loading && !currentUserRole) {
     return null; // Redirect handled in useEffect
   }
 
@@ -258,7 +324,7 @@ export default function UsersPage() {
             <h1 className="text-3xl font-bold text-[#1B3A5C]">Users</h1>
             <p className="text-gray-600 mt-1">Manage your team members and their roles</p>
           </div>
-          {isClientAdmin && (
+          {currentUserRole === "client_admin" && (
             <Button
               onClick={() => setShowAddUser(true)}
               className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
@@ -317,7 +383,7 @@ export default function UsersPage() {
                           <div className="text-gray-600">{user.email}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {isClientAdmin ? (
+                          {currentUserRole === "client_admin" ? (
                             <Select
                               value={user.role}
                               onValueChange={(value) => handleRoleChange(user.id, value)}
@@ -365,7 +431,7 @@ export default function UsersPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             {/* Toggle Active/Inactive */}
-                            {user.id !== currentUserId && isClientAdmin && (
+                            {user.id !== currentUserId && currentUserRole === "client_admin" && (
                               <div className="flex items-center gap-2">
                                 <Label htmlFor={`active-${user.id}`} className="text-xs text-gray-600">
                                   {user.is_active ? "Active" : "Inactive"}
@@ -379,11 +445,11 @@ export default function UsersPage() {
                             )}
 
                             {/* Resend Invite (if user hasn't accepted) */}
-                            {isClientAdmin && !user.last_sign_in_at && (
+                            {currentUserRole === "client_admin" && !user.last_sign_in_at && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleResendInvite(user.email)}
+                                onClick={() => handleResendInvite(user.email, user.id)}
                               >
                                 <Mail className="h-4 w-4 mr-1" />
                                 Resend Invite
