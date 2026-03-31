@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Sparkles, Edit, Trash2, Eye, Loader2, RefreshCw } from "lucide-react";
+import { Search, Plus, Sparkles, Edit, Trash2, Eye, Loader2, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/router";
@@ -730,147 +730,158 @@ export default function TemplatesPage() {
         </SheetContent>
       </Sheet>
 
-      {/* AI Generator Sheet */}
-      <Sheet open={showAIGenerator} onOpenChange={setShowAIGenerator}>
-        <SheetContent className="w-[600px] sm:max-w-[600px]">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#E87722]" />
-              Generate Template with AI
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Campaign (Optional)</Label>
-              <Select
-                value={aiFormData.campaign_id}
-                onValueChange={(v) => setAiFormData({ ...aiFormData, campaign_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select campaign (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {campaigns.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Template Goal *</Label>
-              <Select
-                value={aiFormData.template_goal}
-                onValueChange={(v) => setAiFormData({ ...aiFormData, template_goal: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Introduction">Introduction</SelectItem>
-                  <SelectItem value="Follow-up">Follow-up</SelectItem>
-                  <SelectItem value="Qualification">Qualification</SelectItem>
-                  <SelectItem value="Property Offer">Property Offer</SelectItem>
-                  <SelectItem value="Closing">Closing</SelectItem>
-                  <SelectItem value="Call-to-Action">Call-to-Action</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Channel *</Label>
-                <Select
-                  value={aiFormData.channel}
-                  onValueChange={(v) => setAiFormData({ ...aiFormData, channel: v as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="messenger">Messenger</SelectItem>
-                    <SelectItem value="sms">SMS</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* AI Template Generator Panel */}
+      {showAIGenerator && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
+          <div className="bg-white w-full max-w-2xl h-full overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-[#1B3A5C]">Generate with AI</h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowAIGenerator(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
 
-              <div>
-                <Label>Tone *</Label>
-                <Select
-                  value={aiFormData.tone}
-                  onValueChange={(v) => setAiFormData({ ...aiFormData, tone: v })}
+              <div className="space-y-4">
+                {/* Campaign (Optional) */}
+                <div>
+                  <Label htmlFor="ai-campaign">Campaign (Optional)</Label>
+                  <Select
+                    value={aiFormData.campaign_id || "none"}
+                    onValueChange={(value) =>
+                      setAiFormData({ ...aiFormData, campaign_id: value === "none" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger id="ai-campaign">
+                      <SelectValue placeholder="Select campaign (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No campaign</SelectItem>
+                      {campaigns
+                        .filter((c) => c.id && c.name)
+                        .map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Template Goal */}
+                <div>
+                  <Label htmlFor="ai-goal">Template Goal *</Label>
+                  <Select
+                    value={aiFormData.template_goal}
+                    onValueChange={(value) => setAiFormData({ ...aiFormData, template_goal: value })}
+                  >
+                    <SelectTrigger id="ai-goal">
+                      <SelectValue placeholder="Select template goal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Introduction">Introduction</SelectItem>
+                      <SelectItem value="Follow-up">Follow-up</SelectItem>
+                      <SelectItem value="Qualification">Qualification</SelectItem>
+                      <SelectItem value="Property Offer">Property Offer</SelectItem>
+                      <SelectItem value="Closing">Closing</SelectItem>
+                      <SelectItem value="Call-to-Action">Call-to-Action</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Channel */}
+                <div>
+                  <Label htmlFor="ai-channel">Channel *</Label>
+                  <Select
+                    value={aiFormData.channel}
+                    onValueChange={(value) => setAiFormData({ ...aiFormData, channel: value })}
+                  >
+                    <SelectTrigger id="ai-channel">
+                      <SelectValue placeholder="Select channel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="messenger">Messenger</SelectItem>
+                      <SelectItem value="sms">SMS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Tone */}
+                <div>
+                  <Label htmlFor="ai-tone">Tone *</Label>
+                  <Select
+                    value={aiFormData.tone}
+                    onValueChange={(value) => setAiFormData({ ...aiFormData, tone: value })}
+                  >
+                    <SelectTrigger id="ai-tone">
+                      <SelectValue placeholder="Select tone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Professional">Professional</SelectItem>
+                      <SelectItem value="Friendly">Friendly</SelectItem>
+                      <SelectItem value="Persuasive">Persuasive</SelectItem>
+                      <SelectItem value="Urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Language Preference */}
+                <div>
+                  <Label htmlFor="ai-language">Language Preference *</Label>
+                  <Select
+                    value={aiFormData.language}
+                    onValueChange={(value) => setAiFormData({ ...aiFormData, language: value })}
+                  >
+                    <SelectTrigger id="ai-language">
+                      <SelectValue placeholder="Select language preference" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Auto-detect">Auto-detect (Taglish)</SelectItem>
+                      <SelectItem value="English">English</SelectItem>
+                      <SelectItem value="Filipino">Filipino</SelectItem>
+                      <SelectItem value="Taglish">Taglish</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Additional Instructions */}
+                <div>
+                  <Label htmlFor="ai-instructions">Additional Instructions (Optional)</Label>
+                  <Textarea
+                    id="ai-instructions"
+                    value={aiFormData.additional_instructions}
+                    onChange={(e) =>
+                      setAiFormData({ ...aiFormData, additional_instructions: e.target.value })
+                    }
+                    placeholder="e.g., Make it sound high-end for luxury buyers"
+                    rows={3}
+                  />
+                </div>
+
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerateTemplate}
+                  disabled={generating || !aiFormData.template_goal || !aiFormData.channel || !aiFormData.tone || !aiFormData.language}
+                  className="w-full bg-[#E87722] hover:bg-[#d66a1e] text-white"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Professional">Professional</SelectItem>
-                    <SelectItem value="Friendly">Friendly</SelectItem>
-                    <SelectItem value="Persuasive">Persuasive</SelectItem>
-                    <SelectItem value="Urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Template
+                    </>
+                  )}
+                </Button>
               </div>
-            </div>
-
-            <div>
-              <Label>Language Preference *</Label>
-              <Select
-                value={aiFormData.language}
-                onValueChange={(v) => setAiFormData({ ...aiFormData, language: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Auto-detect">Auto-detect (Taglish)</SelectItem>
-                  <SelectItem value="English">English</SelectItem>
-                  <SelectItem value="Filipino">Filipino</SelectItem>
-                  <SelectItem value="Taglish">Taglish</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Additional Instructions (Optional)</Label>
-              <Textarea
-                value={aiFormData.additional_instructions}
-                onChange={(e) => setAiFormData({ ...aiFormData, additional_instructions: e.target.value })}
-                placeholder="e.g., Make it sound high-end for luxury buyers"
-                className="min-h-[100px]"
-              />
             </div>
           </div>
-
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setShowAIGenerator(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleGenerateWithAI}
-              disabled={generating}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Template
-                </>
-              )}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
