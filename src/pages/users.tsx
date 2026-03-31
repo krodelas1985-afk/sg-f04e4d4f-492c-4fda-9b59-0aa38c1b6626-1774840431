@@ -213,9 +213,15 @@ export default function UsersPage() {
         }
       }
 
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
       const response = await fetch("/api/admin/users/resend-invite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
         body: JSON.stringify({ email }),
       });
 
@@ -252,10 +258,16 @@ export default function UsersPage() {
     setSubmitting(true);
 
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
       // Call API route to invite user
       const response = await fetch("/api/admin/users/invite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
         body: JSON.stringify({
           email: formData.email,
           role: formData.role,

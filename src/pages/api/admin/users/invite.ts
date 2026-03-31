@@ -18,19 +18,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const supabase = createServerClient();
-    
-    // Get current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
+    const { email, role } = req.body;
+
+    if (!email || !role) {
+      return res.status(400).json({ error: "Email and role are required" });
+    }
+
+    // Get current user's session
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Get current user profile with role and client_id
-    const { data: currentProfile, error: profileError } = await supabase
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Get current user's profile to check role and client_id
+    const { data: currentProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, role, client_id")
-      .eq("id", session.user.id)
+      .select("role, client_id")
+      .eq("id", user.id)
       .single();
 
     if (profileError || !currentProfile) {
@@ -42,58 +53,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "You do not have permission to invite users" });
     }
 
-    const { email, role } = req.body;
-
-    if (!email || !role) {
-      return res.status(400).json({ error: "Email and role are required" });
-    }
-
     // CRITICAL: client_admin can only create users in their own organization
     const targetClientId = currentProfile.role === "baymo_admin" 
       ? req.body.client_id || currentProfile.client_id  // baymo_admin can specify client_id
       : currentProfile.client_id;  // client_admin always uses their own client_id
 
-    // Use service role for admin operations
-    const supabaseAdmin = createServerClient();
-
-    // Send Supabase Auth invitation
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      email,
-      {
-        data: {
-          role: role,
-          client_id: targetClientId,
-        },
-      }
-    );
-
-    if (authError) {
-      console.error("Auth invite error:", authError);
-      return res.status(400).json({ error: authError.message });
-    }
-
-    // Create or update profile record with correct client_id
-    const { error: profileInsertError } = await supabaseAdmin.from("profiles").upsert({
-      id: authData.user.id,
-      email: email,
-      role: role,
-      client_id: targetClientId,
-      is_active: true,
-      created_at: new Date().toISOString(),
+    // Create user with Supabase Auth
+    const { data: authData, error: createError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      data: {
+        role: role,
+        client_id: targetClientId,
+      },
     });
 
-    if (profileInsertError) {
-      console.error("Profile insert error:", profileInsertError);
-      return res.status(500).json({ error: "Failed to create profile" });
+    if (createError) {
+      throw createError;
     }
 
-    return res.status(200).json({ 
-      success: true, 
-      message: "User invited successfully",
-      user: authData.user 
-    });
+    // Create or update profile
+    if (authData.user) {
+      await supabaseAdmin.from("profiles").upsert({
+        id: authData.user.id,
+        email: email,
+        role: role,
+        client_id: targetClientId,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    return res.status(200).json({ success: true, user: authData.user });
   } catch (error: any) {
-    console.error("Invite user error:", error);
+    console.error("Error inviting user:", error);
     return res.status(500).json({ error: error.message || "Failed to invite user" });
   }
 }
