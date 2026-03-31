@@ -49,6 +49,7 @@ export default function Inbox() {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [aiSuggestionWarning, setAiSuggestionWarning] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<"email" | "messenger" | "sms">("email");
+  const [aiGenerated, setAiGenerated] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -73,7 +74,7 @@ export default function Inbox() {
   useEffect(() => {
     if (selectedLead) {
       fetchConversations();
-      fetchTemplates();
+      fetchMessageTemplates();
       
       // Determine channel from latest inbound message or lead's primary_channel
       const latestInbound = conversations.find(c => c.direction === "inbound");
@@ -294,11 +295,22 @@ export default function Inbox() {
   };
 
   const handleSendMessage = async () => {
-    if (!replyMessage.trim() || !selectedLead) return;
+    if (!replyMessage.trim() && !attachment) return;
+    if (!selectedLead) return;
 
     setSending(true);
 
     try {
+      // Upload attachment if present
+      let attachmentData = null;
+      if (attachment) {
+        attachmentData = await uploadAttachment(selectedLead.id);
+        if (!attachmentData) {
+          setSending(false);
+          return;
+        }
+      }
+
       const supabase = createClient();
 
       // Use the selected channel
@@ -313,7 +325,7 @@ export default function Inbox() {
             lead_id: selectedLead.id,
             message: replyMessage,
             subject: `Message from ${selectedLead.name}`,
-            attachment: attachmentPreview,
+            attachment: attachmentData,
           }),
         });
 
@@ -331,9 +343,9 @@ export default function Inbox() {
           direction: "outbound" as const,
           sent_via: aiGenerated ? "baymo" : "resend",
           delivery_status: "sent",
-          sender_id: null,
-          attachment_url: attachmentPreview?.url,
-          attachment_type: attachmentPreview?.type,
+          sender_id: currentUserId,
+          attachment_url: attachmentData?.url,
+          attachment_type: attachmentData?.type,
           created_at: new Date().toISOString(),
           sender_name: "You",
           sender_role: null,
@@ -342,9 +354,6 @@ export default function Inbox() {
         setConversations([...conversations, newMessage]);
       } else if (channel === "messenger") {
         // Messenger - save as pending
-        const { data: session } = await supabase.auth.getSession();
-        const currentUserId = session.session?.user?.id;
-
         await supabase.from("conversations").insert({
           lead_id: selectedLead.id,
           client_id: selectedLead.client_id,
@@ -354,8 +363,8 @@ export default function Inbox() {
           sent_via: aiGenerated ? "baymo" : "manual",
           delivery_status: "pending",
           sender_id: currentUserId,
-          attachment_url: attachmentPreview?.url,
-          attachment_type: attachmentPreview?.type,
+          attachment_url: attachmentData?.url,
+          attachment_type: attachmentData?.type,
         });
 
         // Show notification
@@ -365,9 +374,6 @@ export default function Inbox() {
         await fetchConversations();
       } else if (channel === "sms") {
         // SMS - save as pending
-        const { data: session } = await supabase.auth.getSession();
-        const currentUserId = session.session?.user?.id;
-
         await supabase.from("conversations").insert({
           lead_id: selectedLead.id,
           client_id: selectedLead.client_id,
@@ -377,6 +383,8 @@ export default function Inbox() {
           sent_via: aiGenerated ? "baymo" : "manual",
           delivery_status: "pending",
           sender_id: currentUserId,
+          attachment_url: attachmentData?.url,
+          attachment_type: attachmentData?.type,
         });
 
         // Show notification
@@ -388,6 +396,7 @@ export default function Inbox() {
 
       // Clear form
       setReplyMessage("");
+      setAttachment(null);
       setAttachmentPreview(null);
       setAiGenerated(false);
       setAiSuggestionWarning(null);
@@ -422,6 +431,7 @@ export default function Inbox() {
 
       const data = await response.json();
       setReplyMessage(data.suggestion || "");
+      setAiGenerated(true);
 
       // Show warning note if no campaign
       if (data.warning) {
