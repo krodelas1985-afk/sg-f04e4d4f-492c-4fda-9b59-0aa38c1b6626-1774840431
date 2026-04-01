@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Capture Form - BayMo</title>
+  
+  <!-- 
+    BAYMO LEAD CAPTURE FORM
+    
+    HOW TO USE:
+    1. Update the BAYMO_CONFIG section below with your details
+    2. Replace 'YOUR-BAYMO-URL' with your BayMo app URL
+    3. Replace 'YOUR-WEBHOOK-SECRET' with your webhook secret from BayMo Settings
+    4. Customize formTitle, formSubtitle, and showFields as needed
+    5. Upload this file to your website or use it in an iframe
+    
+    EMBED OPTIONS:
+    - Direct: Upload to your website and link directly
+    - iFrame: <iframe src="https://yoursite.com/lead-form.html" width="100%" height="600"></iframe>
+  -->
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .form-container {
+      max-width: 500px;
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+      overflow: hidden;
+    }
+    
+    .form-header {
+      background: #1B2F4E;
+      color: white;
+      padding: 24px;
+      text-align: center;
+    }
+    
+    .form-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .form-header p {
+      font-size: 14px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+    
+    .form-body {
+      padding: 32px 24px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1B2F4E;
+      margin-bottom: 8px;
+    }
+    
+    .required {
+      color: #E8702A;
+    }
+    
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 15px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1B2F4E;
+    }
+    
+    .form-group select {
+      cursor: pointer;
+      background: white;
+    }
+    
+    .submit-btn {
+      width: 100%;
+      padding: 14px 24px;
+      background: #E8702A;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .submit-btn:hover {
+      background: #d4641f;
+    }
+    
+    .submit-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .error-message {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c33;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    
+    .success-message {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    
+    .success-message svg {
+      width: 64px;
+      height: 64px;
+      color: #22c55e;
+      margin-bottom: 16px;
+    }
+    
+    .success-message h2 {
+      font-size: 24px;
+      color: #1B2F4E;
+      margin-bottom: 8px;
+    }
+    
+    .success-message p {
+      font-size: 16px;
+      color: #666;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 480px) {
+      body {
+        padding: 0;
+        background: white;
+      }
+      
+      .form-container {
+        box-shadow: none;
+        border-radius: 0;
+      }
+      
+      .form-header h1 {
+        font-size: 20px;
+      }
+      
+      .form-body {
+        padding: 24px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <!-- Form Header -->
+    <div class="form-header">
+      <h1 id="formTitle">Interested in a Property?</h1>
+      <p id="formSubtitle">Fill in your details and we will get back to you.</p>
+    </div>
+    
+    <!-- Form Body -->
+    <div class="form-body">
+      <!-- Error Message -->
+      <div id="errorMessage" class="error-message hidden"></div>
+      
+      <!-- Lead Form -->
+      <form id="leadForm">
+        <!-- Name (Always Required) -->
+        <div class="form-group">
+          <label for="name">Full Name <span class="required">*</span></label>
+          <input type="text" id="name" name="name" placeholder="Juan Dela Cruz" required>
+        </div>
+        
+        <!-- Phone (Conditional) -->
+        <div class="form-group" id="phoneGroup">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone" placeholder="+63 912 345 6789">
+        </div>
+        
+        <!-- Email (Conditional) -->
+        <div class="form-group" id="emailGroup">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="juan@example.com">
+        </div>
+        
+        <!-- Property Type (Conditional) -->
+        <div class="form-group" id="propertyTypeGroup">
+          <label for="propertyType">Property Type</label>
+          <select id="propertyType" name="propertyType">
+            <option value="">Select property type</option>
+            <option value="Condo">Condo</option>
+            <option value="House & Lot">House & Lot</option>
+            <option value="Townhouse">Townhouse</option>
+            <option value="Commercial">Commercial</option>
+            <option value="Lot Only">Lot Only</option>
+          </select>
+        </div>
+        
+        <!-- Preferred Location (Conditional) -->
+        <div class="form-group" id="locationGroup">
+          <label for="location">Preferred Location</label>
+          <input type="text" id="location" name="location" placeholder="e.g., BGC, Makati, Quezon City">
+        </div>
+        
+        <!-- Budget Range (Conditional) -->
+        <div class="form-group" id="budgetGroup">
+          <label for="budget">Budget Range</label>
+          <select id="budget" name="budget">
+            <option value="">Select budget range</option>
+            <option value="below-3m">Below 3M</option>
+            <option value="3m-5m">3M - 5M</option>
+            <option value="5m-10m">5M - 10M</option>
+            <option value="10m-20m">10M - 20M</option>
+            <option value="above-20m">Above 20M</option>
+          </select>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" class="submit-btn" id="submitBtn">
+          Submit Inquiry
+        </button>
+      </form>
+      
+      <!-- Success Message -->
+      <div id="successMessage" class="success-message hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h2>Thank You!</h2>
+        <p id="successText">We will be in touch shortly.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // CONFIGURATION SECTION
+    // Edit these values to customize the form
+    // ============================================
+    
+    const BAYMO_CONFIG = {
+      // Your BayMo webhook URL (from Settings > Webhook)
+      webhookUrl: 'https://YOUR-BAYMO-URL/api/webhooks/lead-intake',
+      
+      // Your webhook secret (from Settings > Webhook)
+      webhookSecret: 'YOUR-WEBHOOK-SECRET',
+      
+      // Form customization
+      formTitle: 'Interested in a Property?',
+      formSubtitle: 'Fill in your details and we will get back to you.',
+      
+      // Show/hide fields
+      showFields: {
+        phone: true,
+        email: true,
+        propertyType: true,
+        budget: true,
+        location: true,
+      },
+      
+      // Lead source (how you want to track this form)
+      source: 'webform'
+    };
+    
+    // ============================================
+    // FORM INITIALIZATION
+    // ============================================
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set form title and subtitle
+      document.getElementById('formTitle').textContent = BAYMO_CONFIG.formTitle;
+      document.getElementById('formSubtitle').textContent = BAYMO_CONFIG.formSubtitle;
+      
+      // Show/hide fields based on config
+      if (!BAYMO_CONFIG.showFields.phone) {
+        document.getElementById('phoneGroup').style.display = 'none';
+      }
+      if (!BAYMO_CONFIG.showFields.email) {
+        document.getElementById('emailGroup').style.display = 'none';
+      }
+      if (!BAYMO_CONFIG.showFields.propertyType) {
+        document.getElementById('propertyTypeGroup').style.display = 'none';
+      }
+      if (!BAYMO_CONFIG.showFields.location) {
+        document.getElementById('locationGroup').style.display = 'none';
+      }
+      if (!BAYMO_CONFIG.showFields.budget) {
+        document.getElementById('budgetGroup').style.display = 'none';
+      }
+      
+      // Handle form submission
+      document.getElementById('leadForm').addEventListener('submit', handleSubmit);
+    });
+    
+    // ============================================
+    // BUDGET MAPPING
+    // ============================================
+    
+    function mapBudgetRange(budgetRange) {
+      const budgetMap = {
+        'below-3m': { min: 0, max: 3000000 },
+        '3m-5m': { min: 3000000, max: 5000000 },
+        '5m-10m': { min: 5000000, max: 10000000 },
+        '10m-20m': { min: 10000000, max: 20000000 },
+        'above-20m': { min: 20000000, max: null }
+      };
+      
+      return budgetMap[budgetRange] || { min: null, max: null };
+    }
+    
+    // ============================================
+    // FORM SUBMISSION HANDLER
+    // ============================================
+    
+    async function handleSubmit(e) {
+      e.preventDefault();
+      
+      // Hide error message
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.classList.add('hidden');
+      
+      // Get form values
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const propertyType = document.getElementById('propertyType').value;
+      const location = document.getElementById('location').value.trim();
+      const budgetRange = document.getElementById('budget').value;
+      
+      // Validation: name required + at least phone OR email
+      if (!name) {
+        showError('Please enter your full name.');
+        return;
+      }
+      
+      if (!phone && !email) {
+        showError('Please provide at least your phone number or email address.');
+        return;
+      }
+      
+      // Map budget range to min/max
+      const budget = mapBudgetRange(budgetRange);
+      
+      // Prepare payload
+      const payload = {
+        webhook_secret: BAYMO_CONFIG.webhookSecret,
+        name: name,
+        source: BAYMO_CONFIG.source
+      };
+      
+      // Add optional fields if provided
+      if (phone) payload.phone = phone;
+      if (email) payload.email = email;
+      if (propertyType) payload.property_type = propertyType;
+      if (location) payload.preferred_location = location;
+      if (budget.min !== null) payload.budget_min = budget.min;
+      if (budget.max !== null) payload.budget_max = budget.max;
+      
+      // Show loading state
+      const submitBtn = document.getElementById('submitBtn');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+      
+      try {
+        // Submit to BayMo webhook
+        const response = await fetch(BAYMO_CONFIG.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Check if duplicate
+          if (data.duplicate) {
+            showSuccess('We already have your inquiry. We will contact you soon.');
+          } else {
+            showSuccess('Thank you! We will be in touch shortly.');
+          }
+        } else {
+          // Show error from server
+          showError(data.error || 'Something went wrong. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      } catch (error) {
+        console.error('Form submission error:', error);
+        showError('Unable to submit form. Please check your connection and try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    }
+    
+    // ============================================
+    // UI HELPERS
+    // ============================================
+    
+    function showError(message) {
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.textContent = message;
+      errorMessage.classList.remove('hidden');
+      errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    function showSuccess(message) {
+      // Hide form
+      document.getElementById('leadForm').classList.add('hidden');
+      
+      // Show success message
+      const successMessage = document.getElementById('successMessage');
+      const successText = document.getElementById('successText');
+      successText.textContent = message;
+      successMessage.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
