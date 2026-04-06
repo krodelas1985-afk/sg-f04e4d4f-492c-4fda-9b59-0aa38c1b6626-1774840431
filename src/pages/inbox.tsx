@@ -56,9 +56,6 @@ export default function Inbox() {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [showStopCampaignDialog, setShowStopCampaignDialog] = useState(false);
 
-  // Template modal
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -334,117 +331,47 @@ export default function Inbox() {
   };
 
   const handleSendMessage = async () => {
-    if (!replyMessage.trim() && !attachment) return;
-    if (!selectedLead) return;
+    if (!replyMessage.trim() || !selectedLead) return;
 
     setSending(true);
 
     try {
-      // Upload attachment if present
-      let attachmentData = null;
-      if (attachment) {
-        attachmentData = await uploadAttachment(selectedLead.id);
-        if (!attachmentData) {
-          setSending(false);
-          return;
-        }
-      }
-
       const supabase = createClient();
 
-      // Use the selected channel
-      const channel = selectedChannel;
+      // Insert conversation
+      const { error } = await supabase.from("conversations").insert({
+        lead_id: selectedLead.id,
+        client_id: selectedLead.client_id,
+        sender: "agent",
+        message_content: replyMessage,
+        channel: selectedLead.primary_channel || "webform",
+        direction: "outgoing",
+        sent_via: "manual",
+        created_at: new Date().toISOString(),
+      });
 
-      if (channel === "email") {
-        // Send via email
-        const response = await fetch("/api/send/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lead_id: selectedLead.id,
-            message: replyMessage,
-            subject: `Message from ${selectedLead.name}`,
-            attachment: attachmentData,
-          }),
-        });
+      if (error) throw error;
 
-        if (!response.ok) {
-          throw new Error("Failed to send email");
-        }
+      // Update lead's last_message_at
+      await supabase
+        .from("leads")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", selectedLead.id);
 
-        // Optimistically add to conversations
-        const newMessage = {
-          id: `temp-${Date.now()}`,
-          lead_id: selectedLead.id,
-          client_id: selectedLead.client_id,
-          message_content: replyMessage,
-          channel: "email",
-          direction: "outbound" as const,
-          sent_via: aiGenerated ? "baymo" : "resend",
-          delivery_status: "sent",
-          sender_id: currentUserId,
-          attachment_url: attachmentData?.url,
-          attachment_type: attachmentData?.type,
-          created_at: new Date().toISOString(),
-          sender_name: "You",
-          sender_role: null,
-        };
+      toast({
+        title: "Success",
+        description: "Message sent successfully",
+      });
 
-        setConversations([...conversations, newMessage]);
-      } else if (channel === "messenger") {
-        // Messenger - save as pending
-        await supabase.from("conversations").insert({
-          lead_id: selectedLead.id,
-          client_id: selectedLead.client_id,
-          message_content: replyMessage,
-          channel: "messenger",
-          direction: "outbound",
-          sent_via: aiGenerated ? "baymo" : "manual",
-          delivery_status: "pending",
-          sender_id: currentUserId,
-          attachment_url: attachmentData?.url,
-          attachment_type: attachmentData?.type,
-        });
-
-        // Show notification
-        alert("Messenger sending coming soon. Message saved.");
-
-        // Refresh conversations
-        await fetchConversations();
-      } else if (channel === "sms") {
-        // SMS - save as pending
-        await supabase.from("conversations").insert({
-          lead_id: selectedLead.id,
-          client_id: selectedLead.client_id,
-          message_content: replyMessage,
-          channel: "sms",
-          direction: "outbound",
-          sent_via: aiGenerated ? "baymo" : "manual",
-          delivery_status: "pending",
-          sender_id: currentUserId,
-          attachment_url: attachmentData?.url,
-          attachment_type: attachmentData?.type,
-        });
-
-        // Show notification
-        alert("SMS sending coming soon. Message saved.");
-
-        // Refresh conversations
-        await fetchConversations();
-      }
-
-      // Clear form
       setReplyMessage("");
-      setAttachment(null);
-      setAttachmentPreview(null);
-      setAiGenerated(false);
-      setAiSuggestionWarning(null);
-
-      // Refresh data
-      await fetchLeads();
+      fetchConversations(selectedLead.id);
     } catch (error) {
       console.error("Error sending message:", error);
-      alert("Failed to send message. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
     } finally {
       setSending(false);
     }
@@ -482,11 +409,6 @@ export default function Inbox() {
     } finally {
       setGenerating(false);
     }
-  };
-
-  const insertTemplate = (template: any) => {
-    setReplyMessage(template.content);
-    setShowTemplateModal(false);
   };
 
   const getStageBadge = (stage: string) => {
@@ -986,75 +908,35 @@ export default function Inbox() {
         </div>
       </div>
 
-      {/* Message Template Dialog */}
+      {/* Insert Template Dialog */}
       <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Insert Template</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {messageTemplates.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => {
-                  setReplyMessage(template.content);
-                  setShowTemplateDialog(false);
-                }}
-                className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="font-medium text-[#1B3A5C]">{template.name}</div>
-                <div className="text-sm text-gray-600 mt-1 line-clamp-2">
-                  {template.content}
-                </div>
-              </button>
-            ))}
-            {messageTemplates.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No templates found. Create templates in Settings.
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Template Modal */}
-      <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Insert Message Template</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {messageTemplates.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No templates available
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {templates.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No templates found. Create templates in Settings &gt; Message Templates.
               </p>
             ) : (
-              messageTemplates.map((template) => (
-                <Card
+              templates.map((template) => (
+                <div
                   key={template.id}
-                  className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => insertTemplate(template)}
+                  onClick={() => {
+                    setReplyMessage(template.content);
+                    setShowTemplateDialog(false);
+                  }}
+                  className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
                 >
-                  <div className="font-medium text-sm text-[#1B3A5C] mb-1">
-                    {template.name}
-                  </div>
-                  <p className="text-xs text-gray-600 line-clamp-2">
+                  <div className="font-medium text-sm">{template.name}</div>
+                  <div className="text-xs text-gray-500 mt-1 line-clamp-2">
                     {template.content}
-                  </p>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
