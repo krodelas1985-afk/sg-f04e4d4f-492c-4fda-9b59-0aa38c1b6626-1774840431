@@ -218,7 +218,7 @@ export default function UsersPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch("/api/admin/users/resend-invite", {
+      const response = await fetch("/api/admin/users/resend", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
