@@ -364,7 +364,7 @@ export default function Inbox() {
       });
 
       setReplyMessage("");
-      fetchConversations(selectedLead.id);
+      fetchConversations();
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -915,12 +915,12 @@ export default function Inbox() {
             <DialogTitle>Insert Template</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {templates.length === 0 ? (
+            {messageTemplates.length === 0 ? (
               <p className="text-sm text-gray-500">
                 No templates found. Create templates in Settings &gt; Message Templates.
               </p>
             ) : (
-              templates.map((template) => (
+              messageTemplates.map((template) => (
                 <div
                   key={template.id}
                   onClick={() => {
