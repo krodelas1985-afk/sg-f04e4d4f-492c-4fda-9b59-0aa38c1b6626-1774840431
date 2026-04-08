@@ -99,7 +99,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               // Lead not found - create new lead
               console.log(`Creating new lead for PSID: ${psid}`);
 
-              const { data: newLead, error: leadCreateError } = await supabase
+              // Create new lead
+              const { data: newLead, error: createError } = await supabase
                 .from("leads")
                 .insert({
                   name: `FB Lead ${psid}`,
@@ -107,14 +108,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   source: "FB Messenger",
                   status: "New",
                   lead_temperature: "New",
+                  lead_type: "Buyer",
                   client_id: bamoClientId,
                   created_at: new Date().toISOString(),
                 })
                 .select("id")
                 .single();
 
-              if (leadCreateError) {
-                console.error("Error creating lead:", leadCreateError);
+              if (createError) {
+                console.error("Error creating lead:", createError);
                 continue; // Skip this message but continue processing others
               }
 
