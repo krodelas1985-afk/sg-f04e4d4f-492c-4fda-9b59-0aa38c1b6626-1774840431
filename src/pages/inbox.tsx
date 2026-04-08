@@ -345,7 +345,7 @@ export default function Inbox() {
         sender: "agent",
         message_content: replyMessage,
         channel: selectedLead.primary_channel || "webform",
-        direction: "outgoing",
+        direction: "outbound",
         sent_via: "manual",
         created_at: new Date().toISOString(),
       });

@@ -257,6 +257,19 @@ export default function LeadDetailPage() {
       const supabase = createClient();
       const { data: session } = await supabase.auth.getSession();
       
+      const { error: conversationError } = await supabase
+        .from("conversations")
+        .insert({
+          lead_id: lead.id,
+          client_id: lead.client_id,
+          sender: "agent",
+          message_content: replyMessage,
+          channel: lead.primary_channel || "webform",
+          direction: "outbound",
+          sent_via: "manual",
+          created_at: new Date().toISOString(),
+        });
+
       await supabase.from("tasks").insert({
         lead_id: leadId,
         client_id: lead.client_id,
