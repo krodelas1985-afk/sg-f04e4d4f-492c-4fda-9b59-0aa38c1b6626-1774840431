@@ -1,6 +1,14 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Public routes that don't require authentication
+const publicRoutes = [
+  "/login",
+  "/auth/set-password",
+  "/api/webhooks/messenger",
+  "/api/webhooks/lead-intake",
+];
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -61,7 +69,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow access to login page and API routes
-  if (pathname === "/login" || pathname.startsWith("/api/")) {
+  if (publicRoutes.includes(pathname) || pathname.startsWith("/api/")) {
     // If user is already authenticated and tries to access /login, redirect to appropriate home
     if (session && pathname === "/login") {
       // Don't fetch role here - let the login page handle the redirect
