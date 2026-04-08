@@ -339,10 +339,7 @@ export default function TemplatesPage() {
       const response = await fetch("/api/ai/generate-template", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: aiPrompt,
-          template_type: templateType,
-        }),
+        body: JSON.stringify(aiFormData),
       });
 
       if (!response.ok) {
