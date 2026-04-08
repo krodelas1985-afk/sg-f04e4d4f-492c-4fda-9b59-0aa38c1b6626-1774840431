@@ -202,7 +202,7 @@ export default function LeadDetailPage() {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-    
+
     setSending(true);
     try {
       const channel = lead?.primary_channel || "email";

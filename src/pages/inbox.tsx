@@ -352,6 +352,28 @@ export default function Inbox() {
 
       if (error) throw error;
 
+      // If this is a messenger lead, send via Facebook API
+      if (selectedLead.messenger_id) {
+        const messengerResponse = await fetch("/api/send/messenger", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messenger_id: selectedLead.messenger_id,
+            message: replyMessage,
+            lead_id: selectedLead.id,
+            client_id: selectedLead.client_id,
+          }),
+        });
+
+        const messengerData = await messengerResponse.json();
+
+        if (!messengerResponse.ok) {
+          throw new Error(messengerData.error?.message || messengerData.error || "Failed to send via Messenger");
+        }
+      }
+
       // Update lead's last_message_at
       await supabase
         .from("leads")
@@ -369,7 +391,7 @@ export default function Inbox() {
       console.error("Error sending message:", error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive",
       });
     } finally {
