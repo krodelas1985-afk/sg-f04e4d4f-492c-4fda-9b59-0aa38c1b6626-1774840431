@@ -222,6 +222,25 @@ export default function LeadDetailPage() {
           setNewMessage("");
           fetchMessages();
         }
+      } else if (lead.messenger_id) {
+        const messengerResponse = await fetch("/api/send/messenger", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messenger_id: lead.messenger_id,
+            message: newMessage,
+            lead_id: leadId,
+            client_id: lead.client_id,
+          }),
+        });
+
+        const messengerData = await messengerResponse.json();
+
+        if (!messengerResponse.ok) {
+          throw new Error(messengerData.error?.message || messengerData.error || "Failed to send via Messenger");
+        }
       } else {
         alert("Messenger sending coming soon");
       }
