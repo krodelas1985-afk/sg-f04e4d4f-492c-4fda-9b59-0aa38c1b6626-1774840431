@@ -108,9 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   source: "FB Messenger",
                   status: "New",
                   lead_temperature: "New",
-                  lead_type: "Buyer",
                   client_id: bamoClientId,
-                  created_at: new Date().toISOString(),
                 })
                 .select("id")
                 .single();
