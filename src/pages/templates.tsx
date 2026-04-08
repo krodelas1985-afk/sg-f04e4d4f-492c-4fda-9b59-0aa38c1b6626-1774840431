@@ -336,10 +336,13 @@ export default function TemplatesPage() {
     setGenerating(true);
 
     try {
-      const response = await fetch("/api/ai/generate", {
+      const response = await fetch("/api/ai/generate-template", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(aiFormData),
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          template_type: templateType,
+        }),
       });
 
       if (!response.ok) {
