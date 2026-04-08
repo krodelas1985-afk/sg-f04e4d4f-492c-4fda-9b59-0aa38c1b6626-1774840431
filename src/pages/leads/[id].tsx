@@ -241,8 +241,9 @@ export default function LeadDetailPage() {
         if (!messengerResponse.ok) {
           throw new Error(messengerData.error?.message || messengerData.error || "Failed to send via Messenger");
         }
-      } else {
-        alert("Messenger sending coming soon");
+
+        setNewMessage("");
+        fetchMessages();
       }
     } catch (err) {
       console.error("Error sending message:", err);
