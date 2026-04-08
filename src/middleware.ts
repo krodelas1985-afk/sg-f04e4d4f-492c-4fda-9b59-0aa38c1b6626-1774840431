@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const publicRoutes = [
   "/login",
   "/auth/set-password",
+  "/privacy",
   "/api/webhooks/messenger",
   "/api/webhooks/lead-intake",
 ];
