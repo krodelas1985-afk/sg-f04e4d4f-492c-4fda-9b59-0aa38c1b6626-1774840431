@@ -131,100 +131,43 @@ export default async function handler(
   console.log("✅ Lead created:", lead.id);
 
   // ─────────────────────────────────────────
-  // STEP 3 — EMAIL TRIGGER
+  // STEP 3 — CIE CAMPAIGN ENROLLMENT
   // ─────────────────────────────────────────
 
-  if (payload.campaign_id) {
+  if (lead.campaign_id) {
     try {
-      // Get campaign config
-      const { data: campaign } = await supabase
-        .from("campaigns")
-        .select("name, config, email_template_id")
-        .eq("id", payload.campaign_id)
+      // Find step 1 of this campaign
+      const { data: firstStep } = await supabase
+        .from('campaign_steps')
+        .select('id, delay_hours')
+        .eq('campaign_id', lead.campaign_id)
+        .eq('step_order', 1)
+        .eq('is_active', true)
+        .limit(1)
         .single();
 
-      if (campaign?.config?.email_triggers?.on_lead_created?.enabled) {
-        const trigger = campaign.config.email_triggers.on_lead_created;
+      if (firstStep) {
+        const nextStepAt = new Date();
+        nextStepAt.setHours(
+          nextStepAt.getHours() + (firstStep.delay_hours || 0)
+        );
 
-        // Check if lead source matches trigger sources
-        const shouldSendEmail = 
-          !trigger.sources || 
-          trigger.sources.length === 0 || 
-          trigger.sources.includes(lead.source);
+        await supabase.from('lead_campaign_states').insert({
+          lead_id: lead.id,
+          campaign_id: lead.campaign_id,
+          client_id: client.id,
+          state: 'active',
+          current_step: 1,
+          enrolled_at: new Date().toISOString(),
+          next_step_at: nextStepAt.toISOString(),
+          metadata: {},
+        });
 
-        if (shouldSendEmail && lead.email) {
-          console.log("📧 Sending email trigger for lead:", lead.id);
-
-          // Get email template
-          const templateId = trigger.email_template_id || campaign.email_template_id;
-          
-          if (templateId) {
-            const { data: template } = await supabase
-              .from("email_templates")
-              .select("subject, body")
-              .eq("id", templateId)
-              .single();
-
-            if (template) {
-              // Replace variables in body
-              let emailBody = template.body;
-              emailBody = emailBody.replace(/{{name}}/g, lead.name || "there");
-              emailBody = emailBody.replace(/{{email}}/g, lead.email || "");
-              emailBody = emailBody.replace(/{{campaign_name}}/g, campaign.name || "");
-              emailBody = emailBody.replace(/{{source}}/g, lead.source || "");
-
-              // Send email using Resend
-              const resendApiKey = process.env.RESEND_API_KEY;
-              
-              if (resendApiKey) {
-                try {
-                  const emailResponse = await fetch("https://api.resend.com/emails", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": `Bearer ${resendApiKey}`,
-                    },
-                    body: JSON.stringify({
-                      from: "BayMo <noreply@baymo.io>",
-                      to: lead.email,
-                      subject: template.subject || "Thank you for your inquiry",
-                      html: emailBody,
-                    }),
-                  });
-
-                  const emailResult = await emailResponse.json();
-
-                  if (emailResponse.ok) {
-                    console.log("✅ Email sent via Resend:", emailResult.id);
-
-                    // Log in conversations
-                    await supabase.from("conversations").insert({
-                      lead_id: lead.id,
-                      client_id: client.id,
-                      channel: "email",
-                      direction: "outbound",
-                      sender: "system",
-                      sent_via: "resend",
-                      delivery_status: "sent",
-                      message_content: emailBody,
-                      external_msg_id: emailResult.id,
-                    });
-                  } else {
-                    console.error("❌ Resend error:", emailResult);
-                  }
-                } catch (emailError) {
-                  console.error("❌ Error sending email:", emailError);
-                }
-              } else {
-                console.warn("⚠️ RESEND_API_KEY not configured");
-              }
-            }
-          }
-        }
+        console.log('✅ Lead enrolled in campaign:', lead.campaign_id);
       }
-    } catch (triggerError) {
-      console.error("❌ Error in email trigger:", triggerError);
-      // Don't fail the webhook if email fails
+    } catch (enrollError) {
+      console.error('❌ Error enrolling lead in campaign:', enrollError);
+      // Do not fail the webhook if enrollment fails
     }
   }
 
