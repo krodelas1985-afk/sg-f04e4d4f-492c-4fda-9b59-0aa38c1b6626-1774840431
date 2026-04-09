@@ -128,7 +128,7 @@ export default async function handler(
     return res.status(500).json({ error: "Failed to create lead" });
   }
 
-  console.log("✅ Lead created:", lead.id);
+  console.log("✅ Lead created successfully:", lead.id);
 
   // ─────────────────────────────────────────
   // STEP 3 — CIE CAMPAIGN ENROLLMENT
@@ -136,34 +136,48 @@ export default async function handler(
 
   if (lead.campaign_id) {
     try {
-      // Find step 1 of this campaign
-      const { data: firstStep } = await supabase
-        .from('campaign_steps')
-        .select('id, delay_hours')
-        .eq('campaign_id', lead.campaign_id)
-        .eq('step_order', 1)
-        .eq('is_active', true)
+      // Check if lead already has active or paused campaign state
+      // Manual assignment always wins — never overwrite active/paused
+      const { data: existingState } = await supabase
+        .from('lead_campaign_states')
+        .select('id, state')
+        .eq('lead_id', lead.id)
+        .in('state', ['active', 'paused'])
         .limit(1)
         .single();
 
-      if (firstStep) {
-        const nextStepAt = new Date();
-        nextStepAt.setHours(
-          nextStepAt.getHours() + (firstStep.delay_hours || 0)
-        );
+      if (!existingState) {
+        // No active campaign — safe to enroll
+        const { data: firstStep } = await supabase
+          .from('campaign_steps')
+          .select('id, delay_hours')
+          .eq('campaign_id', lead.campaign_id)
+          .eq('step_order', 1)
+          .eq('is_active', true)
+          .limit(1)
+          .single();
 
-        await supabase.from('lead_campaign_states').insert({
-          lead_id: lead.id,
-          campaign_id: lead.campaign_id,
-          client_id: client.id,
-          state: 'active',
-          current_step: 1,
-          enrolled_at: new Date().toISOString(),
-          next_step_at: nextStepAt.toISOString(),
-          metadata: {},
-        });
+        if (firstStep) {
+          const nextStepAt = new Date();
+          nextStepAt.setHours(
+            nextStepAt.getHours() + (firstStep.delay_hours || 0)
+          );
 
-        console.log('✅ Lead enrolled in campaign:', lead.campaign_id);
+          await supabase.from('lead_campaign_states').insert({
+            lead_id: lead.id,
+            campaign_id: lead.campaign_id,
+            client_id: client.id,
+            state: 'active',
+            current_step: 1,
+            enrolled_at: new Date().toISOString(),
+            next_step_at: nextStepAt.toISOString(),
+            metadata: {},
+          });
+
+          console.log('✅ Lead enrolled in campaign:', lead.campaign_id);
+        }
+      } else {
+        console.log('⏭️ Lead already has active campaign — skipping auto-enroll');
       }
     } catch (enrollError) {
       console.error('❌ Error enrolling lead in campaign:', enrollError);
