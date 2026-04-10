@@ -48,8 +48,9 @@ export default async function handler(
       .update({ campaign_id: campaign_id })
       .eq('id', leadId);
 
-    // STEP 4 — If new campaign selected, enroll in it
+    // STEP 4 — If new campaign selected, enroll in lead_campaign_states
     if (campaign_id) {
+      // Check for first step (optional — steps may not exist yet)
       const { data: firstStep } = await supabase
         .from('campaign_steps')
         .select('id, delay_hours')
@@ -59,23 +60,21 @@ export default async function handler(
         .limit(1)
         .single();
 
-      if (firstStep) {
-        const nextStepAt = new Date();
-        nextStepAt.setHours(
-          nextStepAt.getHours() + (firstStep.delay_hours || 0)
-        );
-
-        await supabase.from('lead_campaign_states').insert({
-          lead_id: leadId,
-          campaign_id: campaign_id,
-          client_id: lead.client_id,
-          state: 'active',
-          current_step: 1,
-          enrolled_at: new Date().toISOString(),
-          next_step_at: nextStepAt.toISOString(),
-          metadata: {},
-        });
+      const nextStepAt = new Date();
+      if (firstStep?.delay_hours) {
+        nextStepAt.setHours(nextStepAt.getHours() + firstStep.delay_hours);
       }
+
+      await supabase.from('lead_campaign_states').insert({
+        lead_id: leadId,
+        campaign_id: campaign_id,
+        client_id: lead.client_id,
+        state: 'active',
+        current_step: 1,
+        enrolled_at: new Date().toISOString(),
+        next_step_at: nextStepAt.toISOString(),
+        metadata: { enrolled_by: 'manual' },
+      });
     }
 
     return res.status(200).json({ success: true });
