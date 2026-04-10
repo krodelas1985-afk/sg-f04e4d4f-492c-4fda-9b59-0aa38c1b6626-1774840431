@@ -260,6 +260,27 @@ export default function LeadsPage() {
     await supabase.from("leads").update({ [field]: value }).eq("id", leadId);
   };
   
+  const handleCampaignEdit = async (leadId: string, campaignId: string | null) => {
+    // Optimistic UI update
+    setLeads((prev) =>
+      prev.map((lead) => {
+        if (lead.id !== leadId) return lead;
+        const campaign = campaigns.find((c) => c.id === campaignId);
+        return {
+          ...lead,
+          campaign_id: campaignId,
+          campaign_name: campaign?.name || null,
+        };
+      })
+    );
+
+    await fetch(`/api/leads/${leadId}/campaign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaign_id: campaignId }),
+    });
+  };
+  
   const handleInlineEdit = async (leadId: string, field: string, value: any) => {
     const supabase = createClient();
     
@@ -675,16 +696,16 @@ export default function LeadsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Select
                         value={lead.campaign_id || "none"}
-                        onValueChange={(value) => handleInlineEdit(lead.id, "campaign_id", value === "none" ? null : value)}
+                        onValueChange={(value) => handleCampaignEdit(lead.id, value === "none" ? null : value)}
                       >
-                        <SelectTrigger className="w-40 h-8">
+                        <SelectTrigger className="h-8 w-full text-xs border-gray-200">
                           <SelectValue placeholder="No Campaign" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">No Campaign</SelectItem>
-                          {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
-                            <SelectItem key={campaign.id} value={campaign.id}>
-                              {campaign.name}
+                          {campaigns.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
