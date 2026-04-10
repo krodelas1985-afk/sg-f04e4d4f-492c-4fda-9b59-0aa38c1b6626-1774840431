@@ -307,6 +307,22 @@ export default function LeadDetailPage() {
     }
   };
 
+  const handleCampaignUpdate = async (newCampaignId: string | null) => {
+    try {
+      const response = await fetch(`/api/leads/${leadId}/campaign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaign_id: newCampaignId }),
+      });
+      if (response.ok) {
+        setLead((prev: any) => ({ ...prev, campaign_id: newCampaignId }));
+        fetchLead();
+      }
+    } catch (err) {
+      console.error('Error updating campaign:', err);
+    }
+  };
+
   const getStageStyle = (stage: string) => {
     switch (stage) {
       case "Hot": return "bg-red-100 text-red-800";
@@ -465,9 +481,20 @@ export default function LeadDetailPage() {
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Campaign</p>
-              <p className="text-lg font-medium text-[#1B3A5C] truncate">
-                {lead.campaigns?.name || "None"}
-              </p>
+              <Select
+                value={lead.campaign_id || "none"}
+                onValueChange={(val) => handleCampaignUpdate(val === "none" ? null : val)}
+              >
+                <SelectTrigger className="h-8 text-sm border-0 p-0 shadow-none font-medium text-[#1B3A5C] focus:ring-0">
+                  <SelectValue placeholder="No Campaign" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Campaign</SelectItem>
+                  {campaigns.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
