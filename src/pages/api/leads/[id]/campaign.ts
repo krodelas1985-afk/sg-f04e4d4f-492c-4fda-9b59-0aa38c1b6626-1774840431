@@ -50,7 +50,6 @@ export default async function handler(
 
     // STEP 4 — If new campaign selected, enroll in lead_campaign_states
     if (campaign_id) {
-      // Check for first step (optional — steps may not exist yet)
       const { data: firstStep } = await supabase
         .from('campaign_steps')
         .select('id, delay_hours')
@@ -65,16 +64,39 @@ export default async function handler(
         nextStepAt.setHours(nextStepAt.getHours() + firstStep.delay_hours);
       }
 
-      await supabase.from('lead_campaign_states').insert({
-        lead_id: leadId,
-        campaign_id: campaign_id,
-        client_id: lead.client_id,
-        state: 'active',
-        current_step: 1,
-        enrolled_at: new Date().toISOString(),
-        next_step_at: nextStepAt.toISOString(),
-        metadata: { enrolled_by: 'manual' },
-      });
+      // Check if a row already exists for this lead + campaign
+      const { data: existing } = await supabase
+        .from('lead_campaign_states')
+        .select('id')
+        .eq('lead_id', leadId)
+        .eq('campaign_id', campaign_id)
+        .single();
+
+      if (existing) {
+        // Reactivate the existing stopped row
+        await supabase
+          .from('lead_campaign_states')
+          .update({
+            state: 'active',
+            current_step: 1,
+            enrolled_at: new Date().toISOString(),
+            next_step_at: nextStepAt.toISOString(),
+            metadata: { enrolled_by: 'manual' },
+          })
+          .eq('id', existing.id);
+      } else {
+        // Insert fresh row
+        await supabase.from('lead_campaign_states').insert({
+          lead_id: leadId,
+          campaign_id: campaign_id,
+          client_id: lead.client_id,
+          state: 'active',
+          current_step: 1,
+          enrolled_at: new Date().toISOString(),
+          next_step_at: nextStepAt.toISOString(),
+          metadata: { enrolled_by: 'manual' },
+        });
+      }
     }
 
     return res.status(200).json({ success: true });
