@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 
 export default function ConfirmPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(true);
 
@@ -60,7 +59,7 @@ export default function ConfirmPage() {
     }, 2000);
 
     return () => clearTimeout(timeout);
-  }, [router.isReady, router.query, supabase, verifying]);
+  }, [router.isReady, router.query, verifying]);
 
   if (verifying) {
     return (
