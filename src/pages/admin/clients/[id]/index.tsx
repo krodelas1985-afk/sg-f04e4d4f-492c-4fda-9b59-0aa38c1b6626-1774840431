@@ -49,7 +49,7 @@ interface ClientUser {
 
 export default function AdminClientDetailPage() {
   const router = useRouter();
-  const { id: clientId } = router.query;
+  const clientId = router.query.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
   const [users, setUsers] = useState<ClientUser[]>([]);

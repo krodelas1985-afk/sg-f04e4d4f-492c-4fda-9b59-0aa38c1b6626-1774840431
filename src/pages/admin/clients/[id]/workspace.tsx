@@ -51,7 +51,7 @@ interface WorkspaceData {
 
 export default function AdminClientWorkspacePage() {
   const router = useRouter();
-  const { id: clientId } = router.query;
+  const clientId = router.query.id as string;
 
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
