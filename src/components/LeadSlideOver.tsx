@@ -712,7 +712,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                                   key={key}
                                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
                                 >
-                                  {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}: {value ?? '—'}
+                                  {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}: {String(value ?? '—')}
                                 </span>
                               ))}
                             </div>
