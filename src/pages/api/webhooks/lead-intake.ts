@@ -116,7 +116,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Prepare metadata
-    const metadata = notes ? { notes: notes.trim() } : null;
+    const incomingMetadata = req.body.metadata || null;
+    const metadata = incomingMetadata || (notes ? { notes: notes.trim() } : null);
 
     // Insert lead
     const { data: newLead, error: insertError } = await supabase
