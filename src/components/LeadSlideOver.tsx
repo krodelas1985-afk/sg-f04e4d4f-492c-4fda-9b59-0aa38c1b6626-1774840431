@@ -643,7 +643,111 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                 </div>
               </TabsContent>
 
-              <TabsContent value="activity" className="p-6">
+              <TabsContent value="activity" className="mt-0 p-6 space-y-4">
+                {/* Lead Intake Snapshot Card */}
+                {lead?.metadata && typeof lead?.metadata?.source === 'string' && lead?.metadata?.source?.trim() !== '' && (
+                  <div className="rounded-xl border border-orange-100 bg-[#FFF3E8] overflow-hidden mb-6">
+                    {/* Header */}
+                    <div className="bg-[#1B3A5C] px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {lead?.metadata?.source?.includes('Sinag') ? '☀️' : '📋'}
+                        </span>
+                        <span className="text-white font-medium">
+                          {lead?.metadata?.source}
+                        </span>
+                      </div>
+                      {lead?.metadata?.submitted_at && (
+                        <span className="text-white text-xs opacity-60">
+                          {new Date(lead.metadata.submitted_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 space-y-4">
+                      {/* Estimate Fields */}
+                      {lead?.metadata?.estimate && (
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          {Object.entries(lead.metadata.estimate)
+                            .filter(([key]) => key !== 'financing')
+                            .map(([key, value]) => {
+                              const label = key
+                                .split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+                              
+                              const hasMoneySymbol = typeof value === 'string' && value.includes('₱');
+                              const isMoneyField = ['cost', 'savings', 'total'].some(term => 
+                                key.toLowerCase().includes(term)
+                              );
+                              const shouldHighlight = hasMoneySymbol || isMoneyField;
+                              const displayValue = value ?? '—';
+
+                              return (
+                                <div key={key} className="text-sm">
+                                  <div className="text-gray-500 mb-1">{label}</div>
+                                  <div className={`font-medium ${shouldHighlight ? 'text-[#E87722]' : 'text-gray-900'}`}>
+                                    {String(displayValue)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+
+                      {/* Financing Options */}
+                      {lead?.metadata?.estimate?.financing && (
+                        <>
+                          <div className="border-t border-gray-200 my-4" />
+                          <div className="text-sm">
+                            <div className="text-gray-500 mb-2">Financing Options</div>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(lead.metadata.estimate.financing).map(([key, value]) => (
+                                <span
+                                  key={key}
+                                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
+                                >
+                                  {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}: {value ?? '—'}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Preferences */}
+                      {lead?.metadata?.preferences && (
+                        <>
+                          <div className="border-t border-gray-200 my-4" />
+                          <div className="text-sm font-medium text-gray-700 mb-3">Preferences</div>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                            {Object.entries(lead.metadata.preferences).map(([key, value]) => {
+                              const label = key
+                                .split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+                              const displayValue = value ?? '—';
+
+                              return (
+                                <div key={key} className="text-sm">
+                                  <div className="text-gray-500 mb-1">{label}</div>
+                                  <div className="font-medium text-gray-900">{String(displayValue)}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Existing Activity List */}
                 <div className="space-y-3">
                   {activity.map((item, idx) => (
                     <div key={idx} className="flex gap-3 text-sm">
