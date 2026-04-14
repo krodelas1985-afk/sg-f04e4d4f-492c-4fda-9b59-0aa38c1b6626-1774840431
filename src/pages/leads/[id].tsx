@@ -843,8 +843,109 @@ export default function LeadDetailPage() {
                 </TabsContent>
 
                 {/* Activity Tab */}
-                <TabsContent value="activity" className="p-6 m-0 overflow-y-auto max-h-[600px]">
-                  <div className="relative border-l border-gray-200 ml-3 space-y-6">
+                <TabsContent value="activity" className="p-6">
+                  {/* Lead Intake Snapshot Card */}
+                  {lead?.metadata?.estimate && (
+                    <div className="rounded-xl border border-orange-100 bg-[#FFF3E8] overflow-hidden mb-6">
+                      {/* Header */}
+                      <div className="bg-[#1B3A5C] px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {lead?.metadata?.source?.includes('Sinag') ? '☀️' : '📋'}
+                          </span>
+                          <span className="text-white font-medium">
+                            {lead?.metadata?.source || 'Lead Intake'}
+                          </span>
+                        </div>
+                        {lead?.metadata?.submitted_at && (
+                          <span className="text-white text-xs opacity-60">
+                            {new Date(lead.metadata.submitted_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4 space-y-4">
+                        {/* Estimate Fields */}
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          {Object.entries(lead.metadata.estimate)
+                            .filter(([key]) => key !== 'financing')
+                            .map(([key, value]) => {
+                              const label = key
+                                .split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+                              
+                              const hasMoneySymbol = typeof value === 'string' && value.includes('₱');
+                              const isMoneyField = ['cost', 'savings', 'total'].some(term => 
+                                key.toLowerCase().includes(term)
+                              );
+                              const shouldHighlight = hasMoneySymbol || isMoneyField;
+                              const displayValue = value ?? '—';
+
+                              return (
+                                <div key={key} className="text-sm">
+                                  <div className="text-gray-500 mb-1">{label}</div>
+                                  <div className={`font-medium ${shouldHighlight ? 'text-[#E87722]' : 'text-gray-900'}`}>
+                                    {String(displayValue)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+
+                        {/* Financing Options */}
+                        {lead?.metadata?.estimate?.financing && (
+                          <>
+                            <div className="border-t border-gray-200 my-4" />
+                            <div className="text-sm">
+                              <div className="text-gray-500 mb-2">Financing Options</div>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(lead.metadata.estimate.financing).map(([key, value]) => (
+                                  <span
+                                    key={key}
+                                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
+                                  >
+                                    {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}: {String(value ?? '—')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Preferences */}
+                        {lead?.metadata?.preferences && (
+                          <>
+                            <div className="border-t border-gray-200 my-4" />
+                            <div className="text-sm font-medium text-gray-700 mb-3">Preferences</div>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                              {Object.entries(lead.metadata.preferences).map(([key, value]) => {
+                                const label = key
+                                  .split('_')
+                                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                  .join(' ');
+                                const displayValue = value ?? '—';
+
+                                return (
+                                  <div key={key} className="text-sm">
+                                    <div className="text-gray-500 mb-1">{label}</div>
+                                    <div className="font-medium text-gray-900">{String(displayValue)}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="relative border-l border-gray-200 pl-8 space-y-6">
                     {activity.length === 0 ? (
                       <p className="text-gray-500 pl-4">No activity recorded yet.</p>
                     ) : (
