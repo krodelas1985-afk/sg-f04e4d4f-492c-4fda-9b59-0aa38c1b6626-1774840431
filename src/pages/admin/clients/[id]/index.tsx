@@ -53,27 +53,34 @@ export default function AdminClientWorkspacePage() {
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
-      if (!router.isReady || !clientId) return;
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          router.push('/login');
+          return;
+        }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, client_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!profile) {
+          router.push('/login');
+          return;
+        }
+
+        // Check if user is baymo_admin
+        if (profile?.role !== 'baymo_admin') {
+          router.push('/dashboard');
+          return;
+        }
+
+        fetchWorkspaceData();
+      } catch (error) {
+        console.error('Error checking auth and fetching data:', error);
       }
-
-      // Check if user is baymo_admin
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profile?.role !== 'baymo_admin') {
-        router.push('/dashboard');
-        return;
-      }
-
-      fetchWorkspaceData();
     };
 
     checkAuthAndFetch();
