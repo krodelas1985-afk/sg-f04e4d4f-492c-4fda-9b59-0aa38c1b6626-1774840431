@@ -140,7 +140,7 @@ export default function AdminClients() {
                   <th className="px-6 py-3 font-medium">Created Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y cursor-pointer">
+              <tbody className="divide-y">
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
@@ -157,8 +157,9 @@ export default function AdminClients() {
                   clients.map((client) => (
                     <tr
                       key={client.id}
+                      style={{ cursor: 'pointer' }}
                       onClick={() => router.push(`/admin/clients/${client.id}`)}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{client.name}</div>
