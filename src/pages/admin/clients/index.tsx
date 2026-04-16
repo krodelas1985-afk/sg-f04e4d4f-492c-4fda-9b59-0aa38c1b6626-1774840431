@@ -157,8 +157,8 @@ export default function AdminClients() {
                   clients.map((client) => (
                     <tr
                       key={client.id}
-                      className="bg-card hover:bg-muted/50 transition-colors"
                       onClick={() => router.push(`/admin/clients/${client.id}`)}
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
                     >
                       <td className="px-6 py-4 font-medium">{client.name}</td>
                       <td className="px-6 py-4 text-muted-foreground">{client.company_name || "-"}</td>
