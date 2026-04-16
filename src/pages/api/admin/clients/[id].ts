@@ -1,52 +1,53 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { randomUUID } from "crypto";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { id } = req.query;
 
-    const supabase = createServerClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get: (name) => req.cookies[name],
-          set: () => {},
-          remove: () => {},
-        },
-      }
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
 
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: profile } = await adminClient
+    // Get session and check role
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user } } = await supabase.auth.getUser(token);
+
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
+      .select("role, client_id")
+      .eq("id", user.id)
       .single();
 
-    if (profile?.role !== "baymo_admin") {
+    if (!profile) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Use service role key for baymo_admin, regular client for others
+    const dbClient = profile.role === "baymo_admin" ? adminClient : supabase;
+
+    // For non-admin users, verify they own this client
+    if (profile.role !== "baymo_admin" && profile.client_id !== id) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
     if (req.method === "GET") {
-      const { data: client, error } = await adminClient
+      const { data: client, error } = await dbClient
         .from("clients")
         .select("*")
         .eq("id", id)
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "PUT") {
       const { name, company_name, email, phone, is_active } = req.body;
 
-      const { data: client, error } = await adminClient
+      const { data: client, error } = await dbClient
         .from("clients")
         .update({
           name,
@@ -84,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "DELETE") {
-      const { error } = await adminClient
+      const { error } = await dbClient
         .from("clients")
         .delete()
         .eq("id", id);
