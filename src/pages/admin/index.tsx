@@ -20,6 +20,10 @@ interface WebhookLog {
   status: string;
   received_at: string;
   error_message?: string;
+  client_id?: string;
+  clients?: {
+    name: string;
+  };
 }
 
 interface Client {
