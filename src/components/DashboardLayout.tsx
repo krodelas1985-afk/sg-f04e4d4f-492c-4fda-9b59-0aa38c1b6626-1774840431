@@ -15,19 +15,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const loadUserRole = async () => {
     const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      router.push("/login");
-      return;
-    }
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        router.push("/login");
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
-    if (profile) {
-      setRole(profile.role);
+      if (profile) {
+        setRole(profile.role);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
