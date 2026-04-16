@@ -160,7 +160,10 @@ export default function AdminClients() {
                       onClick={() => router.push(`/admin/clients/${client.id}`)}
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
                     >
-                      <td className="px-6 py-4 font-medium">{client.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                        <div className="text-sm text-gray-500">{client.email}</div>
+                      </td>
                       <td className="px-6 py-4 text-muted-foreground">{client.company_name || "-"}</td>
                       <td className="px-6 py-4 text-muted-foreground">{client.email}</td>
                       <td className="px-6 py-4">
