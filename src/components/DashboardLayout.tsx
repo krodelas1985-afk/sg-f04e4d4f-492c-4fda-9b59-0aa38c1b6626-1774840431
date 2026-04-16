@@ -13,27 +13,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadUserRole = async () => {
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      router.push("/login");
+      return;
+    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile) {
+      setRole(profile.role);
+    }
+  };
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        router.push("/login");
-        return;
-      }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        setRole(profile.role);
-      }
-      setLoading(false);
-    };
-
-    checkAuth();
+    loadUserRole();
   }, [router]);
 
   if (loading) {
