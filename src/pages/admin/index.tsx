@@ -11,6 +11,7 @@ interface Stats {
   activeClients: number;
   totalLeads: number;
   totalCampaigns: number;
+  activeCampaigns?: number;
 }
 
 interface WebhookLog {
@@ -225,14 +226,14 @@ export default function AdminOverview() {
                       Loading...
                     </td>
                   </tr>
-                ) : logs.length === 0 ? (
+                ) : webhookLogs.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                       No recent webhook logs
                     </td>
                   </tr>
                 ) : (
-                  logs.map((log) => (
+                  webhookLogs.map((log) => (
                     <tr key={log.id} className="bg-card hover:bg-muted/50">
                       <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">
                         {new Date(log.received_at).toLocaleString()}
