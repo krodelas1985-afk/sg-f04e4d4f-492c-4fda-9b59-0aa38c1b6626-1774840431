@@ -57,17 +57,45 @@ export default function AdminClientDetailPage() {
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
   const [showBamoKey, setShowBamoKey] = useState(false);
 
-  const fetchClient = async () => {
+  // Fetch client details
+  useEffect(() => {
     if (!clientId) return;
+    fetchClient();
+  }, [clientId]);
 
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("id", clientId)
-      .single();
+  const fetchClient = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-    if (data) {
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/clients/${clientId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch client');
+      }
+
+      const data = await response.json();
       setClient(data);
+      setFormData({
+        name: data.name || '',
+        company_name: data.company_name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        is_active: data.is_active ?? true,
+      });
+    } catch (error) {
+      console.error("Error fetching client:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
