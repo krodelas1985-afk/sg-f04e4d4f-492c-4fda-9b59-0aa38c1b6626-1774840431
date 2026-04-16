@@ -85,13 +85,6 @@ export default function AdminClientDetailPage() {
 
       const data = await response.json();
       setClient(data);
-      setFormData({
-        name: data.name || '',
-        company_name: data.company_name || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        is_active: data.is_active ?? true,
-      });
     } catch (error) {
       console.error("Error fetching client:", error);
     } finally {
