@@ -4,378 +4,358 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  ArrowLeft, 
-  Building2, 
-  Mail, 
-  Phone, 
-  Key, 
-  Users,
-  CheckCircle2,
-  XCircle,
-  Copy,
-  Eye,
-  EyeOff,
-  RefreshCw
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Users, TrendingUp, Flame, MessageSquare } from "lucide-react";
 
 interface Client {
   id: string;
   name: string;
   company_name: string;
-  email: string;
-  phone: string | null;
-  webhook_secret: string;
   is_active: boolean;
-  bamo_connected: boolean;
-  bamo_api_key: string | null;
-  bamo_webhook_url: string | null;
-  created_at: string;
 }
 
-interface ClientUser {
+interface Lead {
   id: string;
-  full_name: string | null;
+  name: string;
   email: string;
-  role: string;
-  is_active: boolean;
+  phone: string;
+  status: string;
+  lead_temperature: string;
+  source: string;
   created_at: string;
 }
 
-export default function AdminClientDetailPage() {
+interface Conversation {
+  id: string;
+  lead_id: string;
+  message_content: string;
+  channel: string;
+  direction: string;
+  created_at: string;
+  leads: { name: string } | null;
+}
+
+interface Stats {
+  totalLeads: number;
+  newToday: number;
+  hotLeads: number;
+}
+
+export default function AdminClientWorkspacePage() {
   const router = useRouter();
   const clientId = router.query.id as string;
 
   const [client, setClient] = useState<Client | null>(null);
-  const [users, setUsers] = useState<ClientUser[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalLeads: 0, newToday: 0, hotLeads: 0 });
   const [loading, setLoading] = useState(true);
-  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
-  const [showBamoKey, setShowBamoKey] = useState(false);
 
-  // Fetch client details
   useEffect(() => {
-    if (!clientId) return;
-    fetchClient();
-  }, [clientId]);
+    const checkAuthAndFetch = async () => {
+      if (!router.isReady || !clientId) return;
 
-  const fetchClient = async () => {
-    try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
+      if (!session) {
         router.push('/login');
         return;
       }
 
-      const response = await fetch(`/api/admin/clients/${clientId}`, {
+      // Check if user is baymo_admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile?.role !== 'baymo_admin') {
+        router.push('/dashboard');
+        return;
+      }
+
+      fetchWorkspaceData();
+    };
+
+    checkAuthAndFetch();
+  }, [router.isReady, clientId]);
+
+  const fetchWorkspaceData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) return;
+
+      // Fetch via API route using service role key
+      const response = await fetch(`/api/admin/clients/${clientId}/workspace-data`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch client');
+        throw new Error('Failed to fetch workspace data');
       }
 
       const data = await response.json();
-      setClient(data);
+      
+      setClient(data.client);
+      setLeads(data.leads || []);
+      setConversations(data.conversations || []);
+      
+      // Calculate stats
+      const today = new Date().toISOString().split('T')[0];
+      setStats({
+        totalLeads: data.leads?.length || 0,
+        newToday: data.leads?.filter((l: Lead) => l.created_at.startsWith(today)).length || 0,
+        hotLeads: data.leads?.filter((l: Lead) => l.lead_temperature === 'Hot').length || 0,
+      });
     } catch (error) {
-      console.error("Error fetching client:", error);
+      console.error('Error fetching workspace data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchUsers = async () => {
-    if (!clientId) return;
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, role, is_active, created_at")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      setUsers(data);
-    }
-  };
-
-  useEffect(() => {
-    if (router.isReady) {
-      fetchClient();
-      fetchUsers();
-      setLoading(false);
-    }
-  }, [router.isReady, clientId]);
-
-  const handleToggleActive = async () => {
-    if (!client) return;
-
-    const { error } = await supabase
-      .from("clients")
-      .update({ is_active: !client.is_active })
-      .eq("id", client.id);
-
-    if (!error) {
-      setClient({ ...client, is_active: !client.is_active });
-    }
-  };
-
-  const handleCopyWebhookSecret = () => {
-    if (client?.webhook_secret) {
-      navigator.clipboard.writeText(client.webhook_secret);
-    }
-  };
-
-  const handleRegenerateSecret = async () => {
-    if (!client) return;
-    if (!confirm("This will invalidate the current webhook secret. Continue?")) return;
-
-    try {
-      const response = await fetch(`/api/admin/clients/${client.id}/regenerate-secret`, {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setClient({ ...client, webhook_secret: data.webhook_secret });
-      }
-    } catch (err) {
-      console.error("Error regenerating secret:", err);
-    }
-  };
-
-  if (loading || !client) {
+  if (loading) {
     return (
       <DashboardLayout>
-        <div className="p-8">Loading...</div>
+        <div className="p-8">Loading client workspace...</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!client) {
+    return (
+      <DashboardLayout>
+        <div className="p-8">Client not found</div>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="p-8">
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.push("/admin/clients")}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Clients
-          </Button>
-
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/admin/clients')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Clients
+            </Button>
             <div>
-              <h1 className="text-3xl font-bold text-[#1B3A5C]">{client.company_name}</h1>
+              <h1 className="text-3xl font-bold text-[#1B3A5C]">
+                {client.company_name || client.name}
+              </h1>
               <p className="text-gray-500 mt-1">{client.name}</p>
             </div>
-
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/admin/clients/${clientId}/workspace`)}
-              >
-                Enter Workspace
-              </Button>
-              
-              <div className="flex items-center gap-2">
-                <Label htmlFor="active-toggle">Active</Label>
-                <Switch
-                  id="active-toggle"
-                  checked={client.is_active}
-                  onCheckedChange={handleToggleActive}
-                />
-              </div>
-
-              {client.is_active ? (
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Active
-                </Badge>
-              ) : (
-                <Badge className="bg-gray-100 text-gray-800">
-                  <XCircle className="w-3 h-3 mr-1" />
-                  Inactive
-                </Badge>
-              )}
-            </div>
           </div>
+          <Badge className={client.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+            {client.is_active ? "Active" : "Inactive"}
+          </Badge>
         </div>
 
-        <Tabs defaultValue="details" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          </TabsList>
-
-          {/* Details Tab */}
-          <TabsContent value="details">
-            <Card className="p-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Building2 className="w-4 h-4" />
-                      Company Name
-                    </Label>
-                    <Input value={client.company_name} readOnly />
-                  </div>
-
-                  <div>
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Users className="w-4 h-4" />
-                      Contact Name
-                    </Label>
-                    <Input value={client.name} readOnly />
-                  </div>
-
-                  <div>
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Mail className="w-4 h-4" />
-                      Email
-                    </Label>
-                    <Input value={client.email} readOnly />
-                  </div>
-
-                  <div>
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Phone className="w-4 h-4" />
-                      Phone
-                    </Label>
-                    <Input value={client.phone || "—"} readOnly />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="flex items-center gap-2 mb-2">
-                    <Key className="w-4 h-4" />
-                    Webhook Secret
-                  </Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        type={showWebhookSecret ? "text" : "password"}
-                        value={client.webhook_secret}
-                        readOnly
-                      />
-                      <button
-                        onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {showWebhookSecret ? (
-                          <EyeOff className="w-4 h-4 text-gray-400" />
-                        ) : (
-                          <Eye className="w-4 h-4 text-gray-400" />
-                        )}
-                      </button>
-                    </div>
-                    <Button variant="outline" onClick={handleCopyWebhookSecret}>
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" onClick={handleRegenerateSecret}>
-                      <RefreshCw className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-6">
+          <Card className="p-6 border shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
               </div>
-            </Card>
-          </TabsContent>
-
-          {/* Users Tab */}
-          <TabsContent value="users">
-            <Card className="p-6">
-              <div className="space-y-4">
-                {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div>
-                      <div className="font-medium text-[#1B3A5C]">
-                        {user.full_name || user.email}
-                      </div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline">{user.role}</Badge>
-                      {user.is_active ? (
-                        <Badge className="bg-green-100 text-green-800">Active</Badge>
-                      ) : (
-                        <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div>
+                <p className="text-sm text-gray-500">Total Leads</p>
+                <p className="text-2xl font-bold text-[#1B3A5C]">{stats.totalLeads}</p>
               </div>
-            </Card>
-          </TabsContent>
+            </div>
+          </Card>
 
-          {/* Integrations Tab */}
-          <TabsContent value="integrations">
-            <Card className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-[#1B3A5C]">BayMo Integration</h3>
-                    {client.bamo_connected ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Connected
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-gray-100 text-gray-800">
-                        <XCircle className="w-3 h-3 mr-1" />
-                        Not Connected
-                      </Badge>
-                    )}
-                  </div>
+          <Card className="p-6 border shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">New Today</p>
+                <p className="text-2xl font-bold text-[#1B3A5C]">{stats.newToday}</p>
+              </div>
+            </div>
+          </Card>
 
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="mb-2">BayMo API Key</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            type={showBamoKey ? "text" : "password"}
-                            value={client.bamo_api_key || "—"}
-                            readOnly
-                          />
-                          {client.bamo_api_key && (
-                            <button
-                              onClick={() => setShowBamoKey(!showBamoKey)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2"
-                            >
-                              {showBamoKey ? (
-                                <EyeOff className="w-4 h-4 text-gray-400" />
-                              ) : (
-                                <Eye className="w-4 h-4 text-gray-400" />
-                              )}
-                            </button>
-                          )}
+          <Card className="p-6 border shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-50 rounded-lg">
+                <Flame className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Hot Leads</p>
+                <p className="text-2xl font-bold text-[#1B3A5C]">{stats.hotLeads}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Leads List */}
+        <Card className="border shadow-sm">
+          <div className="p-6 border-b">
+            <h2 className="text-xl font-semibold text-[#1B3A5C]">Leads</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Temperature
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Source
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {leads.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                      No leads found for this client
+                    </td>
+                  </tr>
+                ) : (
+                  leads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{lead.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {lead.email || '—'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {lead.phone || '—'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge className="bg-blue-100 text-blue-800">
+                          {lead.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge
+                          className={
+                            lead.lead_temperature === 'Hot'
+                              ? 'bg-red-100 text-red-800'
+                              : lead.lead_temperature === 'Warm'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }
+                        >
+                          {lead.lead_temperature}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {lead.source || '—'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(lead.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Recent Conversations */}
+        <Card className="border shadow-sm">
+          <div className="p-6 border-b">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-[#E87722]" />
+              <h2 className="text-xl font-semibold text-[#1B3A5C]">Recent Conversations</h2>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Lead
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Channel
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Direction
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Message Preview
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {conversations.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                      No conversations found for this client
+                    </td>
+                  </tr>
+                ) : (
+                  conversations.slice(0, 10).map((conv) => (
+                    <tr key={conv.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">
+                          {conv.leads?.name || 'Unknown'}
                         </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="mb-2">BayMo Webhook URL</Label>
-                      <Input value={client.bamo_webhook_url || "—"} readOnly />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge className="bg-purple-100 text-purple-800">
+                          {conv.channel}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge
+                          className={
+                            conv.direction === 'outbound'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
+                          }
+                        >
+                          {conv.direction}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 max-w-md truncate text-sm text-gray-500">
+                        {conv.message_content.substring(0, 80)}
+                        {conv.message_content.length > 80 ? '...' : ''}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(conv.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
     </DashboardLayout>
   );
