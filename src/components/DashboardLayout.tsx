@@ -14,19 +14,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadUserRole = async () => {
+    const checkAuth = async () => {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         router.push("/login");
         return;
       }
-
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
 
       if (profile) {
@@ -35,7 +33,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       setLoading(false);
     };
 
-    loadUserRole();
+    checkAuth();
   }, [router]);
 
   if (loading) {
