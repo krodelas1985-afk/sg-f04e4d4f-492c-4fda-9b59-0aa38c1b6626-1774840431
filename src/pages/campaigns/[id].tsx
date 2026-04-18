@@ -6,11 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, GripVertical, Lock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
 export default function CampaignDetailPage() {
@@ -62,6 +61,14 @@ export default function CampaignDetailPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
   const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
+  const [campaignRules, setCampaignRules] = useState<any>({
+    language: "Filipino",
+    sending_hours_start: "08:00",
+    sending_hours_end: "21:00",
+    dos: [],
+    donts: [],
+    temperature_rules: {}
+  });
 
   useEffect(() => {
     if (id) {
@@ -95,6 +102,16 @@ export default function CampaignDetailPage() {
       setIsLocked(data.is_locked || false);
       setScheduledStepsEnabled(data.scheduled_steps_enabled ?? true);
       setConversationalAiEnabled(data.conversational_ai_enabled ?? false);
+      if (data.campaign_rules) {
+        setCampaignRules({
+          language: data.campaign_rules.language || "Filipino",
+          sending_hours_start: data.campaign_rules.sending_hours_start || "08:00",
+          sending_hours_end: data.campaign_rules.sending_hours_end || "21:00",
+          dos: data.campaign_rules.dos || [],
+          donts: data.campaign_rules.donts || [],
+          temperature_rules: data.campaign_rules.temperature_rules || {}
+        });
+      }
       setCurrency(data.currency || "PHP");
       setStartDate(data.start_date ? data.start_date.split('T')[0] : "");
       setEndDate(data.end_date ? data.end_date.split('T')[0] : "");
@@ -225,6 +242,7 @@ export default function CampaignDetailPage() {
         target_industries: targetIndustries,
         scheduled_steps_enabled: scheduledStepsEnabled,
         conversational_ai_enabled: conversationalAiEnabled,
+        campaign_rules: campaignRules,
         job_titles: jobTitles,
         config: {
           target_audience: {
@@ -624,6 +642,116 @@ export default function CampaignDetailPage() {
 
           <Card>
             <CardHeader>
+              <CardTitle>Section 8b: Campaign Rules</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+
+              <div className="space-y-2">
+                <Label>Reply Language</Label>
+                <Select
+                  value={campaignRules.language}
+                  onValueChange={val => setCampaignRules({ ...campaignRules, language: val })}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Filipino">Filipino</SelectItem>
+                    <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="Taglish">Taglish</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">The language BayMo will use when replying to leads in this campaign.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sending Hours</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="time"
+                    value={campaignRules.sending_hours_start}
+                    onChange={e => setCampaignRules({ ...campaignRules, sending_hours_start: e.target.value })}
+                    disabled={!canEdit}
+                    className="w-36"
+                  />
+                  <span className="text-slate-500">to</span>
+                  <Input
+                    type="time"
+                    value={campaignRules.sending_hours_end}
+                    onChange={e => setCampaignRules({ ...campaignRules, sending_hours_end: e.target.value })}
+                    disabled={!canEdit}
+                    className="w-36"
+                  />
+                </div>
+                <p className="text-xs text-slate-500">BayMo will only send messages within these hours.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Do's — things BayMo should always do</Label>
+                {(campaignRules.dos || []).map((item: string, i: number) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      value={item}
+                      onChange={e => {
+                        const updated = [...campaignRules.dos];
+                        updated[i] = e.target.value;
+                        setCampaignRules({ ...campaignRules, dos: updated });
+                      }}
+                      disabled={!canEdit}
+                      placeholder="e.g. Always greet the lead by first name"
+                    />
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        const updated = campaignRules.dos.filter((_: string, idx: number) => idx !== i);
+                        setCampaignRules({ ...campaignRules, dos: updated });
+                      }}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {canEdit && (
+                  <Button variant="outline" onClick={() => setCampaignRules({ ...campaignRules, dos: [...(campaignRules.dos || []), ""] })}>
+                    <Plus className="w-4 h-4 mr-2" />Add Do
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Don'ts — things BayMo should never do</Label>
+                {(campaignRules.donts || []).map((item: string, i: number) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      value={item}
+                      onChange={e => {
+                        const updated = [...campaignRules.donts];
+                        updated[i] = e.target.value;
+                        setCampaignRules({ ...campaignRules, donts: updated });
+                      }}
+                      disabled={!canEdit}
+                      placeholder="e.g. Never discuss competitor properties"
+                    />
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        const updated = campaignRules.donts.filter((_: string, idx: number) => idx !== i);
+                        setCampaignRules({ ...campaignRules, donts: updated });
+                      }}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {canEdit && (
+                  <Button variant="outline" onClick={() => setCampaignRules({ ...campaignRules, donts: [...(campaignRules.donts || []), ""] })}>
+                    <Plus className="w-4 h-4 mr-2" />Add Don't
+                  </Button>
+                )}
+              </div>
+
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Section 9: Automation Mode</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -658,7 +786,7 @@ export default function CampaignDetailPage() {
           {profile?.role === "baymo_admin" && (
             <Card className="border-red-200 bg-red-50/50">
               <CardHeader>
-                <CardTitle className="text-red-700">Section 10: Lock Campaign</CardTitle>
+                <CardTitle className="text-red-700">Section 11: Lock Campaign</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
