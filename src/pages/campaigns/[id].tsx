@@ -60,6 +60,8 @@ export default function CampaignDetailPage() {
   const [sourceDetail, setSourceDetail] = useState("");
   
   const [isLocked, setIsLocked] = useState(false);
+  const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
+  const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -91,6 +93,8 @@ export default function CampaignDetailPage() {
       setStatus(data.status || "draft");
       setTargetAction(data.target_action || "");
       setIsLocked(data.is_locked || false);
+      setScheduledStepsEnabled(data.scheduled_steps_enabled ?? true);
+      setConversationalAiEnabled(data.conversational_ai_enabled ?? false);
       setCurrency(data.currency || "PHP");
       setStartDate(data.start_date ? data.start_date.split('T')[0] : "");
       setEndDate(data.end_date ? data.end_date.split('T')[0] : "");
@@ -219,6 +223,8 @@ export default function CampaignDetailPage() {
         success_metric: successMetric || null,
         source_detail: sourceDetail || null,
         target_industries: targetIndustries,
+        scheduled_steps_enabled: scheduledStepsEnabled,
+        conversational_ai_enabled: conversationalAiEnabled,
         job_titles: jobTitles,
         config: {
           target_audience: {
@@ -616,10 +622,43 @@ export default function CampaignDetailPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>Section 9: Automation Mode</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Enable Scheduled Campaign Steps</h4>
+                  <p className="text-sm text-slate-500">BayMo will automatically send messages to leads on the schedule defined in the Step Builder.</p>
+                </div>
+                <Switch
+                  checked={scheduledStepsEnabled}
+                  onCheckedChange={setScheduledStepsEnabled}
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Enable Conversational AI Replies</h4>
+                  <p className="text-sm text-slate-500">BayMo will automatically reply to inbound messages from leads enrolled in this campaign, using the campaign knowledge base and rules as its guide.</p>
+                  {conversationalAiEnabled && (
+                    <p className="text-xs text-blue-600 mt-1">When active, BayMo will respond to lead messages automatically. Agents can remove automation per lead from the Lead Profile.</p>
+                  )}
+                </div>
+                <Switch
+                  checked={conversationalAiEnabled}
+                  onCheckedChange={setConversationalAiEnabled}
+                  disabled={!canEdit}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {profile?.role === "baymo_admin" && (
             <Card className="border-red-200 bg-red-50/50">
               <CardHeader>
-                <CardTitle className="text-red-700">Section 9: Lock Campaign</CardTitle>
+                <CardTitle className="text-red-700">Section 10: Lock Campaign</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
