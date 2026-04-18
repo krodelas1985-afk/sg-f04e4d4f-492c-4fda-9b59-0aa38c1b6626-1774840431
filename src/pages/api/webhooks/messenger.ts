@@ -156,6 +156,177 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .eq("id", leadId);
 
             console.log(`Successfully processed message from PSID: ${psid}`);
+
+            // ─────────────────────────────────────────
+            // CONVERSATIONAL AI — Auto-reply if enabled
+            // ─────────────────────────────────────────
+
+            try {
+              // Check if lead has an active campaign with conversational AI enabled
+              const { data: leadCampaignState } = await supabase
+                .from('lead_campaign_states')
+                .select(`
+                  id,
+                  campaign_id,
+                  conversational_ai,
+                  campaign:campaigns (
+                    id,
+                    name,
+                    target_action,
+                    additional_instructions,
+                    campaign_rules,
+                    conversational_ai_enabled,
+                    tone,
+                    status
+                  ),
+                  client:clients (
+                    id,
+                    company_name,
+                    business_industry,
+                    business_type
+                  )
+                `)
+                .eq('lead_id', leadId)
+                .eq('client_id', bamoClientId)
+                .eq('state', 'active')
+                .maybeSingle();
+
+              const campaign = leadCampaignState?.campaign as any;
+              const clientData = leadCampaignState?.client as any;
+
+              const shouldReply =
+                leadCampaignState &&
+                leadCampaignState.conversational_ai === true &&
+                campaign?.conversational_ai_enabled === true &&
+                campaign?.status === 'active';
+
+              if (shouldReply) {
+                // Fetch knowledge base for this campaign
+                const { data: knowledgeBaseEntries } = await supabase
+                  .from('campaign_knowledge_base')
+                  .select('title, content')
+                  .eq('campaign_id', leadCampaignState.campaign_id)
+                  .eq('client_id', bamoClientId)
+                  .eq('is_active', true);
+
+                // Fetch recent conversation history
+                const { data: recentConversations } = await supabase
+                  .from('conversations')
+                  .select('sender, message_content, direction, created_at')
+                  .eq('lead_id', leadId)
+                  .eq('client_id', bamoClientId)
+                  .neq('channel', 'system')
+                  .order('created_at', { ascending: false })
+                  .limit(10);
+
+                const conversationHistory = (recentConversations || [])
+                  .reverse()
+                  .map((c: any) =>
+                    `[${c.direction === 'inbound' ? 'LEAD' : 'BAYMO/AGENT'}]: ${c.message_content}`
+                  )
+                  .join('\n');
+
+                const kbSection = knowledgeBaseEntries && knowledgeBaseEntries.length > 0
+                  ? knowledgeBaseEntries.map((kb: any) => `[${kb.title}]\n${kb.content}`).join('\n\n')
+                  : '(No knowledge base configured)';
+
+                const rules = campaign?.campaign_rules || {};
+                const language = rules.language || campaign?.tone || 'Follow the lead\'s language';
+                const tone = rules.tone || 'warm and friendly';
+                const dos = rules.dos?.map((d: string) => `✓ ${d}`).join('\n') || '';
+                const donts = rules.donts?.map((d: string) => `✗ ${d}`).join('\n') || '';
+                const additional = rules.additional || campaign?.additional_instructions || '';
+
+                const businessName = clientData?.company_name || 'this business';
+                const businessContext = [clientData?.business_industry, clientData?.business_type]
+                  .filter(Boolean).join(' — ');
+
+                const prompt = `You are BayMo, an AI assistant for ${businessName}${businessContext ? `, a ${businessContext}` : ''}.
+
+=== KNOWLEDGE BASE ===
+${kbSection}
+
+=== CAMPAIGN RULES ===
+Language: ${language}
+Tone: ${tone}
+${dos ? `\nDO:\n${dos}` : ''}
+${donts ? `\nDO NOT:\n${donts}` : ''}
+${additional ? `\nAdditional rules: ${additional}` : ''}
+
+=== CAMPAIGN GOAL ===
+${campaign?.target_action || 'Assist the lead and guide them toward the next step.'}
+
+=== RECENT CONVERSATION ===
+${conversationHistory || '(No previous conversation)'}
+
+=== LEAD JUST SENT ===
+${messageText}
+
+=== YOUR TASK ===
+The lead just sent a message. Read the knowledge base and reply helpfully following all campaign rules.
+If the lead is asking to stop or shows anger, reply politely and say a human agent will follow up.
+If the lead shows a strong buying signal or requests a viewing, acknowledge warmly and say an agent will reach out shortly.
+
+Reply with ONLY the message to send — no labels, no preamble, just the message text.`;
+
+                const openAIKey = process.env.OPENAI_API_KEY;
+                if (openAIKey) {
+                  const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                      model: 'gpt-4o',
+                      messages: [{ role: 'user', content: prompt }],
+                      max_tokens: 300,
+                      temperature: 0.4,
+                    }),
+                  });
+
+                  const aiData = await aiResponse.json();
+                  const replyText = aiData.choices?.[0]?.message?.content?.trim();
+
+                  if (replyText) {
+                    // Send reply via FB Messenger
+                    const fbToken = process.env.FB_PAGE_ACCESS_TOKEN;
+                    if (fbToken) {
+                      await fetch(
+                        `https://graph.facebook.com/v19.0/me/messages?access_token=${fbToken}`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            recipient: { id: psid },
+                            message: { text: replyText },
+                            messaging_type: 'RESPONSE',
+                          }),
+                        }
+                      );
+
+                      // Log the AI reply to conversations
+                      await supabase.from('conversations').insert({
+                        lead_id: leadId,
+                        client_id: bamoClientId,
+                        sender: 'baymo',
+                        direction: 'outbound',
+                        channel: 'messenger',
+                        message_content: replyText,
+                        sent_via: 'facebook_api',
+                        delivery_status: 'sent',
+                      });
+
+                      console.log(`✅ Conversational AI replied to PSID: ${psid}`);
+                    }
+                  }
+                }
+              }
+            } catch (aiError) {
+              console.error('❌ Conversational AI error:', aiError);
+              // Never fail the webhook due to AI errors
+            }
+
           } catch (messageError) {
             console.error("Error processing individual message:", messageError);
             // Continue processing other messages
