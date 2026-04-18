@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, GripVertical } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
+import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function CampaignDetailPage() {
   const router = useRouter();
