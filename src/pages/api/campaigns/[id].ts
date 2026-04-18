@@ -89,7 +89,12 @@ export default async function handler(
       success_metric,
       source_detail,
       target_industries,
-      job_titles
+      job_titles,
+      campaign_rules,
+      enrollment_rules,
+      priority,
+      scheduled_steps_enabled,
+      conversational_ai_enabled
     } = req.body;
 
     // Fetch the campaign first to check permissions
@@ -139,6 +144,11 @@ export default async function handler(
     if (source_detail !== undefined) updateData.source_detail = source_detail;
     if (target_industries !== undefined) updateData.target_industries = Array.isArray(target_industries) ? target_industries : [];
     if (job_titles !== undefined) updateData.job_titles = Array.isArray(job_titles) ? job_titles : [];
+    if (campaign_rules !== undefined) updateData.campaign_rules = campaign_rules;
+    if (enrollment_rules !== undefined) updateData.enrollment_rules = enrollment_rules;
+    if (priority !== undefined) updateData.priority = priority;
+    if (scheduled_steps_enabled !== undefined) updateData.scheduled_steps_enabled = scheduled_steps_enabled;
+    if (conversational_ai_enabled !== undefined) updateData.conversational_ai_enabled = conversational_ai_enabled;
     
     // Only baymo_admin can update is_locked
     if (is_locked !== undefined && profile.role === "baymo_admin") {
