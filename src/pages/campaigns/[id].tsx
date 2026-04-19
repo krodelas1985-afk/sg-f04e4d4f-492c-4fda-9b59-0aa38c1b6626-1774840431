@@ -63,6 +63,10 @@ export default function CampaignDetailPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
   const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
+  const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
+  const [kbTitle, setKbTitle] = useState("");
+  const [kbContent, setKbContent] = useState("");
+  const [kbSaving, setKbSaving] = useState(false);
   const [enrollmentRules, setEnrollmentRules] = useState<any>({
     sources: [],
     fb_ad_id: "",
@@ -159,6 +163,13 @@ export default function CampaignDetailPage() {
       setEmailSources(emailTriggers.allowed_sources || []);
       setEmailTemplateId(emailTriggers.template_id || "");
 
+      // Fetch knowledge base
+      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
+      if (kbRes.ok) {
+        const kbData = await kbRes.json();
+        setKnowledgeBase(kbData);
+      }
+
       // Fetch templates
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
       if (tRes.ok) {
@@ -238,6 +249,47 @@ export default function CampaignDetailPage() {
       setEmailSources(emailSources.filter(s => s !== source));
     } else {
       setEmailSources([...emailSources, source]);
+    }
+  };
+
+  const handleAddKbEntry = async () => {
+    if (!kbTitle.trim() || !kbContent.trim()) {
+      toast({ title: "Error", description: "Title and content are required", variant: "destructive" });
+      return;
+    }
+    try {
+      setKbSaving(true);
+      const res = await fetch(`/api/campaigns/${id}/knowledge-base`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim() })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add entry");
+      }
+      setKbTitle("");
+      setKbContent("");
+      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
+      if (kbRes.ok) setKnowledgeBase(await kbRes.json());
+      toast({ title: "Knowledge base entry added" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setKbSaving(false);
+    }
+  };
+
+  const handleDeleteKbEntry = async (entryId: string) => {
+    try {
+      const res = await fetch(`/api/campaigns/${id}/knowledge-base?entry_id=${entryId}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("Failed to delete entry");
+      setKnowledgeBase(prev => prev.filter(e => e.id !== entryId));
+      toast({ title: "Entry removed" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -616,50 +668,72 @@ export default function CampaignDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Section 8: Email Triggers</CardTitle>
+              <CardTitle>Section 7b: Knowledge Base</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="email-trigger" 
-                  checked={emailEnabled} 
-                  onCheckedChange={setEmailEnabled}
-                  disabled={!canEdit}
-                />
-                <Label htmlFor="email-trigger">Enable Email Triggers</Label>
-              </div>
-              
-              {emailEnabled && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Allowed Sources</Label>
-                    <div className="flex flex-wrap gap-4">
-                      {["webform", "bamo", "facebook", "linkedin", "manual", "all"].map(src => (
-                        <div key={src} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`src-${src}`} 
-                            checked={emailSources.includes(src)}
-                            onCheckedChange={() => toggleEmailSource(src)}
-                            disabled={!canEdit}
-                          />
-                          <Label htmlFor={`src-${src}`} className="capitalize">{src}</Label>
+            <CardContent className="space-y-6">
+              <p className="text-sm text-slate-500">
+                Add reference material that BayMo will use when replying to leads — 
+                property details, FAQs, pricing, policies, and anything else 
+                the AI should know about.
+              </p>
+
+              {knowledgeBase.length > 0 && (
+                <div className="space-y-3">
+                  {knowledgeBase.map(entry => (
+                    <div key={entry.id} className="border rounded-lg p-4 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{entry.title}</p>
+                          <p className="text-sm text-slate-500 mt-1 whitespace-pre-wrap">{entry.content}</p>
                         </div>
-                      ))}
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteKbEntry(entry.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              )}
+
+              {knowledgeBase.length === 0 && (
+                <div className="text-center py-6 text-slate-400 text-sm border border-dashed rounded-lg">
+                  No knowledge base entries yet. Add your first entry below.
+                </div>
+              )}
+
+              {canEdit && (
+                <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
+                  <p className="text-sm font-medium">Add New Entry</p>
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input
+                      value={kbTitle}
+                      onChange={e => setKbTitle(e.target.value)}
+                      placeholder="e.g. Property FAQs, Pricing Guide, Payment Terms"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email Template</Label>
-                    <Select value={emailTemplateId} onValueChange={setEmailTemplateId} disabled={!canEdit}>
-                      <SelectTrigger><SelectValue placeholder="Select template" /></SelectTrigger>
-                      <SelectContent>
-                        {templates.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Content</Label>
+                    <Textarea
+                      value={kbContent}
+                      onChange={e => setKbContent(e.target.value)}
+                      rows={4}
+                      placeholder="Enter the reference content BayMo should use when replying..."
+                    />
                   </div>
-                </>
+                  <Button onClick={handleAddKbEntry} disabled={kbSaving}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {kbSaving ? "Adding..." : "Add Entry"}
+                  </Button>
+                </div>
               )}
+
             </CardContent>
           </Card>
 
