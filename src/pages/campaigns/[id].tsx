@@ -726,6 +726,108 @@ export default function CampaignDetailPage() {
 
           <Card>
             <CardHeader>
+              <CardTitle>Section 7a: Step Builder</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-sm text-slate-500">Define the sequence of messages BayMo will send to leads enrolled in this campaign.</p>
+
+              {campaignSteps.length > 0 && (
+                <div className="space-y-3">
+                  {campaignSteps.map((step, index) => (
+                    <div key={step.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded-full">Step {index + 1}</span>
+                            <span className="text-xs font-medium capitalize text-slate-600">{step.step_type === "notify_agent" ? "Notify Agent" : step.step_type}</span>
+                            {step.step_type === "message" && <span className="text-xs text-slate-400 capitalize">via {step.channel}</span>}
+                            <span className="text-xs text-slate-400">· {step.delay_hours === 0 ? "Immediately" : `After ${step.delay_hours}h`}</span>
+                          </div>
+                          {step.step_type === "message" && step.message_template && <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{step.message_template}</p>}
+                          {step.step_type === "notify_agent" && step.notification_message && <p className="text-sm text-slate-600 mt-1">{step.notification_message}</p>}
+                          {step.step_type === "message" && <p className="text-xs text-slate-400">AI screen: {step.ai_screen_before_send ? "ON" : "OFF"}</p>}
+                        </div>
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteStep(step.id)}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {campaignSteps.length === 0 && (
+                <div className="text-center py-6 text-slate-400 text-sm border border-dashed rounded-lg">No steps yet. Add your first step below.</div>
+              )}
+
+              {canEdit && (
+                <div className="border rounded-lg p-4 space-y-4 bg-slate-50">
+                  <p className="text-sm font-medium">Add New Step</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Step Type</Label>
+                      <Select value={newStep.step_type} onValueChange={val => setNewStep({ ...newStep, step_type: val })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="message">Message</SelectItem>
+                          <SelectItem value="wait">Wait</SelectItem>
+                          <SelectItem value="notify_agent">Notify Agent</SelectItem>
+                          <SelectItem value="stop">Stop Campaign</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Delay (hours)</Label>
+                      <Input type="number" min={0} value={newStep.delay_hours} onChange={e => setNewStep({ ...newStep, delay_hours: Number(e.target.value) })} placeholder="e.g. 24" />
+                    </div>
+                  </div>
+                  {newStep.step_type === "message" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Channel</Label>
+                        <Select value={newStep.channel} onValueChange={val => setNewStep({ ...newStep, channel: val })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="messenger">Facebook Messenger</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="sms">SMS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Message</Label>
+                        <Textarea value={newStep.message_template} onChange={e => setNewStep({ ...newStep, message_template: e.target.value })} rows={4} placeholder="Type the message BayMo will send. Use {first_name} to personalize." />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch checked={newStep.ai_screen_before_send} onCheckedChange={val => setNewStep({ ...newStep, ai_screen_before_send: val })} />
+                        <div>
+                          <p className="text-sm font-medium">AI screen before sending</p>
+                          <p className="text-xs text-slate-500">BayMo will review the conversation before sending — may skip if lead already responded.</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {newStep.step_type === "notify_agent" && (
+                    <div className="space-y-2">
+                      <Label>Notification Message</Label>
+                      <Input value={newStep.notification_message} onChange={e => setNewStep({ ...newStep, notification_message: e.target.value })} placeholder="e.g. Lead has not replied after 3 follow-ups — please call" />
+                    </div>
+                  )}
+                  {newStep.step_type === "stop" && <p className="text-sm text-slate-500">This step will stop the campaign for this lead. No further steps will execute.</p>}
+                  {newStep.step_type === "wait" && <p className="text-sm text-slate-500">This step pauses the sequence for the delay period above before continuing.</p>}
+                  <Button onClick={handleAddStep} disabled={stepsSaving}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {stepsSaving ? "Adding..." : "Add Step"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Section 7b: Knowledge Base</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
