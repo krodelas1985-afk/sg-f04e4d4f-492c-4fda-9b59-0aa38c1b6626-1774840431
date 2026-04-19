@@ -20,20 +20,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "GET") {
-    try {
-      const { data, error } = await supabase
-        .from("campaign_steps")
-        .select("*")
-        .eq("campaign_id", id)
-        .eq("is_active", true)
-        .order("step_order", { ascending: true });
+    const { data, error } = await supabase
+      .from("campaign_steps")
+      .select("*")
+      .eq("campaign_id", id)
+      .eq("is_active", true)
+      .order("step_order", { ascending: true });
 
-      if (error) throw error;
-      return res.status(200).json(data || []);
-    } catch (error: any) {
-      console.error("Error fetching campaign steps:", error);
-      return res.status(500).json({ error: error.message || "Failed to fetch steps" });
-    }
+    if (error) return res.status(200).json([]);
+
+    return res.status(200).json(data ?? []);
   }
 
   if (req.method === "POST") {
