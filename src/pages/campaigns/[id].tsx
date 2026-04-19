@@ -63,6 +63,15 @@ export default function CampaignDetailPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
   const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
+  const [enrollmentRules, setEnrollmentRules] = useState<any>({
+    sources: [],
+    fb_ad_id: "",
+    webform_id: "",
+    sms_number: "",
+    new_leads_only: true,
+    skip_if_active_campaign: true,
+    returning_lead_threshold_days: 180
+  });
   const [campaignRules, setCampaignRules] = useState<any>({
     language: "Filipino",
     sending_hours_start: "08:00",
@@ -104,6 +113,17 @@ export default function CampaignDetailPage() {
       setIsLocked(data.is_locked || false);
       setScheduledStepsEnabled(data.scheduled_steps_enabled ?? true);
       setConversationalAiEnabled(data.conversational_ai_enabled ?? false);
+      if (data.enrollment_rules) {
+        setEnrollmentRules({
+          sources: data.enrollment_rules.sources || [],
+          fb_ad_id: data.enrollment_rules.fb_ad_id || "",
+          webform_id: data.enrollment_rules.webform_id || "",
+          sms_number: data.enrollment_rules.sms_number || "",
+          new_leads_only: data.enrollment_rules.new_leads_only ?? true,
+          skip_if_active_campaign: data.enrollment_rules.skip_if_active_campaign ?? true,
+          returning_lead_threshold_days: data.enrollment_rules.returning_lead_threshold_days || 180
+        });
+      }
       if (data.campaign_rules) {
         setCampaignRules({
           language: data.campaign_rules.language || "Filipino",
@@ -244,6 +264,7 @@ export default function CampaignDetailPage() {
         target_industries: targetIndustries,
         scheduled_steps_enabled: scheduledStepsEnabled,
         conversational_ai_enabled: conversationalAiEnabled,
+        enrollment_rules: enrollmentRules,
         campaign_rules: campaignRules,
         job_titles: jobTitles,
         config: {
@@ -639,6 +660,99 @@ export default function CampaignDetailPage() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Section 8a: Enrollment Triggers</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+
+              <div className="space-y-3">
+                <Label>Lead Source — which channels enroll leads into this campaign</Label>
+                <div className="space-y-3">
+                  {[
+                    { key: "messenger", label: "Facebook Messenger", idField: "fb_ad_id", idLabel: "FB Ad ID (optional)", idPlaceholder: "e.g. 1234567890" },
+                    { key: "webform", label: "Webform", idField: "webform_id", idLabel: "Webform ID (optional)", idPlaceholder: "e.g. contact-form-1" },
+                    { key: "sms", label: "SMS", idField: "sms_number", idLabel: "SMS Number (optional)", idPlaceholder: "e.g. +639XXXXXXXXX" },
+                    { key: "bamo", label: "BaMo Marketplace", idField: null, idLabel: null, idPlaceholder: null },
+                    { key: "manual", label: "Manual (agent adds lead)", idField: null, idLabel: null, idPlaceholder: null },
+                  ].map(src => (
+                    <div key={src.key} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`src-${src.key}`}
+                          checked={(enrollmentRules.sources || []).includes(src.key)}
+                          onCheckedChange={(checked) => {
+                            const updated = checked
+                              ? [...(enrollmentRules.sources || []), src.key]
+                              : (enrollmentRules.sources || []).filter((s: string) => s !== src.key);
+                            setEnrollmentRules({ ...enrollmentRules, sources: updated });
+                          }}
+                          disabled={!canEdit}
+                        />
+                        <Label htmlFor={`src-${src.key}`} className="font-medium">{src.label}</Label>
+                      </div>
+                      {src.idField && (enrollmentRules.sources || []).includes(src.key) && (
+                        <div className="ml-6 space-y-1">
+                          <Label className="text-xs text-slate-500">{src.idLabel}</Label>
+                          <Input
+                            value={enrollmentRules[src.idField] || ""}
+                            onChange={e => setEnrollmentRules({ ...enrollmentRules, [src.idField!]: e.target.value })}
+                            placeholder={src.idPlaceholder || ""}
+                            disabled={!canEdit}
+                            className="max-w-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">Select all sources whose leads should be auto-enrolled in this campaign.</p>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Auto-Enroll Rules</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={enrollmentRules.new_leads_only}
+                      onCheckedChange={val => setEnrollmentRules({ ...enrollmentRules, new_leads_only: val })}
+                      disabled={!canEdit}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">New leads only</p>
+                      <p className="text-xs text-slate-500">Only enroll leads that have never been in BayMo before.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={enrollmentRules.skip_if_active_campaign}
+                      onCheckedChange={val => setEnrollmentRules({ ...enrollmentRules, skip_if_active_campaign: val })}
+                      disabled={!canEdit}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Skip if already in an active campaign</p>
+                      <p className="text-xs text-slate-500">Do not enroll leads that are currently active in another campaign.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Returning Lead Threshold (days)</Label>
+                <Input
+                  type="number"
+                  value={enrollmentRules.returning_lead_threshold_days}
+                  onChange={e => setEnrollmentRules({ ...enrollmentRules, returning_lead_threshold_days: Number(e.target.value) })}
+                  disabled={!canEdit}
+                  className="max-w-xs"
+                  min={1}
+                />
+                <p className="text-xs text-slate-500">If a returning lead has not been contacted in this many days, notify the agent instead of auto-enrolling.</p>
+              </div>
+
             </CardContent>
           </Card>
 
