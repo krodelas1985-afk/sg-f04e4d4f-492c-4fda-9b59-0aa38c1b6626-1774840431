@@ -63,6 +63,16 @@ export default function CampaignDetailPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
   const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
+  const [campaignSteps, setCampaignSteps] = useState<any[]>([]);
+  const [stepsSaving, setStepsSaving] = useState(false);
+  const [newStep, setNewStep] = useState<any>({
+    step_type: "message",
+    delay_hours: 24,
+    channel: "messenger",
+    message_template: "",
+    ai_screen_before_send: true,
+    notification_message: ""
+  });
   const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
   const [kbTitle, setKbTitle] = useState("");
   const [kbContent, setKbContent] = useState("");
@@ -163,6 +173,12 @@ export default function CampaignDetailPage() {
       setEmailSources(emailTriggers.allowed_sources || []);
       setEmailTemplateId(emailTriggers.template_id || "");
 
+      const stepsRes = await fetch(`/api/campaigns/${id}/steps`);
+      if (stepsRes.ok) {
+        const stepsData = await stepsRes.json();
+        setCampaignSteps(stepsData);
+      }
+
       // Fetch knowledge base
       const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
       if (kbRes.ok) {
@@ -249,6 +265,48 @@ export default function CampaignDetailPage() {
       setEmailSources(emailSources.filter(s => s !== source));
     } else {
       setEmailSources([...emailSources, source]);
+    }
+  };
+
+  const handleAddStep = async () => {
+    if (newStep.step_type === "message" && !newStep.message_template.trim()) {
+      toast({ title: "Error", description: "Message content is required", variant: "destructive" });
+      return;
+    }
+    if (newStep.step_type === "notify_agent" && !newStep.notification_message.trim()) {
+      toast({ title: "Error", description: "Notification message is required", variant: "destructive" });
+      return;
+    }
+    try {
+      setStepsSaving(true);
+      const res = await fetch(`/api/campaigns/${id}/steps`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStep)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add step");
+      }
+      setNewStep({ step_type: "message", delay_hours: 24, channel: "messenger", message_template: "", ai_screen_before_send: true, notification_message: "" });
+      const stepsRes = await fetch(`/api/campaigns/${id}/steps`);
+      if (stepsRes.ok) setCampaignSteps(await stepsRes.json());
+      toast({ title: "Step added" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setStepsSaving(false);
+    }
+  };
+
+  const handleDeleteStep = async (stepId: string) => {
+    try {
+      const res = await fetch(`/api/campaigns/${id}/steps?step_id=${stepId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete step");
+      setCampaignSteps(prev => prev.filter(s => s.id !== stepId));
+      toast({ title: "Step removed" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
