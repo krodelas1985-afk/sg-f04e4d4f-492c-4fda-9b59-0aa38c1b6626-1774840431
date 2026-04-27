@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 
 export default function LeadDetailPage() {
   const router = useRouter();
@@ -189,137 +190,18 @@ export default function LeadDetailPage() {
     }
   };
 
-  const handleMetadataUpdate = async (field: string, value: any) => {
+  const handleAutomationToggle = async (enabled: boolean) => {
     try {
-      const supabase = createClient();
-      const newMetadata = { ...(lead?.metadata || {}), [field]: value };
-      await supabase.from("leads").update({ metadata: newMetadata }).eq("id", leadId);
-      setLead((prev: any) => ({ ...prev, metadata: newMetadata }));
-    } catch (err) {
-      console.error("Error updating metadata:", err);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
-
-    setSending(true);
-    try {
-      const channel = lead?.primary_channel || "email";
-      
-      if (channel === "email") {
-        const response = await fetch("/api/send/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: lead.email,
-            message: newMessage,
-            lead_id: leadId,
-          }),
-        });
-        
-        if (response.ok) {
-          setNewMessage("");
-          fetchMessages();
-        }
-      } else if (lead.messenger_id) {
-        const messengerResponse = await fetch("/api/send/messenger", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messenger_id: lead.messenger_id,
-            message: newMessage,
-            lead_id: leadId,
-            client_id: lead.client_id,
-          }),
-        });
-
-        const messengerData = await messengerResponse.json();
-
-        if (!messengerResponse.ok) {
-          throw new Error(messengerData.error?.message || messengerData.error || "Failed to send via Messenger");
-        }
-
-        setNewMessage("");
-        fetchMessages();
-      }
-    } catch (err) {
-      console.error("Error sending message:", err);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleAISuggest = async () => {
-    setAiSuggesting(true);
-    try {
-      const response = await fetch("/api/ai/suggest-reply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lead_id: leadId }),
-      });
-      
-      const data = await response.json();
-      setNewMessage(data.suggestion || "");
-    } catch (err) {
-      console.error("Error getting AI suggestion:", err);
-    } finally {
-      setAiSuggesting(false);
-    }
-  };
-
-  const handleCreateTask = async () => {
-    if (!newTask.title || !newTask.due_date) return;
-    
-    try {
-      const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
-
-      await supabase.from("tasks").insert({
-        lead_id: leadId,
-        client_id: lead.client_id,
-        title: newTask.title,
-        task_type: newTask.task_type,
-        due_date: newTask.due_date,
-        notes: newTask.notes,
-        status: "pending",
-        created_by: session.session?.user.id,
-        source: "Manual",
-      });
-      
-      setNewTask({ title: "", task_type: "follow_up", due_date: "", notes: "" });
-      setShowTaskForm(false);
-      fetchTasks();
-    } catch (err) {
-      console.error("Error creating task:", err);
-    }
-  };
-
-  const handleCompleteTask = async (taskId: string) => {
-    try {
-      const supabase = createClient();
-      await supabase.from("tasks").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", taskId);
-      fetchTasks();
-    } catch (err) {
-      console.error("Error completing task:", err);
-    }
-  };
-
-  const handleCampaignUpdate = async (newCampaignId: string | null) => {
-    try {
-      const response = await fetch(`/api/leads/${leadId}/campaign`, {
+      const response = await fetch(`/api/leads/${leadId}/automation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaign_id: newCampaignId }),
+        body: JSON.stringify({ automation_enabled: enabled }),
       });
       if (response.ok) {
-        setLead((prev: any) => ({ ...prev, campaign_id: newCampaignId }));
-        fetchLead();
+        setLead((prev: any) => ({ ...prev, automation_enabled: enabled }));
       }
     } catch (err) {
-      console.error('Error updating campaign:', err);
+      console.error('Error updating automation:', err);
     }
   };
 
@@ -372,7 +254,7 @@ export default function LeadDetailPage() {
   const upcoming = tasks.filter(t => t.status !== "completed" && new Date(t.due_date) > new Date());
   const completed = tasks.filter(t => t.status === "completed");
 
-  const automationMode = lead?.metadata?.automation_mode || "manual";
+  const automationMode = lead?.automation_enabled !== false ? "baymo" : "manual";
 
   return (
     <DashboardLayout>
@@ -528,18 +410,10 @@ export default function LeadDetailPage() {
                     <p className="text-sm text-gray-500">Let BaMo handle initial responses</p>
                   </div>
                   <div className="flex bg-white rounded-lg border p-1">
-                    <button 
-                      onClick={() => handleMetadataUpdate("automation_mode", "bamo")}
-                      className={`px-3 py-1.5 text-sm rounded-md transition-colors ${automationMode === "bamo" ? "bg-[#1B3A5C] text-white shadow" : "text-gray-600 hover:bg-gray-100"}`}
-                    >
-                      🤖 BaMo
-                    </button>
-                    <button 
-                      onClick={() => handleMetadataUpdate("automation_mode", "manual")}
-                      className={`px-3 py-1.5 text-sm rounded-md transition-colors ${automationMode === "manual" ? "bg-[#1B3A5C] text-white shadow" : "text-gray-600 hover:bg-gray-100"}`}
-                    >
-                      👤 Manual
-                    </button>
+                    <Switch
+                      checked={automationMode === "baymo"}
+                      onCheckedChange={handleAutomationToggle}
+                    />
                   </div>
                 </div>
               </div>
