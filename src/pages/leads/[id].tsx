@@ -205,6 +205,89 @@ export default function LeadDetailPage() {
     }
   };
 
+  const handleMetadataUpdate = async (field: string, value: any) => {
+    try {
+      const supabase = createClient();
+      const updatedMetadata = { ...(lead?.metadata || {}), [field]: value };
+      await supabase.from("leads").update({ metadata: updatedMetadata }).eq("id", leadId);
+      setLead((prev: any) => ({ ...prev, metadata: updatedMetadata }));
+    } catch (err) {
+      console.error("Error updating metadata:", err);
+    }
+  };
+
+  const handleCampaignUpdate = async (campaignId: string | null) => {
+    try {
+      const supabase = createClient();
+      await supabase.from("leads").update({ campaign_id: campaignId }).eq("id", leadId);
+      setLead((prev: any) => ({ ...prev, campaign_id: campaignId }));
+    } catch (err) {
+      console.error("Error updating campaign:", err);
+    }
+  };
+
+  const handleAISuggest = async () => {
+    setAiSuggesting(true);
+    setTimeout(() => {
+      setNewMessage("Hi there! I saw you were interested in our properties. Let me know if you have any questions.");
+      setAiSuggesting(false);
+    }, 1000);
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    setSending(true);
+    try {
+      const supabase = createClient();
+      await supabase.from("conversations").insert({
+        lead_id: leadId,
+        message_content: newMessage,
+        direction: "outbound",
+        sender: "agent",
+        channel: lead?.primary_channel || "email"
+      });
+      setNewMessage("");
+      fetchMessages();
+    } catch (err) {
+      console.error("Error sending message:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTask.title.trim() || !newTask.due_date) return;
+    try {
+      const supabase = createClient();
+      await supabase.from("tasks").insert({
+        lead_id: leadId,
+        title: newTask.title,
+        task_type: newTask.task_type,
+        due_date: newTask.due_date,
+        notes: newTask.notes,
+        status: "pending"
+      });
+      setShowTaskForm(false);
+      setNewTask({ title: "", task_type: "follow_up", due_date: "", notes: "" });
+      fetchTasks();
+    } catch (err) {
+      console.error("Error creating task:", err);
+    }
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const supabase = createClient();
+      await supabase.from("tasks").update({ 
+        status: "completed", 
+        completed_at: new Date().toISOString() 
+      }).eq("id", taskId);
+      fetchTasks();
+    } catch (err) {
+      console.error("Error completing task:", err);
+    }
+  };
+
   const getStageStyle = (stage: string) => {
     switch (stage) {
       case "Hot": return "bg-red-100 text-red-800";
@@ -299,10 +382,10 @@ export default function LeadDetailPage() {
               <Button 
                 variant="outline" 
                 className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10"
-                onClick={() => handleMetadataUpdate("automation_mode", automationMode === "bamo" ? "manual" : "bamo")}
+                onClick={() => handleAutomationToggle(automationMode !== "baymo")}
               >
                 <Bot className="w-4 h-4 mr-2" />
-                {automationMode === "bamo" ? "Disable Automation" : "Enable Automation"}
+                {automationMode === "baymo" ? "Disable Automation" : "Enable Automation"}
               </Button>
               
               <Select 
