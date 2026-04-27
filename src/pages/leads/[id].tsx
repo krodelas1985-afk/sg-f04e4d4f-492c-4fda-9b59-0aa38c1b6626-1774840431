@@ -206,14 +206,10 @@ export default function LeadDetailPage() {
   };
 
   const handleMetadataUpdate = async (field: string, value: any) => {
-    try {
-      const supabase = createClient();
-      const updatedMetadata = { ...(lead?.metadata || {}), [field]: value };
-      await supabase.from("leads").update({ metadata: updatedMetadata }).eq("id", leadId);
-      setLead((prev: any) => ({ ...prev, metadata: updatedMetadata }));
-    } catch (err) {
-      console.error("Error updating metadata:", err);
-    }
+    const supabase = createClient();
+    const newMetadata = { ...(lead?.metadata || {}), [field]: value };
+    await supabase.from("leads").update({ metadata: newMetadata }).eq("id", leadId);
+    setLead((prev: any) => ({ ...prev, metadata: newMetadata }));
   };
 
   const handleCampaignUpdate = async (campaignId: string | null) => {
