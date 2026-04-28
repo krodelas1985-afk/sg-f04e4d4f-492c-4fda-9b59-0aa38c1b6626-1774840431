@@ -98,7 +98,7 @@ export default function AdminOverview() {
       const res = await fetch("/api/admin/webhook-logs");
       if (res.ok) {
         const data = await res.json();
-        setWebhookLogs(data);
+        setWebhookLogs(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error("Error fetching webhook logs:", error);
@@ -112,7 +112,7 @@ export default function AdminOverview() {
       const res = await fetch("/api/admin/clients");
       if (res.ok) {
         const data = await res.json();
-        setClients(data);
+        setClients(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -124,7 +124,7 @@ export default function AdminOverview() {
       const res = await fetch("/api/campaigns");
       if (res.ok) {
         const data = await res.json();
-        setCampaigns(data);
+        setCampaigns(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -224,7 +224,7 @@ export default function AdminOverview() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {loading ? (
+                {logsLoading ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                       Loading...
