@@ -227,7 +227,7 @@ export default function AdminClientWorkspacePage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {data.leads.map((lead) => (
-                      <tr key={lead.id}>
+                      <tr    key={lead.id}    className="cursor-pointer hover:bg-gray-50"   onClick={() => window.open(`/leads/${lead.id}`, '_blank')} >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {lead.name}
                         </td>
