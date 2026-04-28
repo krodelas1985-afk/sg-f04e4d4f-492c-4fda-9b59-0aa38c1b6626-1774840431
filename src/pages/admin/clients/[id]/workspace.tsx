@@ -53,51 +53,47 @@ export default function AdminClientWorkspacePage() {
   const router = useRouter();
   const clientId = router.query.id as string;
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-  if (!router.isReady || !clientId) return;
+  useEffect(() => {
+    if (!router.isReady || !clientId) return;
 
-  const fetchWorkspaceData = async () => {
-    try {
-      // Wait for a valid session — retry up to 3 times
-      let session = null;
-      for (let i = 0; i < 5; i++) {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          session = data.session;
-          break;
+    const fetchWorkspaceData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          router.push("/login");
+          return;
         }
-        await new Promise((r) => setTimeout(r, 1000));
+
+        const response = await fetch(`/api/admin/clients/${clientId}/workspace`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const workspaceData = await response.json();
+          setData(workspaceData);
+        } else {
+          router.push("/admin/clients");
+        }
+      } catch (err) {
+        console.error("Error fetching workspace data:", err);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch(`/api/admin/clients/${clientId}/workspace`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.ok) {
-        const workspaceData = await response.json();
-        setData(workspaceData);
-      } else {
-        router.push("/admin/clients");
-      }
-    } catch (err) {
-      console.error("Error fetching workspace data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchWorkspaceData();
-}, [router.isReady, clientId]);
+    fetchWorkspaceData();
+  }, [router.isReady, clientId]);
 
   if (loading || !data) {
     return (
@@ -114,11 +110,11 @@ export default function AdminClientWorkspacePage() {
         <div className="mb-8">
           <Button
             variant="ghost"
-            onClick={() => router.push(`/admin/clients/${clientId}`)}
+            onClick={() => router.push(`/admin/clients`)}
             className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Client Details
+            Back to Clients
           </Button>
 
           <div className="flex items-center justify-between">
