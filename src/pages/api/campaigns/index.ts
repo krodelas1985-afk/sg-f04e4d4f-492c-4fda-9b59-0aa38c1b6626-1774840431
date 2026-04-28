@@ -57,7 +57,7 @@ export default async function handler(
         if (!profile.client_id) {
           return res.status(403).json({ error: "No client assigned" });
         }
-        query = query.eq("client_id", profile.client_id);
+        query = query.eq("client_id", profile.client_id).eq("is_active", true);
       }
       // If baymo_admin, fetch ALL campaigns (no client_id filter)
 
