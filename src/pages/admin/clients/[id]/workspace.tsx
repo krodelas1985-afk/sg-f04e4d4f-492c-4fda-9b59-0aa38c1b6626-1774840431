@@ -63,13 +63,13 @@ export default function AdminClientWorkspacePage() {
     try {
       // Wait for a valid session — retry up to 3 times
       let session = null;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 5; i++) {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           session = data.session;
           break;
         }
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 1000));
       }
 
       if (!session) {
