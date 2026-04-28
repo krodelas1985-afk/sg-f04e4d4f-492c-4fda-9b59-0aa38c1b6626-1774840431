@@ -84,3 +84,43 @@ export default function CampaignsPage() {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
+                <thead className="text-xs text-slate-500 bg-slate-50 border-b">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Name</th>
+                    <th className="px-6 py-4 font-medium">Channel</th>
+                    <th className="px-6 py-4 font-medium">Status</th>
+                    <th className="px-6 py-4 font-medium">Leads</th>
+                    <th className="px-6 py-4 font-medium">Created Date</th>
+                    <th className="px-6 py-4 font-medium">Locked</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map((c) => (
+                    <tr
+                      key={c.id}
+                      className="border-b hover:bg-slate-50 cursor-pointer"
+                      onClick={() => router.push(`/campaigns/${c.id}`)}
+                    >
+                      <td className="px-6 py-4 font-medium text-slate-900">{c.name}</td>
+                      <td className="px-6 py-4 capitalize">{c.channel}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(c.status)}`}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">{c.leads_count || 0}</td>
+                      <td className="px-6 py-4">{new Date(c.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4">
+                        {c.is_locked && <Lock className="w-4 h-4 text-slate-400" />}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}
