@@ -56,42 +56,48 @@ export default function AdminClientWorkspacePage() {
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchWorkspaceData = async () => {
-      if (!clientId) return;
+ useEffect(() => {
+  if (!router.isReady || !clientId) return;
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-
-        if (!token) {
-          router.push("/login");
-          return;
+  const fetchWorkspaceData = async () => {
+    try {
+      // Wait for a valid session — retry up to 3 times
+      let session = null;
+      for (let i = 0; i < 3; i++) {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          session = data.session;
+          break;
         }
-
-        const response = await fetch(`/api/admin/clients/${clientId}/workspace`, {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const workspaceData = await response.json();
-          setData(workspaceData);
-        } else {
-          router.push("/admin/clients");
-        }
-      } catch (err) {
-        console.error("Error fetching workspace data:", err);
-      } finally {
-        setLoading(false);
+        await new Promise((r) => setTimeout(r, 500));
       }
-    };
 
-    if (router.isReady) {
-      fetchWorkspaceData();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(`/api/admin/clients/${clientId}/workspace`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const workspaceData = await response.json();
+        setData(workspaceData);
+      } else {
+        router.push("/admin/clients");
+      }
+    } catch (err) {
+      console.error("Error fetching workspace data:", err);
+    } finally {
+      setLoading(false);
     }
-  }, [router.isReady, clientId]);
+  };
+
+  fetchWorkspaceData();
+}, [router.isReady, clientId]);
 
   if (loading || !data) {
     return (
