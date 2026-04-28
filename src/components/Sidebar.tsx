@@ -18,10 +18,11 @@ export function Sidebar({ role }: SidebarProps) {
   };
 
   const adminNavItems = [
-    { href: "/admin", label: "Overview", icon: LayoutDashboard },
-    { href: "/admin/clients", label: "Clients", icon: Building2 },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
-  ];
+  { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/clients", label: "Clients", icon: Building2 },
+  { href: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+ ];
 
   const clientNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
