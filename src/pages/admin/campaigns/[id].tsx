@@ -101,6 +101,13 @@ export default function AdminCampaignDetailPage() {
     temperature_rules: {}
   });
 
+  // ── Auth token helper ────────────────────────────────────────────────────────
+  const getToken = async () => {
+    const supabase = await import("@/lib/supabase/client").then(m => m.createClient());
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || "";
+  };
+
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
@@ -181,7 +188,11 @@ export default function AdminCampaignDetailPage() {
       const stepsRes = await fetch(`/api/campaigns/${id}/steps`);
       if (stepsRes.ok) setCampaignSteps(await stepsRes.json());
 
-      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
+      // ── Fetch KB with auth token ─────────────────────────────────────────────
+      const token = await getToken();
+      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (kbRes.ok) setKnowledgeBase(await kbRes.json());
 
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
@@ -245,13 +256,12 @@ export default function AdminCampaignDetailPage() {
     }
     try {
       setStepsSaving(true);
-      const supabase = await import("@/lib/supabase/client").then(m => m.createClient());
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = await getToken();
       const res = await fetch(`/api/campaigns/${id}/steps`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(newStep)
       });
@@ -272,11 +282,10 @@ export default function AdminCampaignDetailPage() {
 
   const handleDeleteStep = async (stepId: string) => {
     try {
-      const supabase = await import("@/lib/supabase/client").then(m => m.createClient());
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = await getToken();
       const res = await fetch(`/api/campaigns/${id}/steps?step_id=${stepId}`, {
         method: "DELETE",
-        headers: { "Authorization": `Bearer ${session?.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error("Failed to delete step");
       setCampaignSteps(prev => prev.filter(s => s.id !== stepId));
@@ -286,6 +295,8 @@ export default function AdminCampaignDetailPage() {
     }
   };
 
+  // ── KB handlers with auth token ──────────────────────────────────────────────
+
   const handleAddKbEntry = async () => {
     if (!kbTitle.trim() || !kbContent.trim()) {
       toast({ title: "Error", description: "Title and content are required", variant: "destructive" });
@@ -293,15 +304,25 @@ export default function AdminCampaignDetailPage() {
     }
     try {
       setKbSaving(true);
+      const token = await getToken();
       const res = await fetch(`/api/campaigns/${id}/knowledge-base`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim() })
       });
-      if (!res.ok) throw new Error("Failed to add entry");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add entry");
+      }
       setKbTitle("");
       setKbContent("");
-      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
+      const token2 = await getToken();
+      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
+        headers: { Authorization: `Bearer ${token2}` }
+      });
       if (kbRes.ok) setKnowledgeBase(await kbRes.json());
       toast({ title: "Knowledge base entry added" });
     } catch (err: any) {
@@ -313,7 +334,11 @@ export default function AdminCampaignDetailPage() {
 
   const handleDeleteKbEntry = async (entryId: string) => {
     try {
-      const res = await fetch(`/api/campaigns/${id}/knowledge-base?entry_id=${entryId}`, { method: "DELETE" });
+      const token = await getToken();
+      const res = await fetch(`/api/campaigns/${id}/knowledge-base?entry_id=${entryId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to delete entry");
       setKnowledgeBase(prev => prev.filter(e => e.id !== entryId));
       toast({ title: "Entry removed" });
