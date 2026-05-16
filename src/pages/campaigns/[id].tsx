@@ -27,13 +27,11 @@ export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
 
-  // State variables for sections
   const [name, setName] = useState("");
   const [channel, setChannel] = useState("webform");
   const [status, setStatus] = useState("draft");
   const [targetAction, setTargetAction] = useState("");
   
-  // Config states
   const [budgetMin, setBudgetMin] = useState(0);
   const [budgetMax, setBudgetMax] = useState(0);
   const [currency, setCurrency] = useState("PHP");
@@ -94,6 +92,16 @@ export default function CampaignDetailPage() {
     donts: [],
     temperature_rules: {}
   });
+
+  // ─── Auth token helper ───────────────────────────────────────────────────────
+  const getToken = async () => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || "";
+  };
 
   useEffect(() => {
     if (id) {
@@ -179,14 +187,16 @@ export default function CampaignDetailPage() {
         setCampaignSteps(stepsData);
       }
 
-      // Fetch knowledge base
-      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
+      // ── Fetch knowledge base WITH auth token ──────────────────────────────
+      const token = await getToken();
+      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (kbRes.ok) {
         const kbData = await kbRes.json();
         setKnowledgeBase(kbData);
       }
 
-      // Fetch templates
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
       if (tRes.ok) {
         const tData = await tRes.json();
@@ -310,6 +320,8 @@ export default function CampaignDetailPage() {
     }
   };
 
+  // ── KB handlers WITH auth token ─────────────────────────────────────────────
+
   const handleAddKbEntry = async () => {
     if (!kbTitle.trim() || !kbContent.trim()) {
       toast({ title: "Error", description: "Title and content are required", variant: "destructive" });
@@ -317,9 +329,13 @@ export default function CampaignDetailPage() {
     }
     try {
       setKbSaving(true);
+      const token = await getToken();
       const res = await fetch(`/api/campaigns/${id}/knowledge-base`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim() })
       });
       if (!res.ok) {
@@ -328,7 +344,10 @@ export default function CampaignDetailPage() {
       }
       setKbTitle("");
       setKbContent("");
-      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`);
+      const token2 = await getToken();
+      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
+        headers: { Authorization: `Bearer ${token2}` }
+      });
       if (kbRes.ok) setKnowledgeBase(await kbRes.json());
       toast({ title: "Knowledge base entry added" });
     } catch (err: any) {
@@ -340,8 +359,10 @@ export default function CampaignDetailPage() {
 
   const handleDeleteKbEntry = async (entryId: string) => {
     try {
+      const token = await getToken();
       const res = await fetch(`/api/campaigns/${id}/knowledge-base?entry_id=${entryId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error("Failed to delete entry");
       setKnowledgeBase(prev => prev.filter(e => e.id !== entryId));
@@ -352,7 +373,6 @@ export default function CampaignDetailPage() {
   };
 
   const handleSave = async () => {
-    // Validate dates if both are provided
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
       toast({ title: "Error", description: "End date must be after start date", variant: "destructive" });
       return;
@@ -409,7 +429,7 @@ export default function CampaignDetailPage() {
       }
       
       toast({ title: "Campaign saved successfully" });
-      fetchData(); // refresh data
+      fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -422,6 +442,7 @@ export default function CampaignDetailPage() {
   if (!campaign) return <DashboardLayout><div className="p-8">Not found</div></DashboardLayout>;
 
   const canEdit = profile?.role === "baymo_admin" || (!campaign.is_locked && (profile?.role === "client_admin" || profile?.role === "manager"));
+  const canEditKb = profile?.role === "baymo_admin";
   const isViewer = profile?.role === "agent" || profile?.role === "viewer";
 
   return (
@@ -686,40 +707,20 @@ export default function CampaignDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date</Label>
-                  <Input 
-                    type="date" 
-                    value={startDate} 
-                    onChange={e => setStartDate(e.target.value)} 
-                    disabled={!canEdit}
-                  />
+                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} disabled={!canEdit} />
                 </div>
                 <div className="space-y-2">
                   <Label>End Date</Label>
-                  <Input 
-                    type="date" 
-                    value={endDate} 
-                    onChange={e => setEndDate(e.target.value)} 
-                    disabled={!canEdit}
-                  />
+                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} disabled={!canEdit} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Success Metric (KPI)</Label>
-                <Input 
-                  value={successMetric} 
-                  onChange={e => setSuccessMetric(e.target.value)} 
-                  disabled={!canEdit}
-                  placeholder="e.g. 10 booked viewings per month"
-                />
+                <Input value={successMetric} onChange={e => setSuccessMetric(e.target.value)} disabled={!canEdit} placeholder="e.g. 10 booked viewings per month" />
               </div>
               <div className="space-y-2">
                 <Label>Source Detail</Label>
-                <Input 
-                  value={sourceDetail} 
-                  onChange={e => setSourceDetail(e.target.value)} 
-                  disabled={!canEdit}
-                  placeholder="e.g. Facebook Ads, LinkedIn Outreach"
-                />
+                <Input value={sourceDetail} onChange={e => setSourceDetail(e.target.value)} disabled={!canEdit} placeholder="e.g. Facebook Ads, LinkedIn Outreach" />
               </div>
             </CardContent>
           </Card>
@@ -832,8 +833,8 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <p className="text-sm text-slate-500">
-                Add reference material that BayMo will use when replying to leads — 
-                property details, FAQs, pricing, policies, and anything else 
+                Add reference material that BayMo will use when replying to leads —
+                property details, FAQs, pricing, policies, and anything else
                 the AI should know about.
               </p>
 
@@ -846,12 +847,8 @@ export default function CampaignDetailPage() {
                           <p className="font-medium text-sm">{entry.title}</p>
                           <p className="text-sm text-slate-500 mt-1 whitespace-pre-wrap">{entry.content}</p>
                         </div>
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteKbEntry(entry.id)}
-                          >
+                        {canEditKb && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteKbEntry(entry.id)}>
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         )}
@@ -863,11 +860,11 @@ export default function CampaignDetailPage() {
 
               {knowledgeBase.length === 0 && (
                 <div className="text-center py-6 text-slate-400 text-sm border border-dashed rounded-lg">
-                  No knowledge base entries yet. Add your first entry below.
+                  No knowledge base entries yet.{canEditKb ? " Add your first entry below." : ""}
                 </div>
               )}
 
-              {canEdit && (
+              {canEditKb && (
                 <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
                   <p className="text-sm font-medium">Add New Entry</p>
                   <div className="space-y-2">
@@ -893,7 +890,6 @@ export default function CampaignDetailPage() {
                   </Button>
                 </div>
               )}
-
             </CardContent>
           </Card>
 
@@ -902,7 +898,6 @@ export default function CampaignDetailPage() {
               <CardTitle>Section 8a: Enrollment Triggers</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-
               <div className="space-y-3">
                 <Label>Lead Source — which channels enroll leads into this campaign</Label>
                 <div className="space-y-3">
@@ -986,7 +981,6 @@ export default function CampaignDetailPage() {
                 />
                 <p className="text-xs text-slate-500">If a returning lead has not been contacted in this many days, notify the agent instead of auto-enrolling.</p>
               </div>
-
             </CardContent>
           </Card>
 
@@ -995,7 +989,6 @@ export default function CampaignDetailPage() {
               <CardTitle>Section 8b: Campaign Rules</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-
               <div className="space-y-2">
                 <Label>Reply Language</Label>
                 <Select
@@ -1096,7 +1089,6 @@ export default function CampaignDetailPage() {
                   </Button>
                 )}
               </div>
-
             </CardContent>
           </Card>
 
@@ -1110,11 +1102,7 @@ export default function CampaignDetailPage() {
                   <h4 className="font-medium">Enable Scheduled Campaign Steps</h4>
                   <p className="text-sm text-slate-500">BayMo will automatically send messages to leads on the schedule defined in the Step Builder.</p>
                 </div>
-                <Switch
-                  checked={scheduledStepsEnabled}
-                  onCheckedChange={setScheduledStepsEnabled}
-                  disabled={!canEdit}
-                />
+                <Switch checked={scheduledStepsEnabled} onCheckedChange={setScheduledStepsEnabled} disabled={!canEdit} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -1124,11 +1112,7 @@ export default function CampaignDetailPage() {
                     <p className="text-xs text-blue-600 mt-1">When active, BayMo will respond to lead messages automatically. Agents can remove automation per lead from the Lead Profile.</p>
                   )}
                 </div>
-                <Switch
-                  checked={conversationalAiEnabled}
-                  onCheckedChange={setConversationalAiEnabled}
-                  disabled={!canEdit}
-                />
+                <Switch checked={conversationalAiEnabled} onCheckedChange={setConversationalAiEnabled} disabled={!canEdit} />
               </div>
             </CardContent>
           </Card>
@@ -1144,10 +1128,7 @@ export default function CampaignDetailPage() {
                     <h4 className="font-medium text-red-900">Lock this campaign</h4>
                     <p className="text-sm text-red-700/80">Prevent non-admins from making changes</p>
                   </div>
-                  <Switch 
-                    checked={isLocked} 
-                    onCheckedChange={setIsLocked}
-                  />
+                  <Switch checked={isLocked} onCheckedChange={setIsLocked} />
                 </div>
               </CardContent>
             </Card>
