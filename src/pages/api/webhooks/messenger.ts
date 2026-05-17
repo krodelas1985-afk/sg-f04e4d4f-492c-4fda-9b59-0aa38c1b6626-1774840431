@@ -104,7 +104,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let campaignState: any = null;
 
             if (isNewLead) {
-              // Find active campaign for this client that includes messenger as source
               const { data: matchedCampaign } = await supabase
                 .from("campaigns")
                 .select("id, name, target_action, campaign_rules, tone, conversational_ai_enabled")
@@ -117,7 +116,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .maybeSingle();
 
               if (matchedCampaign) {
-                // Enroll lead into campaign
                 await supabase.from("lead_campaign_states").insert({
                   lead_id: leadId,
                   campaign_id: matchedCampaign.id,
@@ -127,7 +125,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   enrolled_at: new Date().toISOString(),
                 });
 
-                // Auto-enable automation
                 await supabase
                   .from("leads")
                   .update({ automation_enabled: true, campaign_id: matchedCampaign.id })
@@ -137,7 +134,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 campaignState = { campaign: matchedCampaign };
               }
             } else {
-              // Existing lead — fetch active campaign state
               const { data: existingState } = await supabase
                 .from("lead_campaign_states")
                 .select(`
@@ -157,8 +153,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── 4. FETCH SUPPORTING DATA FOR n8n ────────────────────
             const campaign = campaignState?.campaign as any;
 
-            // Only proceed if campaign exists and conversational AI is enabled
-            if (!campaign || campaign.conversational_ai_enabled === false) continue;
+            // Skip only if campaign explicitly disabled conversational AI
+            if (campaign?.conversational_ai_enabled === false) continue;
 
             // Last 5 messages
             const { data: recentMessages } = await supabase
@@ -179,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const { data: knowledgeBase } = await supabase
               .from("campaign_knowledge_base")
               .select("title, content")
-              .eq("campaign_id", campaign.id)
+              .eq("campaign_id", campaign?.id ?? "")
               .eq("client_id", bamoClientId)
               .eq("is_active", true);
 
@@ -203,13 +199,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               message: messageText,
               last_5_messages: last5,
               conversation_summary: conversationSummary,
-              campaign: {
+              campaign: campaign ? {
                 id: campaign.id,
                 name: campaign.name,
                 target_action: campaign.target_action,
                 campaign_rules: campaign.campaign_rules,
                 tone: campaign.tone,
-              },
+              } : null,
               client: {
                 company_name: clientData?.company_name ?? "",
                 business_industry: clientData?.business_industry ?? "",
@@ -233,7 +229,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // ── 6. HANDLE n8n RESPONSE ───────────────────────────────
             if (n8nResult.action === "send" && n8nResult.message) {
-              // Send via FB Messenger
               const fbToken = process.env.FB_PAGE_ACCESS_TOKEN;
               if (fbToken) {
                 await fetch(
@@ -249,7 +244,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   }
                 );
 
-                // Log outbound message
                 await supabase.from("conversations").insert({
                   lead_id: leadId,
                   client_id: bamoClientId,
@@ -261,7 +255,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   delivery_status: "sent",
                 });
 
-                // Update lead temperature if returned
                 if (n8nResult.temperature) {
                   await supabase
                     .from("leads")
@@ -272,7 +265,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.log(`✅ n8n reply sent to PSID: ${psid}`);
               }
             } else if (n8nResult.action === "suggestion" && n8nResult.message) {
-              // Store as suggestion for agent review
               await supabase.from("conversations").insert({
                 lead_id: leadId,
                 client_id: bamoClientId,
