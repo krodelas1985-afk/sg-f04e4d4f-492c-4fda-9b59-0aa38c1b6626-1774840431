@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── 1. LEAD LOOKUP / CREATE ──────────────────────────────
             const { data: existingLead } = await supabase
               .from("leads")
-              .select("id, automation_enabled, conversation_summary")
+              .select("id, automation_enabled, conversation_summary, budget_min, budget_max, preferred_location, property_type, property_sub_type, purpose, timeframe, motivation, bedrooms, payment_scheme, preferred_financing, decision_maker, move_in_date, hesitation")
               .eq("messenger_id", psid)
               .eq("client_id", bamoClientId)
               .single();
@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   messenger_id: psid,
                   source: "FB Messenger",
                   status: "New",
-                  lead_temperature: "New",
+                  lead_temperature: "cold",
                   client_id: bamoClientId,
                   automation_enabled: false,
                 })
@@ -212,6 +212,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 business_type: clientData?.business_type ?? "",
               },
               knowledge_base: knowledgeBase ?? [],
+              lead_profile: {
+                budget_min: existingLead?.budget_min ?? null,
+                budget_max: existingLead?.budget_max ?? null,
+                preferred_location: existingLead?.preferred_location ?? null,
+                property_type: existingLead?.property_type ?? null,
+                property_sub_type: existingLead?.property_sub_type ?? null,
+                purpose: existingLead?.purpose ?? null,
+                timeframe: existingLead?.timeframe ?? null,
+                motivation: existingLead?.motivation ?? null,
+                bedrooms: existingLead?.bedrooms ?? null,
+                payment_scheme: existingLead?.payment_scheme ?? null,
+                preferred_financing: existingLead?.preferred_financing ?? null,
+                decision_maker: existingLead?.decision_maker ?? null,
+                move_in_date: existingLead?.move_in_date ?? null,
+                hesitation: existingLead?.hesitation ?? null,
+              },
             };
 
             const n8nResponse = await fetch(n8nWebhookUrl, {
