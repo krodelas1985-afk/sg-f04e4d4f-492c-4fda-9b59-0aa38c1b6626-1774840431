@@ -100,6 +100,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .update({ last_message_at: new Date(timestamp).toISOString() })
               .eq("id", leadId);
 
+            // ── TRIGGER LEAD PROFILE UPDATE (fire-and-forget) ────────
+fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    lead_id: leadId,
+    message: messageText,
+    client_id: bamoClientId,
+  }),
+}).catch((err) => console.error("update-lead-profile n8n error:", err));
+
             // ── 3. CAMPAIGN MATCHING (new leads only) ────────────────
             let campaignState: any = null;
 
