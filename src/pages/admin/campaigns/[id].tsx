@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -51,7 +51,19 @@ export default function AdminCampaignDetailPage() {
   const [jobTitles, setJobTitles] = useState<string[]>([]);
   const [jobTitleInput, setJobTitleInput] = useState("");
 
-  const [qualificationQuestions, setQualificationQuestions] = useState<string[]>([]);
+  const QUALIFICATION_FIELDS = [
+    { field: 'current_location', label: "Lead's Current Location", placeholder: 'e.g. Saan po kayo nakatira ngayon?' },
+    { field: 'property_type', label: 'Preferred Property Type', placeholder: 'e.g. Anong type ng property po ang hinahanap ninyo?' },
+    { field: 'budget', label: 'Budget', placeholder: 'e.g. May budget range po ba kayo?' },
+    { field: 'timeframe', label: 'Buying Timeline', placeholder: 'e.g. Kailan kayo balak bumili?' },
+    { field: 'phone', label: 'Contact Number', placeholder: 'e.g. May contact number po ba kayo?' },
+    { field: 'purpose', label: 'Purpose of Purchase', placeholder: 'e.g. Para sa sariling tirahan o investment?' },
+    { field: 'viewing_schedule', label: 'Viewing Availability', placeholder: 'e.g. Kelan po kayo available para sa viewing?' },
+  ];
+
+  const [qualificationFields, setQualificationFields] = useState<Record<string, string>>(
+    Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']))
+  );
   const [tonePersona, setTonePersona] = useState("");
   const [additionalInstructions, setAdditionalInstructions] = useState("");
 
@@ -176,7 +188,12 @@ export default function AdminCampaignDetailPage() {
       setLocations(targetAudience.locations || []);
       setPropertyTypes(targetAudience.property_types || []);
       setBuyerType(targetAudience.buyer_type || "");
-      setQualificationQuestions(config.qualification_questions || []);
+      const savedFields = config.qualification_fields || [];
+      const fieldMap: Record<string, string> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']));
+      savedFields.forEach((item: { field: string; question: string }) => {
+        if (item.field in fieldMap) fieldMap[item.field] = item.question || '';
+      });
+      setQualificationFields(fieldMap);
       setTonePersona(config.tone_persona || "");
       setAdditionalInstructions(config.additional_instructions || "");
 
@@ -231,18 +248,6 @@ export default function AdminCampaignDetailPage() {
       setJobTitles([...jobTitles, jobTitleInput.trim()]);
       setJobTitleInput("");
     }
-  };
-
-  const addQuestion = () => setQualificationQuestions([...qualificationQuestions, ""]);
-
-  const updateQuestion = (index: number, val: string) => {
-    const newQs = [...qualificationQuestions];
-    newQs[index] = val;
-    setQualificationQuestions(newQs);
-  };
-
-  const removeQuestion = (index: number) => {
-    setQualificationQuestions(qualificationQuestions.filter((_, i) => i !== index));
   };
 
   const handleAddStep = async () => {
@@ -385,7 +390,11 @@ export default function AdminCampaignDetailPage() {
               buyer_type: buyerType,
               custom_fields: campaign?.config?.target_audience?.custom_fields || []
             },
-            qualification_questions: qualificationQuestions,
+            qualification_fields: QUALIFICATION_FIELDS.map(f => ({
+              field: f.field,
+              label: f.label,
+              question: qualificationFields[f.field] || ''
+            })),
             tone_persona: tonePersona,
             additional_instructions: additionalInstructions,
             email_triggers: {
@@ -608,20 +617,28 @@ export default function AdminCampaignDetailPage() {
 
           {/* Section 4 */}
           <Card>
-            <CardHeader><CardTitle>Section 4: Qualification Questions</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {qualificationQuestions.map((q, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <GripVertical className="w-5 h-5 text-slate-300" />
-                  <Input value={q} onChange={e => updateQuestion(i, e.target.value)} />
-                  <Button variant="ghost" size="icon" onClick={() => removeQuestion(i)}>
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
-                </div>
-              ))}
-              <Button variant="outline" onClick={addQuestion}>
-                <Plus className="w-4 h-4 mr-2" />Add Question
-              </Button>
+            <CardHeader>
+              <CardTitle>Section 4: Qualification Questions</CardTitle>
+              <p className="text-sm text-slate-500">Set the question wording for each field. Leave blank and the AI will ask it naturally.</p>
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y divide-slate-100">
+                {QUALIFICATION_FIELDS.map((item) => (
+                  <div key={item.field} className="grid grid-cols-3 gap-4 py-3 items-center">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">{item.label}</p>
+                      <p className="text-xs text-slate-400">{item.field}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        value={qualificationFields[item.field] || ''}
+                        onChange={e => setQualificationFields(prev => ({ ...prev, [item.field]: e.target.value }))}
+                        placeholder={item.placeholder}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
