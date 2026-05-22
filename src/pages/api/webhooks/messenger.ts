@@ -182,6 +182,20 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
               message: c.message_content,
             }));
 
+            // ── TRIGGER AI CAMPAIGN RESPONDER (fire-and-forget) ──────
+            fetch('https://n8n-bahaymo.onrender.com/webhook/baymo-ai-campaign-responder', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                lead_id: leadId,
+                message: messageText,
+                client_id: bamoClientId,
+                automation_enabled: automationEnabled,
+                last_5_messages: last5,
+                conversation_summary: conversationSummary,
+              }),
+            });
+
             // Knowledge base
             const { data: knowledgeBase } = await supabase
               .from("campaign_knowledge_base")
