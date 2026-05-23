@@ -21,6 +21,7 @@ interface LeadSlideOverProps {
 export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOverProps) {
   const router = useRouter();
   const [lead, setLead] = useState<any>(null);
+  const [leadQual, setLeadQual] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("info");
   
@@ -45,6 +46,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
   useEffect(() => {
     if (isOpen && leadId) {
       fetchLead();
+      fetchLeadQualification();
       fetchAgents();
       fetchCampaigns();
     }
@@ -68,12 +70,26 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
         .select("*, profiles!leads_assigned_user_id_fkey(full_name, role), campaigns(name)")
         .eq("id", leadId)
         .single();
-      
+
       setLead(data);
     } catch (err) {
       console.error("Error fetching lead:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLeadQualification = async () => {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("lead_qualifications")
+        .select("*")
+        .eq("lead_id", leadId)
+        .maybeSingle();
+      setLeadQual(data);
+    } catch (err) {
+      console.error("Error fetching lead qualifications:", err);
     }
   };
 
@@ -188,11 +204,23 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
     try {
       const supabase = createClient();
       await supabase.from("leads").update({ [field]: value }).eq("id", leadId);
-      
+
       setLead((prev: any) => ({ ...prev, [field]: value }));
       onUpdate?.();
     } catch (err) {
       console.error("Error updating field:", err);
+    }
+  };
+
+  const handleQualificationUpdate = async (field: string, value: any) => {
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("lead_qualifications")
+        .upsert({ lead_id: leadId, client_id: lead.client_id, [field]: value }, { onConflict: "lead_id" });
+      setLeadQual((prev: any) => ({ ...(prev || {}), [field]: value }));
+    } catch (err) {
+      console.error("Error updating qualification:", err);
     }
   };
 
@@ -540,49 +568,49 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Budget Min</Label>
-                      <Input 
-                        type="number" 
-                        value={lead?.budget_min || ""} 
-                        onChange={(e) => setLead({ ...lead, budget_min: parseInt(e.target.value) || null })}
-                        onBlur={() => handleFieldUpdate("budget_min", lead.budget_min)}
+                      <Input
+                        type="number"
+                        value={leadQual?.budget_min || ""}
+                        onChange={(e) => setLeadQual({ ...(leadQual || {}), budget_min: parseInt(e.target.value) || null })}
+                        onBlur={() => handleQualificationUpdate("budget_min", leadQual?.budget_min)}
                       />
                     </div>
                     <div>
                       <Label>Budget Max</Label>
-                      <Input 
-                        type="number" 
-                        value={lead?.budget_max || ""} 
-                        onChange={(e) => setLead({ ...lead, budget_max: parseInt(e.target.value) || null })}
-                        onBlur={() => handleFieldUpdate("budget_max", lead.budget_max)}
+                      <Input
+                        type="number"
+                        value={leadQual?.budget_max || ""}
+                        onChange={(e) => setLeadQual({ ...(leadQual || {}), budget_max: parseInt(e.target.value) || null })}
+                        onBlur={() => handleQualificationUpdate("budget_max", leadQual?.budget_max)}
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <Label>Location</Label>
-                    <Input 
-                      value={lead?.preferred_location || ""} 
-                      onChange={(e) => setLead({ ...lead, preferred_location: e.target.value })}
-                      onBlur={() => handleFieldUpdate("preferred_location", lead.preferred_location)}
+                    <Input
+                      value={leadQual?.preferred_location?.[0] || ""}
+                      onChange={(e) => setLeadQual({ ...(leadQual || {}), preferred_location: e.target.value ? [e.target.value] : null })}
+                      onBlur={() => handleQualificationUpdate("preferred_location", leadQual?.preferred_location)}
                     />
                   </div>
-                  
+
                   <div>
                     <Label>Property Type</Label>
-                    <Input 
-                      value={lead?.property_type || ""} 
-                      onChange={(e) => setLead({ ...lead, property_type: e.target.value })}
-                      onBlur={() => handleFieldUpdate("property_type", lead.property_type)}
+                    <Input
+                      value={leadQual?.property_type || ""}
+                      onChange={(e) => setLeadQual({ ...(leadQual || {}), property_type: e.target.value })}
+                      onBlur={() => handleQualificationUpdate("property_type", leadQual?.property_type)}
                     />
                   </div>
-                  
+
                   <div>
                     <Label>Bedrooms</Label>
-                    <Input 
-                      type="number" 
-                      value={lead?.bedrooms || ""} 
-                      onChange={(e) => setLead({ ...lead, bedrooms: parseInt(e.target.value) || null })}
-                      onBlur={() => handleFieldUpdate("bedrooms", lead.bedrooms)}
+                    <Input
+                      type="number"
+                      value={leadQual?.bedrooms || ""}
+                      onChange={(e) => setLeadQual({ ...(leadQual || {}), bedrooms: parseInt(e.target.value) || null })}
+                      onBlur={() => handleQualificationUpdate("bedrooms", leadQual?.bedrooms)}
                     />
                   </div>
                 </div>

@@ -24,6 +24,7 @@ export default function LeadDetailPage() {
   const leadId = id as string;
 
   const [lead, setLead] = useState<any>(null);
+  const [leadQual, setLeadQual] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
   // Tabs state for right panel
@@ -50,6 +51,7 @@ export default function LeadDetailPage() {
   useEffect(() => {
     if (leadId) {
       fetchLead();
+      fetchLeadQualification();
       fetchAgents();
       fetchCampaigns();
     }
@@ -64,6 +66,20 @@ export default function LeadDetailPage() {
       fetchTasks();
     }
   }, [activeTab, leadId]);
+
+  const fetchLeadQualification = async () => {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("lead_qualifications")
+        .select("*")
+        .eq("lead_id", leadId)
+        .maybeSingle();
+      setLeadQual(data);
+    } catch (err) {
+      console.error("Error fetching lead qualifications:", err);
+    }
+  };
 
   const fetchLead = async () => {
     try {
@@ -187,6 +203,18 @@ export default function LeadDetailPage() {
       setLead((prev: any) => ({ ...prev, [field]: value }));
     } catch (err) {
       console.error("Error updating field:", err);
+    }
+  };
+
+  const handleQualificationUpdate = async (field: string, value: any) => {
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("lead_qualifications")
+        .upsert({ lead_id: leadId, client_id: lead.client_id, [field]: value }, { onConflict: "lead_id" });
+      setLeadQual((prev: any) => ({ ...(prev || {}), [field]: value }));
+    } catch (err) {
+      console.error("Error updating qualification:", err);
     }
   };
 
@@ -615,25 +643,25 @@ export default function LeadDetailPage() {
 
                 <div className="pt-4 border-t">
                   <h4 className="text-sm font-medium mb-3">Preferences</h4>
-                  
+
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                       <Label className="text-xs text-gray-500">Budget Min</Label>
-                      <Input 
-                        type="number" 
-                        value={lead.budget_min || ""} 
-                        onChange={(e) => setLead({ ...lead, budget_min: parseInt(e.target.value) || null })}
-                        onBlur={() => handleFieldUpdate("budget_min", lead.budget_min)}
+                      <Input
+                        type="number"
+                        value={leadQual?.budget_min || ""}
+                        onChange={(e) => setLeadQual({ ...(leadQual || {}), budget_min: parseInt(e.target.value) || null })}
+                        onBlur={() => handleQualificationUpdate("budget_min", leadQual?.budget_min)}
                         className="h-8 text-sm focus-visible:ring-[#E87722]"
                       />
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">Budget Max</Label>
-                      <Input 
-                        type="number" 
-                        value={lead.budget_max || ""} 
-                        onChange={(e) => setLead({ ...lead, budget_max: parseInt(e.target.value) || null })}
-                        onBlur={() => handleFieldUpdate("budget_max", lead.budget_max)}
+                      <Input
+                        type="number"
+                        value={leadQual?.budget_max || ""}
+                        onChange={(e) => setLeadQual({ ...(leadQual || {}), budget_max: parseInt(e.target.value) || null })}
+                        onBlur={() => handleQualificationUpdate("budget_max", leadQual?.budget_max)}
                         className="h-8 text-sm focus-visible:ring-[#E87722]"
                       />
                     </div>
@@ -642,31 +670,31 @@ export default function LeadDetailPage() {
                   <div className="space-y-4">
                     <div>
                       <Label className="text-xs text-gray-500">Preferred Location</Label>
-                      <Input 
-                        value={lead.preferred_location || ""} 
-                        onChange={(e) => setLead({ ...lead, preferred_location: e.target.value })}
-                        onBlur={() => handleFieldUpdate("preferred_location", lead.preferred_location)}
+                      <Input
+                        value={leadQual?.preferred_location?.[0] || ""}
+                        onChange={(e) => setLeadQual({ ...(leadQual || {}), preferred_location: e.target.value ? [e.target.value] : null })}
+                        onBlur={() => handleQualificationUpdate("preferred_location", leadQual?.preferred_location)}
                         className="h-8 text-sm focus-visible:ring-[#E87722]"
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-gray-500">Property Type</Label>
-                        <Input 
-                          value={lead.property_type || ""} 
-                          onChange={(e) => setLead({ ...lead, property_type: e.target.value })}
-                          onBlur={() => handleFieldUpdate("property_type", lead.property_type)}
+                        <Input
+                          value={leadQual?.property_type || ""}
+                          onChange={(e) => setLeadQual({ ...(leadQual || {}), property_type: e.target.value })}
+                          onBlur={() => handleQualificationUpdate("property_type", leadQual?.property_type)}
                           className="h-8 text-sm focus-visible:ring-[#E87722]"
                         />
                       </div>
                       <div>
                         <Label className="text-xs text-gray-500">Bedrooms</Label>
-                        <Input 
-                          type="number" 
-                          value={lead.bedrooms || ""} 
-                          onChange={(e) => setLead({ ...lead, bedrooms: parseInt(e.target.value) || null })}
-                          onBlur={() => handleFieldUpdate("bedrooms", lead.bedrooms)}
+                        <Input
+                          type="number"
+                          value={leadQual?.bedrooms || ""}
+                          onChange={(e) => setLeadQual({ ...(leadQual || {}), bedrooms: parseInt(e.target.value) || null })}
+                          onBlur={() => handleQualificationUpdate("bedrooms", leadQual?.bedrooms)}
                           className="h-8 text-sm focus-visible:ring-[#E87722]"
                         />
                       </div>

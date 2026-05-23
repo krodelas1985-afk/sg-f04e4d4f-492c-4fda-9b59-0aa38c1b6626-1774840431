@@ -358,10 +358,14 @@ export default function LeadsPage() {
       .from("leads")
       .insert({
         client_id: clientId,
-        ...fullAddData,
-        bedrooms: fullAddData.bedrooms ? parseInt(fullAddData.bedrooms) : null,
-        budget_min: fullAddData.budget_min ? parseFloat(fullAddData.budget_min) : null,
-        budget_max: fullAddData.budget_max ? parseFloat(fullAddData.budget_max) : null,
+        name: fullAddData.name,
+        phone: fullAddData.phone,
+        email: fullAddData.email,
+        company: fullAddData.company,
+        buyer_type: fullAddData.buyer_type,
+        status: fullAddData.status,
+        lead_temperature: fullAddData.lead_temperature,
+        source: fullAddData.source,
         assigned_user_id: fullAddData.assigned_user_id || null,
         campaign_id: fullAddData.campaign_id || null,
       })
@@ -372,7 +376,17 @@ export default function LeadsPage() {
       alert("Failed to create lead");
       return;
     }
-    
+
+    await supabase.from("lead_qualifications").insert({
+      lead_id: data.id,
+      client_id: clientId,
+      preferred_location: fullAddData.preferred_location ? [fullAddData.preferred_location] : null,
+      property_type: fullAddData.property_type || null,
+      bedrooms: fullAddData.bedrooms ? parseInt(fullAddData.bedrooms) : null,
+      budget_min: fullAddData.budget_min ? parseFloat(fullAddData.budget_min) : null,
+      budget_max: fullAddData.budget_max ? parseFloat(fullAddData.budget_max) : null,
+    });
+
     // Create initial note if provided
     if (fullAddData.notes) {
       const { data: { user } } = await supabase.auth.getUser();

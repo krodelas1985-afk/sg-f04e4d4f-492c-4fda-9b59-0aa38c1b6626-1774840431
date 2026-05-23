@@ -130,10 +130,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         source: normalizedSource,
         status: "New",
         lead_temperature: "Warm",
-        property_type: property_type ? property_type.trim() : null,
-        budget_min: parsedBudgetMin,
-        budget_max: parsedBudgetMax,
-        preferred_location: preferred_location ? preferred_location.trim() : null,
         primary_channel: normalizedSource,
         metadata: metadata,
         assigned_user_id: null,
@@ -147,6 +143,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error("Error inserting lead:", insertError);
       return res.status(500).json({ error: "Internal server error" });
     }
+
+    await supabase.from("lead_qualifications").insert({
+      lead_id: newLead.id,
+      client_id: client.id,
+      property_type: property_type ? property_type.trim() : null,
+      budget_min: parsedBudgetMin,
+      budget_max: parsedBudgetMax,
+      preferred_location: preferred_location ? [preferred_location.trim()] : null,
+    });
 
     return res.status(200).json({ success: true, lead_id: newLead.id });
   } catch (error) {

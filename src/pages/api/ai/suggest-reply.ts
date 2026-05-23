@@ -39,6 +39,13 @@ export default async function handler(
       return res.status(404).json({ error: "Lead not found" });
     }
 
+    // Get lead qualification data
+    const { data: leadQual } = await supabase
+      .from("lead_qualifications")
+      .select("budget_min, budget_max, preferred_location")
+      .eq("lead_id", lead_id)
+      .maybeSingle();
+
     // Get last 20 conversations
     const { data: conversations } = await supabase
       .from("conversations")
@@ -94,8 +101,8 @@ Additional Instructions: ${campaign.additional_instructions || "None"}
     systemPrompt += `
 Lead Profile:
 - Name: ${lead.name || "N/A"}
-- Budget: ${lead.budget_min || "N/A"} to ${lead.budget_max || "N/A"}
-- Location: ${lead.preferred_location || "N/A"}
+- Budget: ${leadQual?.budget_min || "N/A"} to ${leadQual?.budget_max || "N/A"}
+- Location: ${leadQual?.preferred_location?.[0] || "N/A"}
 - Status: ${lead.status || "New"}
 - Stage: ${lead.lead_temperature || "Cold"}
 

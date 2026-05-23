@@ -73,15 +73,18 @@ export default async function handler(
     email: payload.email,
     phone: payload.phone,
     source: payload.source,
-    budget_min: payload.budget_min,
-    budget_max: payload.budget_max,
-    preferred_location: payload.preferred_location,
-    property_type: payload.property_type,
-    bedrooms: payload.bedrooms,
     buyer_type: payload.buyer_type,
     company: payload.company,
     campaign_id: payload.campaign_id,
     status: "New",
+  };
+
+  const qualificationData: any = {
+    budget_min: payload.budget_min,
+    budget_max: payload.budget_max,
+    preferred_location: payload.preferred_location ? [payload.preferred_location] : null,
+    property_type: payload.property_type,
+    bedrooms: payload.bedrooms,
   };
 
   // Store extra fields in metadata
@@ -129,6 +132,12 @@ export default async function handler(
   }
 
   console.log("✅ Lead created successfully:", lead.id);
+
+  await supabase.from("lead_qualifications").insert({
+    lead_id: lead.id,
+    client_id: client.id,
+    ...qualificationData,
+  });
 
   // ─────────────────────────────────────────
   // STEP 3 — CIE CAMPAIGN ENROLLMENT

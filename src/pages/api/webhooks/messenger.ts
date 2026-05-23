@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── 1. LEAD LOOKUP / CREATE ──────────────────────────────
             const { data: existingLead } = await supabase
               .from("leads")
-              .select("id, automation_enabled, conversation_summary, budget_min, budget_max, preferred_location, property_type, property_sub_type, purpose, timeframe, motivation, bedrooms, payment_scheme, preferred_financing, decision_maker, move_in_date, hesitation")
+              .select("id, automation_enabled, conversation_summary")
               .eq("messenger_id", psid)
               .eq("client_id", bamoClientId)
               .single();
@@ -75,11 +75,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               if (createError || !newLead) continue;
               leadId = newLead.id;
               isNewLead = true;
+
+              await supabase.from("lead_qualifications").insert({
+                lead_id: leadId,
+                client_id: bamoClientId,
+              });
             } else {
               leadId = existingLead.id;
               automationEnabled = existingLead.automation_enabled ?? false;
               conversationSummary = existingLead.conversation_summary ?? "";
             }
+
+            // ── 1b. FETCH LEAD QUALIFICATIONS ────────────────────────
+            const { data: leadQualification } = await supabase
+              .from("lead_qualifications")
+              .select("budget_min, budget_max, preferred_location, property_type, property_sub_type, purpose, timeframe, motivation, bedrooms, payment_scheme, preferred_financing, decision_maker, move_in_date, hesitation")
+              .eq("lead_id", leadId)
+              .maybeSingle();
 
             // ── 2. SAVE INBOUND MESSAGE ──────────────────────────────
             await supabase.from("conversations").insert({
@@ -238,20 +250,20 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
               },
               knowledge_base: knowledgeBase ?? [],
               lead_profile: {
-                budget_min: existingLead?.budget_min ?? null,
-                budget_max: existingLead?.budget_max ?? null,
-                preferred_location: existingLead?.preferred_location ?? null,
-                property_type: existingLead?.property_type ?? null,
-                property_sub_type: existingLead?.property_sub_type ?? null,
-                purpose: existingLead?.purpose ?? null,
-                timeframe: existingLead?.timeframe ?? null,
-                motivation: existingLead?.motivation ?? null,
-                bedrooms: existingLead?.bedrooms ?? null,
-                payment_scheme: existingLead?.payment_scheme ?? null,
-                preferred_financing: existingLead?.preferred_financing ?? null,
-                decision_maker: existingLead?.decision_maker ?? null,
-                move_in_date: existingLead?.move_in_date ?? null,
-                hesitation: existingLead?.hesitation ?? null,
+                budget_min: leadQualification?.budget_min ?? null,
+                budget_max: leadQualification?.budget_max ?? null,
+                preferred_location: leadQualification?.preferred_location ?? null,
+                property_type: leadQualification?.property_type ?? null,
+                property_sub_type: leadQualification?.property_sub_type ?? null,
+                purpose: leadQualification?.purpose ?? null,
+                timeframe: leadQualification?.timeframe ?? null,
+                motivation: leadQualification?.motivation ?? null,
+                bedrooms: leadQualification?.bedrooms ?? null,
+                payment_scheme: leadQualification?.payment_scheme ?? null,
+                preferred_financing: leadQualification?.preferred_financing ?? null,
+                decision_maker: leadQualification?.decision_maker ?? null,
+                move_in_date: leadQualification?.move_in_date ?? null,
+                hesitation: leadQualification?.hesitation ?? null,
               },
             };
 

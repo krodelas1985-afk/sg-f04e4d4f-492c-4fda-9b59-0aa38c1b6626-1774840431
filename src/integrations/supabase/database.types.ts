@@ -375,13 +375,109 @@ export type Database = {
           },
         ]
       }
+      lead_qualifications: {
+        Row: {
+          bedrooms: number | null
+          budget_max: number | null
+          budget_min: number | null
+          client_id: string
+          competing_projects: string[] | null
+          created_at: string | null
+          decision_maker: string | null
+          floor_area_min: number | null
+          hesitation: string | null
+          id: string
+          income_source: string | null
+          lead_id: string
+          lot_area_min: number | null
+          motivation: string | null
+          move_in_date: string | null
+          payment_scheme: string | null
+          preferred_financing: string | null
+          preferred_location: string[] | null
+          property_sub_type: string | null
+          property_type: string | null
+          purpose: string | null
+          timeframe: string | null
+          unit_preferred: string | null
+          updated_at: string | null
+          viewing_schedule: string | null
+        }
+        Insert: {
+          bedrooms?: number | null
+          budget_max?: number | null
+          budget_min?: number | null
+          client_id: string
+          competing_projects?: string[] | null
+          created_at?: string | null
+          decision_maker?: string | null
+          floor_area_min?: number | null
+          hesitation?: string | null
+          id?: string
+          income_source?: string | null
+          lead_id: string
+          lot_area_min?: number | null
+          motivation?: string | null
+          move_in_date?: string | null
+          payment_scheme?: string | null
+          preferred_financing?: string | null
+          preferred_location?: string[] | null
+          property_sub_type?: string | null
+          property_type?: string | null
+          purpose?: string | null
+          timeframe?: string | null
+          unit_preferred?: string | null
+          updated_at?: string | null
+          viewing_schedule?: string | null
+        }
+        Update: {
+          bedrooms?: number | null
+          budget_max?: number | null
+          budget_min?: number | null
+          client_id?: string
+          competing_projects?: string[] | null
+          created_at?: string | null
+          decision_maker?: string | null
+          floor_area_min?: number | null
+          hesitation?: string | null
+          id?: string
+          income_source?: string | null
+          lead_id?: string
+          lot_area_min?: number | null
+          motivation?: string | null
+          move_in_date?: string | null
+          payment_scheme?: string | null
+          preferred_financing?: string | null
+          preferred_location?: string[] | null
+          property_sub_type?: string | null
+          property_type?: string | null
+          purpose?: string | null
+          timeframe?: string | null
+          unit_preferred?: string | null
+          updated_at?: string | null
+          viewing_schedule?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_qualifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_qualifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_user_id: string | null
           bamo_user_id: string | null
-          bedrooms: number | null
-          budget_max: number | null
-          budget_min: number | null
           buyer_type: string | null
           campaign_id: string | null
           client_id: string
@@ -399,9 +495,7 @@ export type Database = {
           name: string
           next_follow_up_date: string | null
           phone: string | null
-          preferred_location: string | null
           primary_channel: string | null
-          property_type: string | null
           source: string | null
           source_override: boolean | null
           status: string | null
@@ -413,9 +507,6 @@ export type Database = {
         Insert: {
           assigned_user_id?: string | null
           bamo_user_id?: string | null
-          bedrooms?: number | null
-          budget_max?: number | null
-          budget_min?: number | null
           buyer_type?: string | null
           campaign_id?: string | null
           client_id: string
@@ -433,9 +524,7 @@ export type Database = {
           name: string
           next_follow_up_date?: string | null
           phone?: string | null
-          preferred_location?: string | null
           primary_channel?: string | null
-          property_type?: string | null
           source?: string | null
           source_override?: boolean | null
           status?: string | null
@@ -447,9 +536,6 @@ export type Database = {
         Update: {
           assigned_user_id?: string | null
           bamo_user_id?: string | null
-          bedrooms?: number | null
-          budget_max?: number | null
-          budget_min?: number | null
           buyer_type?: string | null
           campaign_id?: string | null
           client_id?: string
@@ -467,9 +553,7 @@ export type Database = {
           name?: string
           next_follow_up_date?: string | null
           phone?: string | null
-          preferred_location?: string | null
           primary_channel?: string | null
-          property_type?: string | null
           source?: string | null
           source_override?: boolean | null
           status?: string | null
