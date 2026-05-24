@@ -18,12 +18,12 @@ export default function CampaignDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [campaign, setCampaign] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
 
@@ -31,7 +31,7 @@ export default function CampaignDetailPage() {
   const [channel, setChannel] = useState("webform");
   const [status, setStatus] = useState("draft");
   const [targetAction, setTargetAction] = useState("");
-  
+
   const [budgetMin, setBudgetMin] = useState(0);
   const [budgetMax, setBudgetMax] = useState(0);
   const [currency, setCurrency] = useState("PHP");
@@ -44,7 +44,7 @@ export default function CampaignDetailPage() {
   const [industryInput, setIndustryInput] = useState("");
   const [jobTitles, setJobTitles] = useState<string[]>([]);
   const [jobTitleInput, setJobTitleInput] = useState("");
-  
+
   const QUALIFICATION_FIELDS = [
     { field: 'current_location', label: "Lead's Current Location", placeholder: 'e.g. Saan po kayo nakatira ngayon?' },
     { field: 'property_type', label: 'Preferred Property Type', placeholder: 'e.g. Anong type ng property po ang hinahanap ninyo?' },
@@ -53,23 +53,34 @@ export default function CampaignDetailPage() {
     { field: 'phone', label: 'Contact Number', placeholder: 'e.g. May contact number po ba kayo?' },
     { field: 'purpose', label: 'Purpose of Purchase', placeholder: 'e.g. Para sa sariling tirahan o investment?' },
     { field: 'viewing_schedule', label: 'Viewing Availability', placeholder: 'e.g. Kelan po kayo available para sa viewing?' },
+    { field: 'preferred_location', label: 'Preferred Location', placeholder: 'e.g. Saan po ang gusto ninyong lokasyon ng property?' },
+    { field: 'bedroom', label: 'Bedroom Preference', placeholder: 'e.g. Ilang bedroom po ang hinahanap ninyo?' },
+    { field: 'unit_preferred', label: 'Unit Preferred', placeholder: 'e.g. Anong type ng unit po ang gusto ninyo? (Studio, 1BR, 2BR?)' },
+    { field: 'motivation', label: 'Motivation', placeholder: 'e.g. Ano po ang dahilan ng paghahanap ng property?' },
+    { field: 'civil_status', label: 'Civil Status', placeholder: 'e.g. Ano po ang inyong civil status?' },
+    { field: 'decision_maker', label: 'Decision Maker', placeholder: 'e.g. Kayo po ba ang mag-desisyon o may kasama kayong mag-aapprove?' },
+    { field: 'email', label: 'Email Address', placeholder: 'e.g. May email address po ba kayo?' },
   ];
 
   const [qualificationFields, setQualificationFields] = useState<Record<string, string>>(
     Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']))
   );
+  // Per-field enabled toggle — when false, WF1 skips asking that question
+  const [qualificationEnabled, setQualificationEnabled] = useState<Record<string, boolean>>(
+    Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, true]))
+  );
   const [tonePersona, setTonePersona] = useState("");
   const [additionalInstructions, setAdditionalInstructions] = useState("");
-  
+
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [emailSources, setEmailSources] = useState<string[]>([]);
   const [emailTemplateId, setEmailTemplateId] = useState<string>("");
-  
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [successMetric, setSuccessMetric] = useState("");
   const [sourceDetail, setSourceDetail] = useState("");
-  
+
   const [isLocked, setIsLocked] = useState(false);
   const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
   const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
@@ -128,7 +139,7 @@ export default function CampaignDetailPage() {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-      
+
       const { data: authData } = await supabase.auth.getUser();
       if (authData?.user) {
         const { data: p } = await supabase.from("profiles").select("role, client_id").eq("id", authData.user.id).single();
@@ -138,7 +149,7 @@ export default function CampaignDetailPage() {
       const res = await fetch(`/api/campaigns/${id}`);
       if (!res.ok) throw new Error("Failed to fetch campaign");
       const data = await res.json();
-      
+
       setCampaign(data);
       setName(data.name || "");
       setChannel(data.channel || "webform");
@@ -175,7 +186,7 @@ export default function CampaignDetailPage() {
       setSourceDetail(data.source_detail || "");
       setTargetIndustries(Array.isArray(data.target_industries) ? data.target_industries : []);
       setJobTitles(Array.isArray(data.job_titles) ? data.job_titles : []);
-      
+
       const config = data.config || {};
       const targetAudience = config.target_audience || {};
       setBudgetMin(targetAudience.budget_min || 0);
@@ -183,16 +194,19 @@ export default function CampaignDetailPage() {
       setLocations(targetAudience.locations || []);
       setPropertyTypes(targetAudience.property_types || []);
       setBuyerType(targetAudience.buyer_type || "");
-      
+
       const savedFields = config.qualification_fields || [];
       const fieldMap: Record<string, string> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']));
-      savedFields.forEach((item: { field: string; question: string }) => {
+      const enabledMap: Record<string, boolean> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, true]));
+      savedFields.forEach((item: { field: string; question: string; enabled?: boolean }) => {
         if (item.field in fieldMap) fieldMap[item.field] = item.question || '';
+        if (item.field in enabledMap) enabledMap[item.field] = item.enabled !== false;
       });
       setQualificationFields(fieldMap);
+      setQualificationEnabled(enabledMap);
       setTonePersona(config.tone_persona || "");
       setAdditionalInstructions(config.additional_instructions || "");
-      
+
       const emailTriggers = config.email_triggers || {};
       setEmailEnabled(emailTriggers.enabled || false);
       setEmailSources(emailTriggers.allowed_sources || []);
@@ -219,7 +233,7 @@ export default function CampaignDetailPage() {
         const tData = await tRes.json();
         setTemplates(tData);
       }
-      
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -410,7 +424,8 @@ export default function CampaignDetailPage() {
           qualification_fields: QUALIFICATION_FIELDS.map(f => ({
             field: f.field,
             label: f.label,
-            question: qualificationFields[f.field] || ''
+            question: qualificationFields[f.field] || '',
+            enabled: qualificationEnabled[f.field] !== false
           })),
           tone_persona: tonePersona,
           additional_instructions: additionalInstructions,
@@ -432,7 +447,7 @@ export default function CampaignDetailPage() {
         const errData = await res.json();
         throw new Error(errData.error || "Failed to update campaign");
       }
-      
+
       toast({ title: "Campaign saved successfully" });
       fetchData();
     } catch (err: any) {
@@ -526,9 +541,9 @@ export default function CampaignDetailPage() {
             <CardContent>
               <div className="space-y-2">
                 <Label>Target Action</Label>
-                <Textarea 
-                  value={targetAction} 
-                  onChange={e => setTargetAction(e.target.value)} 
+                <Textarea
+                  value={targetAction}
+                  onChange={e => setTargetAction(e.target.value)}
                   disabled={!canEdit}
                   placeholder="e.g. Schedule a viewing, Qualify lead for mortgage"
                 />
@@ -568,10 +583,10 @@ export default function CampaignDetailPage() {
               <div className="space-y-2">
                 <Label>Locations</Label>
                 <div className="flex gap-2 mb-2">
-                  <Input 
-                    value={locationInput} 
-                    onChange={e => setLocationInput(e.target.value)} 
-                    disabled={!canEdit} 
+                  <Input
+                    value={locationInput}
+                    onChange={e => setLocationInput(e.target.value)}
+                    disabled={!canEdit}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLocation())}
                   />
                   <Button type="button" onClick={addLocation} disabled={!canEdit}>Add</Button>
@@ -588,9 +603,9 @@ export default function CampaignDetailPage() {
               <div className="space-y-2">
                 <Label>Property Types</Label>
                 <div className="flex gap-2 mb-2">
-                  <Input 
-                    value={propertyTypeInput} 
-                    onChange={e => setPropertyTypeInput(e.target.value)} 
+                  <Input
+                    value={propertyTypeInput}
+                    onChange={e => setPropertyTypeInput(e.target.value)}
                     disabled={!canEdit}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addPropertyType())}
                   />
@@ -608,9 +623,9 @@ export default function CampaignDetailPage() {
               <div className="space-y-2">
                 <Label>Target Industries</Label>
                 <div className="flex gap-2 mb-2">
-                  <Input 
-                    value={industryInput} 
-                    onChange={e => setIndustryInput(e.target.value)} 
+                  <Input
+                    value={industryInput}
+                    onChange={e => setIndustryInput(e.target.value)}
                     disabled={!canEdit}
                     placeholder="e.g. Real Estate, Technology"
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addIndustry())}
@@ -629,9 +644,9 @@ export default function CampaignDetailPage() {
               <div className="space-y-2">
                 <Label>Job Titles</Label>
                 <div className="flex gap-2 mb-2">
-                  <Input 
-                    value={jobTitleInput} 
-                    onChange={e => setJobTitleInput(e.target.value)} 
+                  <Input
+                    value={jobTitleInput}
+                    onChange={e => setJobTitleInput(e.target.value)}
                     disabled={!canEdit}
                     placeholder="e.g. Property Manager, Sales Director"
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addJobTitle())}
@@ -653,26 +668,40 @@ export default function CampaignDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Section 4: Qualification Questions</CardTitle>
-              <p className="text-sm text-slate-500">Set the question wording for each field. Leave blank and the AI will ask it naturally.</p>
+              <p className="text-sm text-slate-500">Toggle each question on or off. Enabled questions will be asked by the AI. Set custom wording or leave blank to let the AI ask naturally.</p>
             </CardHeader>
             <CardContent>
               <div className="divide-y divide-slate-100">
-                {QUALIFICATION_FIELDS.map((item) => (
-                  <div key={item.field} className="grid grid-cols-3 gap-4 py-3 items-center">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                      <p className="text-xs text-slate-400">{item.field}</p>
+                {QUALIFICATION_FIELDS.map((item) => {
+                  const isEnabled = qualificationEnabled[item.field] !== false;
+                  return (
+                    <div
+                      key={item.field}
+                      className={`grid grid-cols-3 gap-4 py-3 items-center transition-opacity ${!isEnabled ? 'opacity-40' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={val => setQualificationEnabled(prev => ({ ...prev, [item.field]: val }))}
+                          disabled={!canEdit}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-slate-700 leading-tight">{item.label}</p>
+                          <p className="text-xs text-slate-400">{item.field}</p>
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          value={qualificationFields[item.field] || ''}
+                          onChange={e => setQualificationFields(prev => ({ ...prev, [item.field]: e.target.value }))}
+                          placeholder={isEnabled ? item.placeholder : 'Disabled — AI will skip this question'}
+                          disabled={!canEdit || !isEnabled}
+                        />
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <Input
-                        value={qualificationFields[item.field] || ''}
-                        onChange={e => setQualificationFields(prev => ({ ...prev, [item.field]: e.target.value }))}
-                        placeholder={item.placeholder}
-                        disabled={!canEdit}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -682,9 +711,9 @@ export default function CampaignDetailPage() {
               <CardTitle>Section 5: Tone & Persona</CardTitle>
             </CardHeader>
             <CardContent>
-              <Textarea 
-                value={tonePersona} 
-                onChange={e => setTonePersona(e.target.value)} 
+              <Textarea
+                value={tonePersona}
+                onChange={e => setTonePersona(e.target.value)}
                 disabled={!canEdit}
                 rows={4}
                 placeholder="Describe the tone and persona..."
@@ -697,9 +726,9 @@ export default function CampaignDetailPage() {
               <CardTitle>Section 6: Additional Instructions</CardTitle>
             </CardHeader>
             <CardContent>
-              <Textarea 
-                value={additionalInstructions} 
-                onChange={e => setAdditionalInstructions(e.target.value)} 
+              <Textarea
+                value={additionalInstructions}
+                onChange={e => setAdditionalInstructions(e.target.value)}
                 disabled={!canEdit}
                 rows={4}
               />
