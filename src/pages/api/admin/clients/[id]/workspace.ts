@@ -59,14 +59,14 @@ export default async function handler(
   // Fetch campaigns
   const { data: campaigns } = await supabase
     .from('campaigns')
-    .select('id, name, status, channel, target_action, created_at')
+    .select('id, name, status, channel, target_action, is_active, created_at')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false });
 
   // Fetch conversations
   const { data: conversations } = await supabase
     .from('conversations')
-    .select('id, lead_id, channel, direction, message_content, sender, created_at, leads(name)')
+    .select('id, lead_id, channel, direction, message_content, sender, created_at, leads(name, lead_temperature)')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .limit(50);

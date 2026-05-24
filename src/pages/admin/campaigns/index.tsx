@@ -42,6 +42,12 @@ export default function AdminCampaignsPage() {
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Filters
+  const [filterClient, setFilterClient] = useState("all");
+  const [filterChannel, setFilterChannel] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterActive, setFilterActive] = useState("all");
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -135,6 +141,16 @@ export default function AdminCampaignsPage() {
     }
   };
 
+  const filteredCampaigns = campaigns.filter(c => {
+    if (filterClient === "__unallocated__" && c.client_id !== null) return false;
+    if (filterClient !== "all" && filterClient !== "__unallocated__" && c.client_id !== filterClient) return false;
+    if (filterChannel !== "all" && c.channel !== filterChannel) return false;
+    if (filterStatus !== "all" && c.status !== filterStatus) return false;
+    if (filterActive === "yes" && !c.is_active) return false;
+    if (filterActive === "no" && c.is_active) return false;
+    return true;
+  });
+
   return (
     <DashboardLayout>
       <div className="p-8">
@@ -146,10 +162,75 @@ export default function AdminCampaignsPage() {
           </Button>
         </div>
 
+        {/* Filter toolbar */}
+        <div className="flex flex-wrap gap-3 mb-4">
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All Clients" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Clients</SelectItem>
+              <SelectItem value="__unallocated__">Unallocated</SelectItem>
+              {clients.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterChannel} onValueChange={setFilterChannel}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Channels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Channels</SelectItem>
+              <SelectItem value="webform">Webform</SelectItem>
+              <SelectItem value="bamo">Bamo</SelectItem>
+              <SelectItem value="facebook">Facebook</SelectItem>
+              <SelectItem value="linkedin">LinkedIn</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterActive} onValueChange={setFilterActive}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Active?" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="yes">Active</SelectItem>
+              <SelectItem value="no">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {(filterClient !== "all" || filterChannel !== "all" || filterStatus !== "all" || filterActive !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setFilterClient("all"); setFilterChannel("all"); setFilterStatus("all"); setFilterActive("all"); }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+
         {loading ? (
           <div>Loading...</div>
-        ) : campaigns.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">No campaigns yet.</div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            {campaigns.length === 0 ? "No campaigns yet." : "No campaigns match the selected filters."}
+          </div>
         ) : (
           <Card>
             <div className="overflow-x-auto">
@@ -167,7 +248,7 @@ export default function AdminCampaignsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map((c) => (
+                  {filteredCampaigns.map((c) => (
                     <tr key={c.id} className="border-b hover:bg-slate-50">
                       <td
                         className="px-6 py-4 font-medium text-slate-900 cursor-pointer hover:text-[#E8702A]"

@@ -77,13 +77,11 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const { email, role, full_name } = req.body;
+    const { email, role, full_name, password } = req.body;
 
     if (!email || !role) {
       return res.status(400).json({ error: "Email and role are required" });
     }
-
-    console.log("📧 Inviting user:", { email, role, clientId });
 
     // Check if user already exists
     const { data: existingUser } = await serviceRoleClient
@@ -93,97 +91,90 @@ export default async function handler(
       .single();
 
     if (existingUser) {
-      console.log("👤 User already exists, linking to client:", existingUser.id);
-      
-      // User exists, link to this client
       const { data: updateData, error: updateError } = await serviceRoleClient
         .from("profiles")
-        .update({ 
-          client_id: clientId,
-          role: role 
-        })
+        .update({ client_id: clientId, role: role })
         .eq("id", existingUser.id)
         .select()
         .single();
 
-      console.log("Update existing user result:", { updateData, updateError });
-
       if (updateError) {
-        console.error("❌ Error linking user:", updateError);
         return res.status(500).json({ error: "Failed to link user to client" });
       }
 
-      return res.status(200).json({ 
+      return res.status(200).json({
         ...updateData,
-        message: `User ${email} linked to this client successfully`
+        message: `User ${email} linked to this client successfully`,
       });
     }
 
-    // User doesn't exist, invite new user
     try {
-      // Step 1: Send invitation email
-      const { data: inviteData, error: inviteError } = await serviceRoleClient.auth.admin.inviteUserByEmail(email, {
-        data: {
-          full_name: full_name || email.split('@')[0],
-          role: role,
-          client_id: clientId
-        },
-        redirectTo: "https://3000-f04e4d4f-492c-4fda-9b59-0aa38c1b6626.softgen.dev/auth/set-password"
-      });
+      let authUserId: string;
 
-      if (inviteError) {
-        console.error("❌ Error inviting user:", inviteError);
-        return res.status(500).json({ error: "Failed to send invitation email" });
-      }
-
-      console.log("✅ User invited successfully:", {
-        userId: inviteData.user.id,
-        email: email,
-        role: role,
-        clientId: clientId
-      });
-
-      // Step 2: Force UPDATE the existing profile row with client_id
-      // The profile row is created by the trigger, so we UPDATE it
-      if (inviteData?.user?.id) {
-        const { data: updateData, error: updateError } = await serviceRoleClient
-          .from("profiles")
-          .update({ 
-            client_id: clientId,
-            role: role,
-            full_name: full_name || email.split('@')[0]
-          })
-          .eq("id", inviteData.user.id)
-          .select()
-          .single();
-
-        console.log("🔄 Update result:", { updateData, updateError });
-
-        if (updateError) {
-          console.error("❌ Error updating profile after invite:", updateError);
-          return res.status(500).json({ 
-            error: "User invited but failed to set client association. Please contact support." 
+      if (password) {
+        // Create user directly with a password (no invite email)
+        const { data: createData, error: createError } =
+          await serviceRoleClient.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              full_name: full_name || email.split("@")[0],
+              role,
+              client_id: clientId,
+            },
           });
+
+        if (createError || !createData.user) {
+          return res.status(500).json({ error: "Failed to create user account" });
         }
 
-        console.log("✅ Profile updated successfully:", {
-          profileId: updateData?.id,
-          email: updateData?.email,
-          role: updateData?.role,
-          clientId: updateData?.client_id
-        });
-
-        return res.status(201).json({
-          ...updateData,
-          message: `Invitation sent to ${email}. They will receive an email to set their password.`
-        });
+        authUserId = createData.user.id;
       } else {
-        console.error("❌ No user ID returned from invite");
-        return res.status(500).json({ error: "Failed to get user ID after invite" });
+        // Send invitation email
+        const { data: inviteData, error: inviteError } =
+          await serviceRoleClient.auth.admin.inviteUserByEmail(email, {
+            data: {
+              full_name: full_name || email.split("@")[0],
+              role,
+              client_id: clientId,
+            },
+            redirectTo:
+              "https://3000-f04e4d4f-492c-4fda-9b59-0aa38c1b6626.softgen.dev/auth/set-password",
+          });
+
+        if (inviteError || !inviteData?.user?.id) {
+          return res.status(500).json({ error: "Failed to send invitation email" });
+        }
+
+        authUserId = inviteData.user.id;
       }
+
+      // Update or create profile row
+      const { data: updateData, error: updateError } = await serviceRoleClient
+        .from("profiles")
+        .upsert({
+          id: authUserId,
+          client_id: clientId,
+          role,
+          full_name: full_name || email.split("@")[0],
+          email,
+        })
+        .select()
+        .single();
+
+      if (updateError) {
+        return res.status(500).json({ error: "User created but failed to set client association." });
+      }
+
+      return res.status(201).json({
+        ...updateData,
+        message: password
+          ? `Account created for ${email}. They can now log in.`
+          : `Invitation sent to ${email}. They will receive an email to set their password.`,
+      });
     } catch (error) {
-      console.error("❌ Error in user invitation flow:", error);
-      return res.status(500).json({ error: "Failed to invite user" });
+      return res.status(500).json({ error: "Failed to create user" });
     }
   }
 
