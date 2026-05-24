@@ -30,16 +30,17 @@ export default function DashboardPage() {
     try {
       const supabase = createClient();
 
-      // Fetch client name via logged-in user's profile
+      // Fetch greeting name: company_name for client users, full_name for admins
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("client:clients(company_name)")
+          .select("full_name, client:clients(company_name)")
           .eq("id", user.id)
           .single();
-        const client = profile?.client as any;
-        if (client?.company_name) setClientName(client.company_name);
+        const client = (profile as any)?.client;
+        const name = client?.company_name || (profile as any)?.full_name;
+        if (name) setClientName(name);
       }
 
       // Get today's date in Asia/Manila timezone
