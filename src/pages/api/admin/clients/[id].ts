@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await adminClient
       .from("profiles")
       .select("role, client_id")
       .eq("id", user.id)
