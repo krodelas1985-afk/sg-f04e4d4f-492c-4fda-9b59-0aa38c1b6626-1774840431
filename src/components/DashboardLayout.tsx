@@ -1,8 +1,7 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
-import { createClient } from "@/lib/supabase/client";
-import type { UserRole } from "@/types/database";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -10,34 +9,13 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadUserRole = async () => {
-    const supabase = createClient();
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        router.push("/login");
-        return;
-      }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        setRole(profile.role);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { profile, loading } = useUserProfile();
 
   useEffect(() => {
-    loadUserRole();
-  }, [router]);
+    if (!loading && !profile) {
+      router.push("/login");
+    }
+  }, [loading, profile, router]);
 
   if (loading) {
     return (
@@ -47,11 +25,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!role) return null;
+  if (!profile) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar role={role} />
+      <Sidebar role={profile.role} />
       <main className="flex-1 overflow-y-auto bg-slate-bg">
         {children}
       </main>

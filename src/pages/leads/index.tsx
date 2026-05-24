@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -142,19 +143,11 @@ export default function LeadsPage() {
     }
   }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery]);
   
+  const { profile: userProfile } = useUserProfile();
+
   const fetchClientId = async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("client_id")
-      .eq("id", user.id)
-      .single();
-    
-    if (profile?.client_id) {
-      setClientId(profile.client_id);
+    if (userProfile?.client_id) {
+      setClientId(userProfile.client_id);
     }
   };
   

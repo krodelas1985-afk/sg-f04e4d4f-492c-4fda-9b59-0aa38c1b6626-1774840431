@@ -111,7 +111,8 @@ export default function AdminCampaignDetailPage() {
     sms_number: "",
     new_leads_only: true,
     skip_if_active_campaign: true,
-    returning_lead_threshold_days: 180
+    returning_lead_threshold_days: 180,
+    lead_temperature: ""
   });
 
   const [campaignRules, setCampaignRules] = useState<any>({
@@ -176,7 +177,8 @@ export default function AdminCampaignDetailPage() {
           sms_number: data.enrollment_rules.sms_number || "",
           new_leads_only: data.enrollment_rules.new_leads_only ?? true,
           skip_if_active_campaign: data.enrollment_rules.skip_if_active_campaign ?? true,
-          returning_lead_threshold_days: data.enrollment_rules.returning_lead_threshold_days || 180
+          returning_lead_threshold_days: data.enrollment_rules.returning_lead_threshold_days || 180,
+          lead_temperature: data.enrollment_rules.lead_temperature || ""
         });
       }
 
@@ -911,6 +913,19 @@ export default function AdminCampaignDetailPage() {
               <div className="space-y-2">
                 <Label>Returning Lead Threshold (days)</Label>
                 <Input type="number" value={enrollmentRules.returning_lead_threshold_days} onChange={e => setEnrollmentRules({ ...enrollmentRules, returning_lead_threshold_days: Number(e.target.value) })} className="max-w-xs" min={1} />
+              </div>
+              <div className="space-y-2">
+                <Label>Lead Temperature Filter</Label>
+                <Select value={enrollmentRules.lead_temperature || "any"} onValueChange={val => setEnrollmentRules({ ...enrollmentRules, lead_temperature: val === "any" ? "" : val })}>
+                  <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any temperature</SelectItem>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="warm">Warm</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">Only enroll leads matching this temperature. Leave as "Any" to enroll regardless of temperature.</p>
               </div>
             </CardContent>
           </Card>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,7 @@ export default function CampaignDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
-
-  const [profile, setProfile] = useState<any>(null);
+  const { profile } = useUserProfile();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +105,8 @@ export default function CampaignDetailPage() {
     sms_number: "",
     new_leads_only: true,
     skip_if_active_campaign: true,
-    returning_lead_threshold_days: 180
+    returning_lead_threshold_days: 180,
+    lead_temperature: ""
   });
   const [campaignRules, setCampaignRules] = useState<any>({
     language: "Filipino",
@@ -139,13 +140,6 @@ export default function CampaignDetailPage() {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        const { data: p } = await supabase.from("profiles").select("role, client_id").eq("id", authData.user.id).single();
-        setProfile(p);
-      }
-
       const res = await fetch(`/api/campaigns/${id}`);
       if (!res.ok) throw new Error("Failed to fetch campaign");
       const data = await res.json();
@@ -166,7 +160,8 @@ export default function CampaignDetailPage() {
           sms_number: data.enrollment_rules.sms_number || "",
           new_leads_only: data.enrollment_rules.new_leads_only ?? true,
           skip_if_active_campaign: data.enrollment_rules.skip_if_active_campaign ?? true,
-          returning_lead_threshold_days: data.enrollment_rules.returning_lead_threshold_days || 180
+          returning_lead_threshold_days: data.enrollment_rules.returning_lead_threshold_days || 180,
+          lead_temperature: data.enrollment_rules.lead_temperature || ""
         });
       }
       if (data.campaign_rules) {
@@ -1016,6 +1011,23 @@ export default function CampaignDetailPage() {
                   min={1}
                 />
                 <p className="text-xs text-slate-500">If a returning lead has not been contacted in this many days, notify the agent instead of auto-enrolling.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Lead Temperature Filter</Label>
+                <Select
+                  value={enrollmentRules.lead_temperature || "any"}
+                  onValueChange={val => setEnrollmentRules({ ...enrollmentRules, lead_temperature: val === "any" ? "" : val })}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any temperature</SelectItem>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="warm">Warm</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">Only enroll leads matching this temperature. Leave as "Any" to enroll regardless of temperature.</p>
               </div>
             </CardContent>
           </Card>

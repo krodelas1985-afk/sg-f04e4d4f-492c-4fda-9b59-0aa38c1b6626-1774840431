@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Card } from "@/components/ui/card";
 import { Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -22,29 +23,15 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const { profile } = useUserProfile();
 
   useEffect(() => {
-    fetchProfileAndCampaigns();
+    fetchCampaigns();
   }, []);
 
-  const fetchProfileAndCampaigns = async () => {
+  const fetchCampaigns = async () => {
     try {
       setLoading(true);
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        const { data: p } = await supabase
-          .from("profiles")
-          .select("role, client_id")
-          .eq("id", authData.user.id)
-          .single();
-        setProfile(p);
-      }
-
       const res = await fetch("/api/campaigns");
       if (!res.ok) throw new Error("Failed to fetch campaigns");
       const data = await res.json();

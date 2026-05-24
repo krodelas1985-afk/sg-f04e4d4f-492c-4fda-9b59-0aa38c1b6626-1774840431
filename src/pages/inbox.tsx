@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,21 +149,12 @@ export default function Inbox() {
     }
   };
 
+  const { profile: userProfile } = useUserProfile();
+
   const fetchCurrentUser = async () => {
-    const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, client_id")
-        .eq("id", session.user.id)
-        .single();
-      
-      if (profile) {
-        setCurrentUserId(profile.id);
-        setClientId(profile.client_id);
-      }
+    if (userProfile) {
+      setCurrentUserId(userProfile.id);
+      setClientId(userProfile.client_id);
     }
   };
 

@@ -10,6 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/router";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 interface LeadSlideOverProps {
   leadId: string;
@@ -79,6 +80,8 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
     }
   };
 
+  const { profile: userProfile } = useUserProfile();
+
   const fetchLeadQualification = async () => {
     try {
       const supabase = createClient();
@@ -95,24 +98,13 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
 
   const fetchAgents = async () => {
     try {
+      if (!userProfile?.client_id) return;
       const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", session.session.user.id)
-        .single();
-
-      if (!profile?.client_id) return;
-
       const { data } = await supabase
         .from("profiles")
         .select("id, full_name, role")
-        .eq("client_id", profile.client_id)
+        .eq("client_id", userProfile.client_id)
         .neq("role", "baymo_admin");
-      
       setAgents(data || []);
     } catch (err) {
       console.error("Error fetching agents:", err);
@@ -121,23 +113,12 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
 
   const fetchCampaigns = async () => {
     try {
+      if (!userProfile?.client_id) return;
       const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", session.session.user.id)
-        .single();
-
-      if (!profile?.client_id) return;
-
       const { data } = await supabase
         .from("campaigns")
         .select("id, name")
-        .eq("client_id", profile.client_id);
-      
+        .eq("client_id", userProfile.client_id);
       setCampaigns(data || []);
     } catch (err) {
       console.error("Error fetching campaigns:", err);

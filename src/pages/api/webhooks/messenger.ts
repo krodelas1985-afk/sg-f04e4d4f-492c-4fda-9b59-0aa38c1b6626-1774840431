@@ -58,10 +58,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let conversationSummary = "";
 
             if (!existingLead) {
+              // Fetch sender's real name from Facebook Graph API
+              let leadName = `FB Lead ${psid}`;
+              const fbToken = process.env.FB_PAGE_ACCESS_TOKEN;
+              if (fbToken) {
+                try {
+                  const profileRes = await fetch(
+                    `https://graph.facebook.com/v19.0/${psid}?fields=name,first_name,last_name&access_token=${fbToken}`
+                  );
+                  if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    if (profileData.name) leadName = profileData.name;
+                  }
+                } catch (e) {
+                  console.error("Failed to fetch FB profile name:", e);
+                }
+              }
+
               const { data: newLead, error: createError } = await supabase
                 .from("leads")
                 .insert({
-                  name: `FB Lead ${psid}`,
+                  name: leadName,
                   messenger_id: psid,
                   source: "FB Messenger",
                   status: "New",

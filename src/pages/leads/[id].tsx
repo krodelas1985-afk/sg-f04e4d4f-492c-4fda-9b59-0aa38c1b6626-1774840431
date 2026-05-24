@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { 
   ArrowLeft, MessageSquare, Activity, CheckSquare, Home, 
   Paperclip, Sparkles, UserPlus, Bot, FileText, StickyNote,
@@ -98,26 +99,17 @@ export default function LeadDetailPage() {
     }
   };
 
+  const { profile: userProfile } = useUserProfile();
+
   const fetchAgents = async () => {
     try {
+      if (!userProfile?.client_id) return;
       const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", session.session.user.id)
-        .single();
-
-      if (!profile?.client_id) return;
-
       const { data } = await supabase
         .from("profiles")
         .select("id, full_name, role")
-        .eq("client_id", profile.client_id)
+        .eq("client_id", userProfile.client_id)
         .neq("role", "baymo_admin");
-      
       setAgents(data || []);
     } catch (err) {
       console.error("Error fetching agents:", err);
@@ -126,22 +118,13 @@ export default function LeadDetailPage() {
 
   const fetchCampaigns = async () => {
     try {
+      if (!userProfile?.client_id) return;
+
       const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", session.session.user.id)
-        .single();
-
-      if (!profile?.client_id) return;
-
       const { data } = await supabase
         .from("campaigns")
         .select("id, name")
-        .eq("client_id", profile.client_id);
+        .eq("client_id", userProfile.client_id);
       
       setCampaigns(data || []);
     } catch (err) {
