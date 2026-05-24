@@ -59,10 +59,20 @@ export default function AdminCampaignDetailPage() {
     { field: 'phone', label: 'Contact Number', placeholder: 'e.g. May contact number po ba kayo?' },
     { field: 'purpose', label: 'Purpose of Purchase', placeholder: 'e.g. Para sa sariling tirahan o investment?' },
     { field: 'viewing_schedule', label: 'Viewing Availability', placeholder: 'e.g. Kelan po kayo available para sa viewing?' },
+    { field: 'preferred_location', label: 'Preferred Location', placeholder: 'e.g. Saan po ang gusto ninyong lokasyon ng property?' },
+    { field: 'bedroom', label: 'Bedroom Preference', placeholder: 'e.g. Ilang bedroom po ang hinahanap ninyo?' },
+    { field: 'unit_preferred', label: 'Unit Preferred', placeholder: 'e.g. Anong type ng unit po ang gusto ninyo? (Studio, 1BR, 2BR?)' },
+    { field: 'motivation', label: 'Motivation', placeholder: 'e.g. Ano po ang dahilan ng paghahanap ng property?' },
+    { field: 'civil_status', label: 'Civil Status', placeholder: 'e.g. Ano po ang inyong civil status?' },
+    { field: 'decision_maker', label: 'Decision Maker', placeholder: 'e.g. Kayo po ba ang mag-desisyon o may kasama kayong mag-aapprove?' },
+    { field: 'email', label: 'Email Address', placeholder: 'e.g. May email address po ba kayo?' },
   ];
 
   const [qualificationFields, setQualificationFields] = useState<Record<string, string>>(
     Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']))
+  );
+  const [qualificationEnabled, setQualificationEnabled] = useState<Record<string, boolean>>(
+    Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, true]))
   );
   const [tonePersona, setTonePersona] = useState("");
   const [additionalInstructions, setAdditionalInstructions] = useState("");
@@ -190,10 +200,13 @@ export default function AdminCampaignDetailPage() {
       setBuyerType(targetAudience.buyer_type || "");
       const savedFields = config.qualification_fields || [];
       const fieldMap: Record<string, string> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']));
-      savedFields.forEach((item: { field: string; question: string }) => {
+      const enabledMap: Record<string, boolean> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, true]));
+      savedFields.forEach((item: { field: string; question: string; enabled?: boolean }) => {
         if (item.field in fieldMap) fieldMap[item.field] = item.question || '';
+        if (item.field in enabledMap) enabledMap[item.field] = item.enabled !== false;
       });
       setQualificationFields(fieldMap);
+      setQualificationEnabled(enabledMap);
       setTonePersona(config.tone_persona || "");
       setAdditionalInstructions(config.additional_instructions || "");
 
@@ -393,7 +406,8 @@ export default function AdminCampaignDetailPage() {
             qualification_fields: QUALIFICATION_FIELDS.map(f => ({
               field: f.field,
               label: f.label,
-              question: qualificationFields[f.field] || ''
+              question: qualificationFields[f.field] || '',
+              enabled: qualificationEnabled[f.field] !== false
             })),
             tone_persona: tonePersona,
             additional_instructions: additionalInstructions,
@@ -619,25 +633,39 @@ export default function AdminCampaignDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Section 4: Qualification Questions</CardTitle>
-              <p className="text-sm text-slate-500">Set the question wording for each field. Leave blank and the AI will ask it naturally.</p>
+              <p className="text-sm text-slate-500">Toggle each question on or off. Enabled questions will be asked by the AI. Set custom wording or leave blank to let the AI ask naturally.</p>
             </CardHeader>
             <CardContent>
               <div className="divide-y divide-slate-100">
-                {QUALIFICATION_FIELDS.map((item) => (
-                  <div key={item.field} className="grid grid-cols-3 gap-4 py-3 items-center">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                      <p className="text-xs text-slate-400">{item.field}</p>
+                {QUALIFICATION_FIELDS.map((item) => {
+                  const isEnabled = qualificationEnabled[item.field] !== false;
+                  return (
+                    <div
+                      key={item.field}
+                      className={`grid grid-cols-3 gap-4 py-3 items-center transition-opacity ${!isEnabled ? 'opacity-40' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={val => setQualificationEnabled(prev => ({ ...prev, [item.field]: val }))}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-slate-700 leading-tight">{item.label}</p>
+                          <p className="text-xs text-slate-400">{item.field}</p>
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          value={qualificationFields[item.field] || ''}
+                          onChange={e => setQualificationFields(prev => ({ ...prev, [item.field]: e.target.value }))}
+                          placeholder={isEnabled ? item.placeholder : 'Disabled — AI will skip this question'}
+                          disabled={!isEnabled}
+                        />
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <Input
-                        value={qualificationFields[item.field] || ''}
-                        onChange={e => setQualificationFields(prev => ({ ...prev, [item.field]: e.target.value }))}
-                        placeholder={item.placeholder}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
