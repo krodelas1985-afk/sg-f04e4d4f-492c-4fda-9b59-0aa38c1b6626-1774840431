@@ -39,7 +39,8 @@ interface WorkspaceData {
 interface ClientDetails {
   id: string; name: string; company_name: string; email: string | null;
   phone: string | null; is_active: boolean | null; webhook_secret: string | null;
-  bamo_api_key: string | null; settings: Record<string, string> | null;
+  bamo_api_key: string | null; fb_page_token: string | null; fb_page_id: string | null;
+  settings: Record<string, string> | null;
 }
 
 interface AssignedUser {
@@ -67,6 +68,7 @@ export default function AdminClientWorkspacePage() {
 
   // Settings tab state
   const [fbToken, setFbToken] = useState("");
+  const [fbPageId, setFbPageId] = useState("");
   const [bamoKey, setBamoKey] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -126,7 +128,8 @@ export default function AdminClientWorkspacePage() {
       if (clientRes.ok) {
         const cd: ClientDetails = (await clientRes.json()).client;
         setClientDetails(cd);
-        setFbToken((cd.settings as any)?.fb_page_token || "");
+        setFbToken(cd.fb_page_token || "");
+        setFbPageId(cd.fb_page_id || "");
         setBamoKey(cd.bamo_api_key || "");
       }
 
@@ -169,7 +172,8 @@ export default function AdminClientWorkspacePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           bamo_api_key: bamoKey || null,
-          settings: { ...(clientDetails?.settings || {}), fb_page_token: fbToken || null },
+          fb_page_token: fbToken || null,
+          fb_page_id: fbPageId || null,
         }),
       });
       if (!res.ok) throw new Error();
@@ -633,6 +637,20 @@ export default function AdminClientWorkspacePage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Facebook Page ID</Label>
+                  <Input
+                    value={fbPageId}
+                    onChange={e => setFbPageId(e.target.value)}
+                    placeholder="e.g. 123456789012345"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The numeric ID of the client's Facebook Page. Found in the Page's About section or Meta Business Suite.
+                    Used to route incoming Messenger messages to this client.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Facebook Page Token</Label>
                   <Input
                     value={fbToken}
@@ -640,7 +658,10 @@ export default function AdminClientWorkspacePage() {
                     placeholder="EAA..."
                     className="font-mono text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">Required for Facebook Messenger integration on this client's page.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Long-lived Page Access Token from Meta Developer Console.
+                    Used to send and receive Messenger messages on behalf of this client's page.
+                  </p>
                 </div>
 
                 <div className="space-y-2">

@@ -61,17 +61,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "PUT") {
-      const { name, company_name, email, phone, is_active } = req.body;
+      const { name, company_name, email, phone, is_active, bamo_api_key, fb_page_token, fb_page_id } = req.body;
+
+      const updatePayload: Record<string, unknown> = {};
+      if (name !== undefined) updatePayload.name = name;
+      if (company_name !== undefined) updatePayload.company_name = company_name;
+      if (email !== undefined) updatePayload.email = email;
+      if (phone !== undefined) updatePayload.phone = phone;
+      if (is_active !== undefined) updatePayload.is_active = is_active;
+      if (bamo_api_key !== undefined) updatePayload.bamo_api_key = bamo_api_key;
+      if (fb_page_token !== undefined) updatePayload.fb_page_token = fb_page_token;
+      if (fb_page_id !== undefined) updatePayload.fb_page_id = fb_page_id;
 
       const { data: client, error } = await dbClient
         .from("clients")
-        .update({
-          name,
-          company_name,
-          email,
-          phone,
-          is_active,
-        })
+        .update(updatePayload)
         .eq("id", id)
         .select()
         .single();

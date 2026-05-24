@@ -165,6 +165,8 @@ export type Database = {
           company_name: string | null
           created_at: string | null
           email: string | null
+          fb_page_id: string | null
+          fb_page_token: string | null
           id: string
           integrations: Json | null
           is_active: boolean | null
@@ -180,6 +182,8 @@ export type Database = {
           company_name?: string | null
           created_at?: string | null
           email?: string | null
+          fb_page_id?: string | null
+          fb_page_token?: string | null
           id?: string
           integrations?: Json | null
           is_active?: boolean | null
@@ -195,6 +199,8 @@ export type Database = {
           company_name?: string | null
           created_at?: string | null
           email?: string | null
+          fb_page_id?: string | null
+          fb_page_token?: string | null
           id?: string
           integrations?: Json | null
           is_active?: boolean | null

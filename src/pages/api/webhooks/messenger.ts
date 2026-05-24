@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // GET - Webhook Verification
+  // GET — Facebook webhook verification
   if (req.method === "GET") {
     try {
       const mode = req.query["hub.mode"];
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // POST - Inbound Messages
+  // POST — Inbound messages
   if (req.method === "POST") {
     try {
       const supabase = createClient(
@@ -29,27 +29,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (body.object !== "page") return res.status(200).json({ status: "ok" });
       if (!body.entry || !Array.isArray(body.entry)) return res.status(200).json({ status: "ok" });
 
-      const bamoClientId = process.env.BAMO_CLIENT_ID;
-      if (!bamoClientId) return res.status(200).json({ status: "ok" });
-
       for (const entry of body.entry) {
         if (!entry.messaging || !Array.isArray(entry.messaging)) continue;
+
+        // ── ROUTE BY PAGE ID ─────────────────────────────────────────
+        // entry.id is the Facebook Page ID that received the message.
+        // Look up which client owns this page.
+        const pageId = entry.id as string;
+
+        const { data: clientRecord } = await supabase
+          .from("clients")
+          .select("id, fb_page_token")
+          .eq("fb_page_id", pageId)
+          .eq("is_active", true)
+          .single();
+
+        // Fall back to env var for backward compatibility during migration
+        const clientId: string | undefined =
+          clientRecord?.id ?? process.env.BAMO_CLIENT_ID;
+        const fbToken: string | undefined =
+          clientRecord?.fb_page_token ?? process.env.FB_PAGE_ACCESS_TOKEN;
+
+        if (!clientId) continue;
 
         for (const event of entry.messaging) {
           if (!event.message || !event.message.text) continue;
 
           try {
-            const psid = event.sender.id;
-            const messageText = event.message.text;
-            const externalMsgId = event.message.mid;
-            const timestamp = event.timestamp;
+            const psid = event.sender.id as string;
+            const messageText = event.message.text as string;
+            const externalMsgId = event.message.mid as string;
+            const timestamp = event.timestamp as number;
 
             // ── 1. LEAD LOOKUP / CREATE ──────────────────────────────
             const { data: existingLead } = await supabase
               .from("leads")
               .select("id, automation_enabled, conversation_summary")
               .eq("messenger_id", psid)
-              .eq("client_id", bamoClientId)
+              .eq("client_id", clientId)
               .single();
 
             let leadId: string;
@@ -60,7 +77,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (!existingLead) {
               // Fetch sender's real name from Facebook Graph API
               let leadName = `FB Lead ${psid}`;
-              const fbToken = process.env.FB_PAGE_ACCESS_TOKEN;
               if (fbToken) {
                 try {
                   const profileRes = await fetch(
@@ -83,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   source: "FB Messenger",
                   status: "New",
                   lead_temperature: "cold",
-                  client_id: bamoClientId,
+                  client_id: clientId,
                   automation_enabled: false,
                 })
                 .select("id")
@@ -95,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
               await supabase.from("lead_qualifications").insert({
                 lead_id: leadId,
-                client_id: bamoClientId,
+                client_id: clientId,
               });
             } else {
               leadId = existingLead.id;
@@ -106,14 +122,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── 1b. FETCH LEAD QUALIFICATIONS ────────────────────────
             const { data: leadQualification } = await supabase
               .from("lead_qualifications")
-              .select("budget_min, budget_max, preferred_location, property_type, property_sub_type, purpose, timeframe, motivation, bedrooms, payment_scheme, preferred_financing, decision_maker, move_in_date, hesitation")
+              .select(
+                "budget_min, budget_max, preferred_location, property_type, property_sub_type, purpose, timeframe, motivation, bedrooms, payment_scheme, preferred_financing, decision_maker, move_in_date, hesitation"
+              )
               .eq("lead_id", leadId)
               .maybeSingle();
 
             // ── 2. SAVE INBOUND MESSAGE ──────────────────────────────
             await supabase.from("conversations").insert({
               lead_id: leadId,
-              client_id: bamoClientId,
+              client_id: clientId,
               sender: "lead",
               direction: "inbound",
               channel: "messenger",
@@ -130,15 +148,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .eq("id", leadId);
 
             // ── TRIGGER LEAD PROFILE UPDATE (fire-and-forget) ────────
-fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    lead_id: leadId,
-    message: messageText,
-    client_id: bamoClientId,
-  }),
-}).catch((err) => console.error("update-lead-profile n8n error:", err));
+            fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lead_id: leadId, message: messageText, client_id: clientId }),
+            }).catch((err) => console.error("update-lead-profile n8n error:", err));
 
             // ── 3. CAMPAIGN MATCHING (new leads only) ────────────────
             let campaignState: any = null;
@@ -147,7 +161,7 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
               const { data: matchedCampaign } = await supabase
                 .from("campaigns")
                 .select("id, name, target_action, campaign_rules, tone, conversational_ai_enabled")
-                .eq("client_id", bamoClientId)
+                .eq("client_id", clientId)
                 .eq("status", "active")
                 .eq("is_active", true)
                 .filter("enrollment_rules->sources", "cs", '["messenger"]')
@@ -159,7 +173,7 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
                 await supabase.from("lead_campaign_states").insert({
                   lead_id: leadId,
                   campaign_id: matchedCampaign.id,
-                  client_id: bamoClientId,
+                  client_id: clientId,
                   state: "active",
                   current_step: 1,
                   enrolled_at: new Date().toISOString(),
@@ -183,7 +197,7 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
                   )
                 `)
                 .eq("lead_id", leadId)
-                .eq("client_id", bamoClientId)
+                .eq("client_id", clientId)
                 .eq("state", "active")
                 .maybeSingle();
 
@@ -193,15 +207,13 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
             // ── 4. FETCH SUPPORTING DATA FOR n8n ────────────────────
             const campaign = campaignState?.campaign as any;
 
-            // Skip only if campaign explicitly disabled conversational AI
             if (campaign?.conversational_ai_enabled === false) continue;
 
-            // Last 5 messages
             const { data: recentMessages } = await supabase
               .from("conversations")
               .select("sender, direction, message_content, created_at")
               .eq("lead_id", leadId)
-              .eq("client_id", bamoClientId)
+              .eq("client_id", clientId)
               .neq("channel", "system")
               .order("created_at", { ascending: false })
               .limit(5);
@@ -212,32 +224,30 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
             }));
 
             // ── TRIGGER AI CAMPAIGN RESPONDER (fire-and-forget) ──────
-            fetch('https://n8n-bahaymo.onrender.com/webhook/baymo-ai-campaign-responder', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+            fetch("https://n8n-bahaymo.onrender.com/webhook/baymo-ai-campaign-responder", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 lead_id: leadId,
                 message: messageText,
-                client_id: bamoClientId,
+                client_id: clientId,
                 automation_enabled: automationEnabled,
                 last_5_messages: last5,
                 conversation_summary: conversationSummary,
               }),
             });
 
-            // Knowledge base
             const { data: knowledgeBase } = await supabase
               .from("campaign_knowledge_base")
               .select("title, content")
               .eq("campaign_id", campaign?.id ?? "")
-              .eq("client_id", bamoClientId)
+              .eq("client_id", clientId)
               .eq("is_active", true);
 
-            // Client info
             const { data: clientData } = await supabase
               .from("clients")
               .select("company_name, business_industry, business_type")
-              .eq("id", bamoClientId)
+              .eq("id", clientId)
               .single();
 
             // ── 5. CALL n8n ──────────────────────────────────────────
@@ -246,24 +256,26 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
 
             const n8nPayload = {
               lead_id: leadId,
-              client_id: bamoClientId,
+              client_id: clientId,
               messenger_id: psid,
               automation_enabled: automationEnabled,
               is_new_lead: isNewLead,
               message: messageText,
               last_5_messages: last5,
               conversation_summary: conversationSummary,
-              campaign: campaign ? {
-                id: campaign.id,
-                name: campaign.name,
-                target_action: campaign.target_action,
-                campaign_rules: campaign.campaign_rules,
-                tone: campaign.tone,
-              } : null,
+              campaign: campaign
+                ? {
+                    id: campaign.id,
+                    name: campaign.name,
+                    target_action: campaign.target_action,
+                    campaign_rules: campaign.campaign_rules,
+                    tone: campaign.tone,
+                  }
+                : null,
               client: {
                 company_name: clientData?.company_name ?? "",
-                business_industry: clientData?.business_industry ?? "",
-                business_type: clientData?.business_type ?? "",
+                business_industry: (clientData as any)?.business_industry ?? "",
+                business_type: (clientData as any)?.business_type ?? "",
               },
               knowledge_base: knowledgeBase ?? [],
               lead_profile: {
@@ -299,7 +311,6 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
 
             // ── 6. HANDLE n8n RESPONSE ───────────────────────────────
             if (n8nResult.action === "send" && n8nResult.message) {
-              const fbToken = process.env.FB_PAGE_ACCESS_TOKEN;
               if (fbToken) {
                 await fetch(
                   `https://graph.facebook.com/v19.0/me/messages?access_token=${fbToken}`,
@@ -316,7 +327,7 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
 
                 await supabase.from("conversations").insert({
                   lead_id: leadId,
-                  client_id: bamoClientId,
+                  client_id: clientId,
                   sender: "baymo",
                   direction: "outbound",
                   channel: "messenger",
@@ -332,12 +343,12 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
                     .eq("id", leadId);
                 }
 
-                console.log(`✅ n8n reply sent to PSID: ${psid}`);
+                console.log(`✅ n8n reply sent to PSID: ${psid} (client: ${clientId})`);
               }
             } else if (n8nResult.action === "suggestion" && n8nResult.message) {
               await supabase.from("conversations").insert({
                 lead_id: leadId,
-                client_id: bamoClientId,
+                client_id: clientId,
                 sender: "baymo",
                 direction: "outbound",
                 channel: "messenger",
@@ -348,7 +359,6 @@ fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
 
               console.log(`💡 AI suggestion stored for lead: ${leadId}`);
             }
-
           } catch (msgError) {
             console.error("Error processing message:", msgError);
           }
