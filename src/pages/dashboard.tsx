@@ -17,6 +17,7 @@ export default function DashboardPage() {
     hot_leads: 0,
     followups_today: 0,
   });
+  const [clientName, setClientName] = useState<string>("");
   const [followUps, setFollowUps] = useState<any[]>([]);
   const [recentConversations, setRecentConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,18 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       const supabase = createClient();
+
+      // Fetch client name via logged-in user's profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client:clients(company_name)")
+          .eq("id", user.id)
+          .single();
+        const client = profile?.client as any;
+        if (client?.company_name) setClientName(client.company_name);
+      }
 
       // Get today's date in Asia/Manila timezone
       const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -215,7 +228,9 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-3xl font-bold text-[#1B3A5C]">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-[#1B3A5C]">
+            {clientName ? `Hello, ${clientName}` : "Dashboard"}
+          </h1>
           <p className="text-gray-600 mt-1">Overview of your leads and activities</p>
         </div>
 
