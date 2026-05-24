@@ -1,4 +1,4 @@
-export type UserRole = "baymo_admin" | "admin" | "agent" | "viewer";
+export type UserRole = "baymo_admin" | "client_admin" | "manager" | "admin" | "agent" | "viewer";
 
 export type LeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost";
 export type LeadTemperature = "hot" | "warm" | "cold";
