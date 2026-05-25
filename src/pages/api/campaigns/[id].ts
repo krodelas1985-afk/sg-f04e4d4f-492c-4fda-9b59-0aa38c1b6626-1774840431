@@ -76,12 +76,12 @@ export default async function handler(
   }
 
   if (req.method === "PUT") {
-    const { 
-      name, 
-      channel, 
-      status, 
-      target_action, 
-      config, 
+    const {
+      name,
+      channel,
+      status,
+      target_action,
+      config,
       is_locked,
       currency,
       start_date,
@@ -94,7 +94,9 @@ export default async function handler(
       enrollment_rules,
       priority,
       scheduled_steps_enabled,
-      conversational_ai_enabled
+      conversational_ai_enabled,
+      ai_decision_instructions,
+      ai_message_instructions
     } = req.body;
 
     // Fetch the campaign first to check permissions
@@ -149,7 +151,9 @@ export default async function handler(
     if (priority !== undefined) updateData.priority = priority;
     if (scheduled_steps_enabled !== undefined) updateData.scheduled_steps_enabled = scheduled_steps_enabled;
     if (conversational_ai_enabled !== undefined) updateData.conversational_ai_enabled = conversational_ai_enabled;
-    
+    if (ai_decision_instructions !== undefined) updateData.ai_decision_instructions = ai_decision_instructions || null;
+    if (ai_message_instructions !== undefined) updateData.ai_message_instructions = ai_message_instructions || null;
+
     // Only baymo_admin can update is_locked
     if (is_locked !== undefined && profile.role === "baymo_admin") {
       updateData.is_locked = is_locked;

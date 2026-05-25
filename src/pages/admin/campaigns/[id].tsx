@@ -102,7 +102,12 @@ export default function AdminCampaignDetailPage() {
   const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
   const [kbTitle, setKbTitle] = useState("");
   const [kbContent, setKbContent] = useState("");
+  const [kbType, setKbType] = useState<"knowledge" | "instruction">("knowledge");
   const [kbSaving, setKbSaving] = useState(false);
+
+  const [aiDecisionInstructions, setAiDecisionInstructions] = useState("");
+  const [aiMessageInstructions, setAiMessageInstructions] = useState("");
+  const [assignedClientIds, setAssignedClientIds] = useState<string[]>([]);
 
   const [enrollmentRules, setEnrollmentRules] = useState<any>({
     sources: [],
@@ -159,6 +164,11 @@ export default function AdminCampaignDetailPage() {
       setIsLocked(data.is_locked || false);
       setIsActive(data.is_active || false);
       setClientId(data.client_id || "unallocated");
+      setAiDecisionInstructions(data.ai_decision_instructions || "");
+      setAiMessageInstructions(data.ai_message_instructions || "");
+      // Load all assigned clients from client_campaigns join
+      const assigned = (data.client_campaigns || []).map((cc: any) => cc.client_id).filter(Boolean);
+      setAssignedClientIds(assigned);
       setScheduledStepsEnabled(data.scheduled_steps_enabled ?? true);
       setConversationalAiEnabled(data.conversational_ai_enabled ?? false);
       setCurrency(data.currency || "PHP");
@@ -331,7 +341,7 @@ export default function AdminCampaignDetailPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim() })
+        body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim(), type: kbType })
       });
       if (!res.ok) {
         const err = await res.json();
@@ -339,6 +349,7 @@ export default function AdminCampaignDetailPage() {
       }
       setKbTitle("");
       setKbContent("");
+      setKbType("knowledge");
       const token2 = await getToken();
       const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
         headers: { Authorization: `Bearer ${token2}` }
@@ -385,6 +396,9 @@ export default function AdminCampaignDetailPage() {
           is_locked: isLocked,
           is_active: isActive,
           client_id: clientId === "unallocated" ? null : clientId,
+          ai_decision_instructions: aiDecisionInstructions || null,
+          ai_message_instructions: aiMessageInstructions || null,
+          assigned_client_ids: assignedClientIds,
           currency: currency || "PHP",
           start_date: startDate || null,
           end_date: endDate || null,
@@ -460,8 +474,14 @@ export default function AdminCampaignDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Allocate to Client</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+                <Label>Primary Client</Label>
+                <Select value={clientId} onValueChange={(val) => {
+                  setClientId(val);
+                  // Ensure primary client is always in assigned list
+                  if (val !== "unallocated" && !assignedClientIds.includes(val)) {
+                    setAssignedClientIds(prev => [...prev, val]);
+                  }
+                }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unallocated">— Unallocated —</SelectItem>
@@ -472,7 +492,38 @@ export default function AdminCampaignDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-slate-500">The main client that owns this campaign.</p>
               </div>
+
+              {clients.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Assign to Additional Clients</Label>
+                  <p className="text-xs text-slate-500">These clients can view and edit this campaign alongside the primary client.</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto border rounded-md p-2">
+                    {clients
+                      .filter(c => c.id !== (clientId === "unallocated" ? "" : clientId))
+                      .map(c => (
+                        <div key={c.id} className="flex items-center space-x-2 py-1">
+                          <Checkbox
+                            id={`cc-${c.id}`}
+                            checked={assignedClientIds.includes(c.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setAssignedClientIds(prev => [...prev, c.id]);
+                              } else {
+                                setAssignedClientIds(prev => prev.filter(id => id !== c.id));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`cc-${c.id}`} className="text-sm font-normal">
+                            {c.name} <span className="text-slate-400">({c.company_name})</span>
+                          </Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-blue-900">Active (visible to client)</p>
@@ -688,6 +739,42 @@ export default function AdminCampaignDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Section 6a — AI Instructions */}
+          <Card className="border-violet-200 bg-violet-50/30">
+            <CardHeader>
+              <CardTitle className="text-violet-800">Section 6a: AI Instructions (Per-Campaign)</CardTitle>
+              <p className="text-sm text-slate-500">
+                Override the default AI behaviour for this campaign. Leave blank to use BayMo defaults.
+                Use <code className="text-xs bg-slate-100 px-1 rounded">{`{{lead_name}}`}</code>,{" "}
+                <code className="text-xs bg-slate-100 px-1 rounded">{`{{campaign_name}}`}</code>,{" "}
+                <code className="text-xs bg-slate-100 px-1 rounded">{`{{next_field}}`}</code>,{" "}
+                <code className="text-xs bg-slate-100 px-1 rounded">{`{{filled_fields}}`}</code> as variables.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-violet-700">Decision Prompt (used by AI to choose action: proceed / skip / pause / notify_agent)</Label>
+                <Textarea
+                  value={aiDecisionInstructions}
+                  onChange={e => setAiDecisionInstructions(e.target.value)}
+                  rows={6}
+                  placeholder="Leave blank to use BayMo default decision prompt. Write a full system prompt to override it for this campaign."
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-violet-700">Message Prompt (used by AI to compose the reply)</Label>
+                <Textarea
+                  value={aiMessageInstructions}
+                  onChange={e => setAiMessageInstructions(e.target.value)}
+                  rows={6}
+                  placeholder="Leave blank to use BayMo default message prompt. Write a full system prompt to override it for this campaign."
+                  className="font-mono text-sm"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Section 7 */}
           <Card>
             <CardHeader><CardTitle>Section 7: Campaign Settings</CardTitle></CardHeader>
@@ -808,17 +895,31 @@ export default function AdminCampaignDetailPage() {
 
           {/* Section 7b */}
           <Card>
-            <CardHeader><CardTitle>Section 7b: Knowledge Base</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Section 7b: Knowledge Base</CardTitle>
+              <p className="text-sm text-slate-500">
+                <strong>Knowledge</strong> entries are shown as a reference library to the AI.{" "}
+                <strong>Instruction</strong> entries are appended to the AI system prompt as extra rules.
+              </p>
+            </CardHeader>
             <CardContent className="space-y-6">
-              <p className="text-sm text-slate-500">Add reference material that BayMo will use when replying to leads.</p>
               {knowledgeBase.length > 0 && (
                 <div className="space-y-3">
                   {knowledgeBase.map(entry => (
                     <div key={entry.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{entry.title}</p>
-                          <p className="text-sm text-slate-500 mt-1 whitespace-pre-wrap">{entry.content}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-sm">{entry.title}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              entry.type === "instruction"
+                                ? "bg-violet-100 text-violet-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {entry.type === "instruction" ? "Instruction" : "Knowledge"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-500 whitespace-pre-wrap">{entry.content}</p>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteKbEntry(entry.id)}>
                           <Trash2 className="w-4 h-4 text-red-500" />
@@ -834,12 +935,22 @@ export default function AdminCampaignDetailPage() {
               <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
                 <p className="text-sm font-medium">Add New Entry</p>
                 <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={kbType} onValueChange={(v) => setKbType(v as "knowledge" | "instruction")}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="knowledge">Knowledge — reference material</SelectItem>
+                      <SelectItem value="instruction">Instruction — extra AI rules</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Title</Label>
-                  <Input value={kbTitle} onChange={e => setKbTitle(e.target.value)} placeholder="e.g. Property FAQs, Pricing Guide" />
+                  <Input value={kbTitle} onChange={e => setKbTitle(e.target.value)} placeholder="e.g. Property FAQs, Pricing Guide, Do Not Offer Discounts" />
                 </div>
                 <div className="space-y-2">
                   <Label>Content</Label>
-                  <Textarea value={kbContent} onChange={e => setKbContent(e.target.value)} rows={4} placeholder="Enter the reference content BayMo should use..." />
+                  <Textarea value={kbContent} onChange={e => setKbContent(e.target.value)} rows={4} placeholder="Enter the content BayMo should use..." />
                 </div>
                 <Button onClick={handleAddKbEntry} disabled={kbSaving}>
                   <Plus className="w-4 h-4 mr-2" />{kbSaving ? "Adding..." : "Add Entry"}

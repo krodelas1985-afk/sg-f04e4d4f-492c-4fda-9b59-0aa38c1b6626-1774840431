@@ -97,7 +97,11 @@ export default function CampaignDetailPage() {
   const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
   const [kbTitle, setKbTitle] = useState("");
   const [kbContent, setKbContent] = useState("");
+  const [kbType, setKbType] = useState<"knowledge" | "instruction">("knowledge");
   const [kbSaving, setKbSaving] = useState(false);
+
+  const [aiDecisionInstructions, setAiDecisionInstructions] = useState("");
+  const [aiMessageInstructions, setAiMessageInstructions] = useState("");
   const [enrollmentRules, setEnrollmentRules] = useState<any>({
     sources: [],
     fb_ad_id: "",
@@ -152,6 +156,8 @@ export default function CampaignDetailPage() {
       setIsLocked(data.is_locked || false);
       setScheduledStepsEnabled(data.scheduled_steps_enabled ?? true);
       setConversationalAiEnabled(data.conversational_ai_enabled ?? false);
+      setAiDecisionInstructions(data.ai_decision_instructions || "");
+      setAiMessageInstructions(data.ai_message_instructions || "");
       if (data.enrollment_rules) {
         setEnrollmentRules({
           sources: data.enrollment_rules.sources || [],
@@ -346,7 +352,7 @@ export default function CampaignDetailPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim() })
+        body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim(), type: kbType })
       });
       if (!res.ok) {
         const err = await res.json();
@@ -354,6 +360,7 @@ export default function CampaignDetailPage() {
       }
       setKbTitle("");
       setKbContent("");
+      setKbType("knowledge");
       const token2 = await getToken();
       const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
         headers: { Authorization: `Bearer ${token2}` }
@@ -407,6 +414,8 @@ export default function CampaignDetailPage() {
         enrollment_rules: enrollmentRules,
         campaign_rules: campaignRules,
         job_titles: jobTitles,
+        ai_decision_instructions: aiDecisionInstructions || null,
+        ai_message_instructions: aiMessageInstructions || null,
         config: {
           target_audience: {
             budget_min: budgetMin,
@@ -730,6 +739,44 @@ export default function CampaignDetailPage() {
             </CardContent>
           </Card>
 
+          {(profile?.role === "baymo_admin" || profile?.role === "client_admin") && (
+            <Card className="border-violet-200 bg-violet-50/30">
+              <CardHeader>
+                <CardTitle className="text-violet-800">Section 6a: AI Instructions (Per-Campaign)</CardTitle>
+                <p className="text-sm text-slate-500">
+                  Override the default BayMo AI behaviour for this campaign. Leave blank to use defaults.
+                  Use <code className="text-xs bg-slate-100 px-1 rounded">{`{{lead_name}}`}</code>,{" "}
+                  <code className="text-xs bg-slate-100 px-1 rounded">{`{{campaign_name}}`}</code>,{" "}
+                  <code className="text-xs bg-slate-100 px-1 rounded">{`{{next_field}}`}</code> as variables.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-violet-700">Decision Prompt</Label>
+                  <Textarea
+                    value={aiDecisionInstructions}
+                    onChange={e => setAiDecisionInstructions(e.target.value)}
+                    disabled={!canEdit}
+                    rows={5}
+                    placeholder="Leave blank to use BayMo default. Write a full system prompt to override."
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-violet-700">Message Prompt</Label>
+                  <Textarea
+                    value={aiMessageInstructions}
+                    onChange={e => setAiMessageInstructions(e.target.value)}
+                    disabled={!canEdit}
+                    rows={5}
+                    placeholder="Leave blank to use BayMo default. Write a full system prompt to override."
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Section 7: Campaign Settings</CardTitle>
@@ -861,22 +908,29 @@ export default function CampaignDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Section 7b: Knowledge Base</CardTitle>
+              <p className="text-sm text-slate-500">
+                <strong>Knowledge</strong> entries give BayMo reference material (FAQs, pricing, policies).{" "}
+                <strong>Instruction</strong> entries are appended as extra AI rules.
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
-              <p className="text-sm text-slate-500">
-                Add reference material that BayMo will use when replying to leads —
-                property details, FAQs, pricing, policies, and anything else
-                the AI should know about.
-              </p>
-
               {knowledgeBase.length > 0 && (
                 <div className="space-y-3">
                   {knowledgeBase.map(entry => (
                     <div key={entry.id} className="border rounded-lg p-4 space-y-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{entry.title}</p>
-                          <p className="text-sm text-slate-500 mt-1 whitespace-pre-wrap">{entry.content}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-sm">{entry.title}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              entry.type === "instruction"
+                                ? "bg-violet-100 text-violet-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {entry.type === "instruction" ? "Instruction" : "Knowledge"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-500 whitespace-pre-wrap">{entry.content}</p>
                         </div>
                         {canEditKb && (
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteKbEntry(entry.id)}>
@@ -899,11 +953,21 @@ export default function CampaignDetailPage() {
                 <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
                   <p className="text-sm font-medium">Add New Entry</p>
                   <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select value={kbType} onValueChange={(v) => setKbType(v as "knowledge" | "instruction")}>
+                      <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="knowledge">Knowledge — reference material</SelectItem>
+                        <SelectItem value="instruction">Instruction — extra AI rules</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Title</Label>
                     <Input
                       value={kbTitle}
                       onChange={e => setKbTitle(e.target.value)}
-                      placeholder="e.g. Property FAQs, Pricing Guide, Payment Terms"
+                      placeholder="e.g. Property FAQs, Pricing Guide, Do Not Offer Discounts"
                     />
                   </div>
                   <div className="space-y-2">
@@ -912,7 +976,7 @@ export default function CampaignDetailPage() {
                       value={kbContent}
                       onChange={e => setKbContent(e.target.value)}
                       rows={4}
-                      placeholder="Enter the reference content BayMo should use when replying..."
+                      placeholder="Enter the content BayMo should use..."
                     />
                   </div>
                   <Button onClick={handleAddKbEntry} disabled={kbSaving}>

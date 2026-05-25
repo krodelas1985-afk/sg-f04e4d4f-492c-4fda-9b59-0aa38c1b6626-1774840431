@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "GET") {
       const { data, error } = await adminClient
         .from("campaigns")
-        .select(`*, clients(id, name, company_name)`)
+        .select(`*, clients(id, name, company_name), client_campaigns(client_id)`)
         .eq("id", id)
         .single();
 
@@ -58,7 +58,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         start_date, end_date, success_metric, source_detail,
         target_industries, job_titles, campaign_rules,
         enrollment_rules, priority, scheduled_steps_enabled,
-        conversational_ai_enabled
+        conversational_ai_enabled, ai_decision_instructions,
+        ai_message_instructions, assigned_client_ids
       } = req.body;
 
       const updateData: any = {};
@@ -82,6 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (priority !== undefined) updateData.priority = priority;
       if (scheduled_steps_enabled !== undefined) updateData.scheduled_steps_enabled = scheduled_steps_enabled;
       if (conversational_ai_enabled !== undefined) updateData.conversational_ai_enabled = conversational_ai_enabled;
+      if (ai_decision_instructions !== undefined) updateData.ai_decision_instructions = ai_decision_instructions || null;
+      if (ai_message_instructions !== undefined) updateData.ai_message_instructions = ai_message_instructions || null;
       updateData.updated_at = new Date().toISOString();
 
       const { data, error } = await adminClient
@@ -92,6 +95,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (error) return res.status(500).json({ error: "Failed to update campaign" });
+
+      // Sync client_campaigns if assigned_client_ids was provided
+      if (Array.isArray(assigned_client_ids)) {
+        // Remove all existing assignments for this campaign
+        await adminClient.from("client_campaigns").delete().eq("campaign_id", id);
+        // Re-insert all selected client IDs (deduped)
+        const uniqueIds = [...new Set(assigned_client_ids.filter(Boolean))] as string[];
+        if (uniqueIds.length > 0) {
+          await adminClient.from("client_campaigns").insert(
+            uniqueIds.map((cid: string) => ({ campaign_id: id, client_id: cid }))
+          );
+        }
+      }
+
       return res.status(200).json(data);
     }
 

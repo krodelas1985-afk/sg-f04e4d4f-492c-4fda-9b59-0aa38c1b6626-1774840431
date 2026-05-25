@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: "Permission denied" });
       }
 
-      const { title, content } = req.body;
+      const { title, content, type } = req.body;
 
       // Validate required fields
       if (!title || !title.trim()) {
@@ -110,6 +110,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!content || !content.trim()) {
         return res.status(400).json({ error: "Content is required" });
       }
+
+      const entryType = type === "instruction" ? "instruction" : "knowledge";
 
       // Determine client_id
       let clientId = profile.client_id;
@@ -134,6 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           client_id: clientId,
           title: title.trim(),
           content: content.trim(),
+          type: entryType,
           is_active: true,
         })
         .select()
