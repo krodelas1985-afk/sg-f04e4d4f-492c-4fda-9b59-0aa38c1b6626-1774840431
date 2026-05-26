@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         target_industries, job_titles, campaign_rules,
         enrollment_rules, priority, scheduled_steps_enabled,
         conversational_ai_enabled, ai_decision_instructions,
-        ai_message_instructions, assigned_client_ids
+        ai_message_instructions, assigned_client_ids, ai_instruction
       } = req.body;
 
       const updateData: any = {};
@@ -85,6 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (conversational_ai_enabled !== undefined) updateData.conversational_ai_enabled = conversational_ai_enabled;
       if (ai_decision_instructions !== undefined) updateData.ai_decision_instructions = ai_decision_instructions || null;
       if (ai_message_instructions !== undefined) updateData.ai_message_instructions = ai_message_instructions || null;
+      if (ai_instruction !== undefined) updateData.ai_instruction = ai_instruction;
       updateData.updated_at = new Date().toISOString();
 
       const { data, error } = await adminClient

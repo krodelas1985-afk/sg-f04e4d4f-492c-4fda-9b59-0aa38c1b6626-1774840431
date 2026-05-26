@@ -96,7 +96,8 @@ export default async function handler(
       scheduled_steps_enabled,
       conversational_ai_enabled,
       ai_decision_instructions,
-      ai_message_instructions
+      ai_message_instructions,
+      ai_instruction
     } = req.body;
 
     // Fetch the campaign first to check permissions
@@ -153,6 +154,7 @@ export default async function handler(
     if (conversational_ai_enabled !== undefined) updateData.conversational_ai_enabled = conversational_ai_enabled;
     if (ai_decision_instructions !== undefined) updateData.ai_decision_instructions = ai_decision_instructions || null;
     if (ai_message_instructions !== undefined) updateData.ai_message_instructions = ai_message_instructions || null;
+    if (ai_instruction !== undefined) updateData.ai_instruction = ai_instruction;
 
     // Only baymo_admin can update is_locked
     if (is_locked !== undefined && profile.role === "baymo_admin") {

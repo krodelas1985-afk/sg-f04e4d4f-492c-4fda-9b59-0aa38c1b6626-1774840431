@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Upload, FileText } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -70,7 +70,7 @@ export default function CampaignDetailPage() {
     Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, true]))
   );
   const [tonePersona, setTonePersona] = useState("");
-  const [additionalInstructions, setAdditionalInstructions] = useState("");
+  const [aiInstruction, setAiInstruction] = useState("");
 
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [emailSources, setEmailSources] = useState<string[]>([]);
@@ -94,11 +94,8 @@ export default function CampaignDetailPage() {
     ai_screen_before_send: true,
     notification_message: ""
   });
-  const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
-  const [kbTitle, setKbTitle] = useState("");
-  const [kbContent, setKbContent] = useState("");
-  const [kbType, setKbType] = useState<"knowledge" | "instruction">("knowledge");
-  const [kbSaving, setKbSaving] = useState(false);
+  const [kbDocuments, setKbDocuments] = useState<any[]>([]);
+  const [kbUploading, setKbUploading] = useState(false);
 
   const [aiDecisionInstructions, setAiDecisionInstructions] = useState("");
   const [aiMessageInstructions, setAiMessageInstructions] = useState("");
@@ -206,7 +203,7 @@ export default function CampaignDetailPage() {
       setQualificationFields(fieldMap);
       setQualificationEnabled(enabledMap);
       setTonePersona(config.tone_persona || "");
-      setAdditionalInstructions(config.additional_instructions || "");
+      setAiInstruction(data.ai_instruction || config.additional_instructions || "");
 
       const emailTriggers = config.email_triggers || {};
       setEmailEnabled(emailTriggers.enabled || false);
@@ -219,15 +216,17 @@ export default function CampaignDetailPage() {
         setCampaignSteps(stepsData);
       }
 
-      // ── Fetch knowledge base WITH auth token ──────────────────────────────
-      const token = await getToken();
-      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (kbRes.ok) {
-        const kbData = await kbRes.json();
-        setKnowledgeBase(kbData);
-      }
+      // ── Fetch KB documents from kb_documents table ────────────────────────────
+      const kbSupabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: kbData } = await kbSupabase
+        .from("kb_documents")
+        .select("*")
+        .eq("campaign_id", id as string)
+        .order("created_at", { ascending: true });
+      setKbDocuments(kbData || []);
 
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
       if (tRes.ok) {
@@ -336,54 +335,62 @@ export default function CampaignDetailPage() {
     }
   };
 
-  // ── KB handlers WITH auth token ─────────────────────────────────────────────
+  // ── KB document handlers ─────────────────────────────────────────────────────
 
-  const handleAddKbEntry = async () => {
-    if (!kbTitle.trim() || !kbContent.trim()) {
-      toast({ title: "Error", description: "Title and content are required", variant: "destructive" });
-      return;
-    }
+  const getSupabaseBrowser = () => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const fetchKbDocuments = async () => {
+    const supabase = getSupabaseBrowser();
+    const { data } = await supabase
+      .from("kb_documents")
+      .select("*")
+      .eq("campaign_id", id as string)
+      .order("created_at", { ascending: true });
+    setKbDocuments(data || []);
+  };
+
+  const handleKbFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setKbUploading(true);
     try {
-      setKbSaving(true);
-      const token = await getToken();
-      const res = await fetch(`/api/campaigns/${id}/knowledge-base`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ title: kbTitle.trim(), content: kbContent.trim(), type: kbType })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to add entry");
+      const supabase = getSupabaseBrowser();
+      for (const file of Array.from(files)) {
+        const filePath = `kb/${id}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-base")
+          .upload(filePath, file, { upsert: true });
+        if (uploadError) throw uploadError;
+        const { error: insertError } = await supabase.from("kb_documents").insert({
+          client_id: campaign.client_id || null,
+          campaign_id: id as string,
+          file_name: file.name,
+          file_url: filePath,
+          file_type: file.type,
+          status: "processing",
+        });
+        if (insertError) throw insertError;
       }
-      setKbTitle("");
-      setKbContent("");
-      setKbType("knowledge");
-      const token2 = await getToken();
-      const kbRes = await fetch(`/api/campaigns/${id}/knowledge-base`, {
-        headers: { Authorization: `Bearer ${token2}` }
-      });
-      if (kbRes.ok) setKnowledgeBase(await kbRes.json());
-      toast({ title: "Knowledge base entry added" });
+      await fetchKbDocuments();
+      toast({ title: "File(s) uploaded successfully" });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
-      setKbSaving(false);
+      setKbUploading(false);
+      e.target.value = "";
     }
   };
 
-  const handleDeleteKbEntry = async (entryId: string) => {
+  const handleDeleteKbDocument = async (docId: string, filePath: string) => {
     try {
-      const token = await getToken();
-      const res = await fetch(`/api/campaigns/${id}/knowledge-base?entry_id=${entryId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Failed to delete entry");
-      setKnowledgeBase(prev => prev.filter(e => e.id !== entryId));
-      toast({ title: "Entry removed" });
+      const supabase = getSupabaseBrowser();
+      await supabase.storage.from("knowledge-base").remove([filePath]);
+      await supabase.from("kb_documents").delete().eq("id", docId);
+      setKbDocuments(prev => prev.filter(d => d.id !== docId));
+      toast({ title: "File removed" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -416,6 +423,7 @@ export default function CampaignDetailPage() {
         job_titles: jobTitles,
         ai_decision_instructions: aiDecisionInstructions || null,
         ai_message_instructions: aiMessageInstructions || null,
+        ai_instruction: aiInstruction,
         config: {
           target_audience: {
             budget_min: budgetMin,
@@ -432,7 +440,6 @@ export default function CampaignDetailPage() {
             enabled: qualificationEnabled[f.field] !== false
           })),
           tone_persona: tonePersona,
-          additional_instructions: additionalInstructions,
           email_triggers: {
             enabled: emailEnabled,
             allowed_sources: emailSources,
@@ -466,7 +473,7 @@ export default function CampaignDetailPage() {
   if (!campaign) return <DashboardLayout><div className="p-8">Not found</div></DashboardLayout>;
 
   const canEdit = profile?.role === "baymo_admin" || (!campaign.is_locked && (profile?.role === "client_admin" || profile?.role === "manager"));
-  const canEditKb = profile?.role === "baymo_admin";
+  const canEditKb = profile?.role === "baymo_admin" || profile?.role === "client_admin";
   const isViewer = profile?.role === "agent" || profile?.role === "viewer";
 
   return (
@@ -727,14 +734,17 @@ export default function CampaignDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Section 6: Additional Instructions</CardTitle>
+              <CardTitle>Section 6: AI Instruction</CardTitle>
+              <p className="text-sm text-slate-500">Define the AI's role, tone, and behavior. This is the system prompt that guides how BayMo responds to leads.</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
+              <Label>AI Instruction</Label>
               <Textarea
-                value={additionalInstructions}
-                onChange={e => setAdditionalInstructions(e.target.value)}
+                value={aiInstruction}
+                onChange={e => setAiInstruction(e.target.value)}
                 disabled={!canEdit}
-                rows={4}
+                rows={6}
+                placeholder="e.g. You are a friendly real estate assistant for [Company]. Your goal is to qualify leads and schedule property viewings. Always respond in a warm, professional tone..."
               />
             </CardContent>
           </Card>
@@ -908,32 +918,54 @@ export default function CampaignDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Section 7b: Knowledge Base</CardTitle>
-              <p className="text-sm text-slate-500">
-                <strong>Knowledge</strong> entries give BayMo reference material (FAQs, pricing, policies).{" "}
-                <strong>Instruction</strong> entries are appended as extra AI rules.
-              </p>
+              <p className="text-sm text-slate-500">Upload PDF, DOCX, or TXT files that BayMo will use as reference material when replying to leads.</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {knowledgeBase.length > 0 && (
-                <div className="space-y-3">
-                  {knowledgeBase.map(entry => (
-                    <div key={entry.id} className="border rounded-lg p-4 space-y-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-sm">{entry.title}</p>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              entry.type === "instruction"
-                                ? "bg-violet-100 text-violet-700"
-                                : "bg-blue-100 text-blue-700"
-                            }`}>
-                              {entry.type === "instruction" ? "Instruction" : "Knowledge"}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-500 whitespace-pre-wrap">{entry.content}</p>
-                        </div>
+
+              {/* Upload zone — visible to baymo_admin and client_admin */}
+              {canEditKb && (
+                <div className="space-y-2">
+                  <Label>Upload Documents</Label>
+                  <label
+                    htmlFor="kb-file-upload"
+                    className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-lg p-8 cursor-pointer transition-colors ${kbUploading ? "opacity-50 cursor-not-allowed" : "hover:border-slate-400 hover:bg-slate-50"}`}
+                  >
+                    <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                    <p className="text-sm font-medium text-slate-600">
+                      {kbUploading ? "Uploading..." : "Click to upload files"}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">PDF, DOCX, TXT · Multiple files supported</p>
+                    <input
+                      id="kb-file-upload"
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      multiple
+                      className="hidden"
+                      disabled={kbUploading}
+                      onChange={handleKbFileUpload}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* Documents list */}
+              {kbDocuments.length > 0 ? (
+                <div className="space-y-2">
+                  {kbDocuments.map(doc => (
+                    <div key={doc.id} className="border rounded-lg p-3 flex items-center justify-between gap-3 bg-white">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                        <p className="text-sm font-medium truncate">{doc.file_name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge
+                          variant={doc.status === "ready" ? "default" : doc.status === "failed" ? "destructive" : "secondary"}
+                          className={doc.status === "processing" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : ""}
+                        >
+                          {doc.status}
+                        </Badge>
                         {canEditKb && (
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteKbEntry(entry.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteKbDocument(doc.id, doc.file_url)}>
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         )}
@@ -941,50 +973,12 @@ export default function CampaignDetailPage() {
                     </div>
                   ))}
                 </div>
-              )}
-
-              {knowledgeBase.length === 0 && (
-                <div className="text-center py-6 text-slate-400 text-sm border border-dashed rounded-lg">
-                  No knowledge base entries yet.{canEditKb ? " Add your first entry below." : ""}
+              ) : (
+                <div className="text-center py-8 text-slate-400 text-sm border border-dashed rounded-lg">
+                  No documents uploaded yet.{canEditKb ? " Use the upload area above to add files." : ""}
                 </div>
               )}
 
-              {canEditKb && (
-                <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
-                  <p className="text-sm font-medium">Add New Entry</p>
-                  <div className="space-y-2">
-                    <Label>Type</Label>
-                    <Select value={kbType} onValueChange={(v) => setKbType(v as "knowledge" | "instruction")}>
-                      <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="knowledge">Knowledge — reference material</SelectItem>
-                        <SelectItem value="instruction">Instruction — extra AI rules</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Title</Label>
-                    <Input
-                      value={kbTitle}
-                      onChange={e => setKbTitle(e.target.value)}
-                      placeholder="e.g. Property FAQs, Pricing Guide, Do Not Offer Discounts"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Content</Label>
-                    <Textarea
-                      value={kbContent}
-                      onChange={e => setKbContent(e.target.value)}
-                      rows={4}
-                      placeholder="Enter the content BayMo should use..."
-                    />
-                  </div>
-                  <Button onClick={handleAddKbEntry} disabled={kbSaving}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    {kbSaving ? "Adding..." : "Add Entry"}
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
 
