@@ -53,6 +53,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!clientId) continue;
 
         for (const event of entry.messaging) {
+          // ── ECHO HANDLING (human-agent replies via Page inbox) ───────
+          if (event.message?.is_echo === true) {
+            // app_id present → Send API echo (AI's own message, already logged) → skip
+            if (event.message.app_id) continue;
+
+            // app_id absent → human agent replied through the Page inbox → log it
+            try {
+              const recipientId = event.recipient?.id as string | undefined;
+              if (!recipientId) continue;
+
+              const { data: echoLead } = await supabase
+                .from("leads")
+                .select("id, client_id")
+                .eq("messenger_id", recipientId)
+                .maybeSingle();
+
+              if (!echoLead) continue;
+
+              const attachments = event.message.attachments as any[] | undefined;
+              const messageContent: string = event.message.text
+                ? (event.message.text as string)
+                : attachments?.length
+                ? `[${attachments[0].type}]`
+                : "[attachment]";
+
+              const { error: echoInsertError } = await supabase
+                .from("conversations")
+                .insert({
+                  lead_id: echoLead.id,
+                  client_id: echoLead.client_id,
+                  sender: "agent",
+                  direction: "outbound",
+                  channel: "messenger",
+                  sent_via: "facebook_inbox",
+                  message_content: messageContent,
+                  external_msg_id: event.message.mid as string,
+                  delivery_status: "sent",
+                  ...(attachments?.length && {
+                    attachment_url: attachments[0].payload?.url ?? null,
+                    attachment_type: attachments[0].type ?? null,
+                  }),
+                });
+
+              // Unique index on external_msg_id — ignore duplicate on Facebook redelivery
+              if (echoInsertError && !echoInsertError.message?.includes("unique")) {
+                console.error("Echo insert error:", echoInsertError);
+              }
+            } catch (echoErr) {
+              console.error("Error processing echo event:", echoErr);
+            }
+            continue; // never trigger the AI responder for echo events
+          }
+          // ── END ECHO HANDLING ────────────────────────────────────────
+
           if (!event.message || !event.message.text) continue;
 
           try {
