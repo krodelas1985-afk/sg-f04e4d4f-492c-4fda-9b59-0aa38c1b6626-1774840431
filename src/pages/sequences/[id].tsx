@@ -59,6 +59,11 @@ interface Sequence {
   created_at: string;
 }
 
+interface QuickReply {
+  title: string;
+  payload: string;
+}
+
 interface Step {
   id: string;
   step_order: number;
@@ -67,6 +72,7 @@ interface Step {
   message_content: string | null;
   delay_hours: number;
   is_active: boolean;
+  quick_replies: QuickReply[] | null;
 }
 
 interface Rule {
@@ -176,11 +182,18 @@ export default function SequenceDetailPage() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [stepDialogOpen, setStepDialogOpen] = useState(false);
   const [editingStep, setEditingStep] = useState<Step | null>(null);
-  const [stepForm, setStepForm] = useState({
+  const [stepForm, setStepForm] = useState<{
+    title: string;
+    step_type: string;
+    message_content: string;
+    delay_hours: number;
+    quick_replies: QuickReply[];
+  }>({
     title: "",
     step_type: "messenger",
     message_content: "",
     delay_hours: 24,
+    quick_replies: [],
   });
   const [savingStep, setSavingStep] = useState(false);
 
@@ -338,6 +351,7 @@ export default function SequenceDetailPage() {
       step_type: "messenger",
       message_content: "",
       delay_hours: 24,
+      quick_replies: [],
     });
     setStepDialogOpen(true);
   };
@@ -349,6 +363,12 @@ export default function SequenceDetailPage() {
       step_type: step.step_type,
       message_content: step.message_content || "",
       delay_hours: step.delay_hours,
+      quick_replies: step.quick_replies
+        ? step.quick_replies.map((qr) => ({
+            title: qr.title,
+            payload: qr.payload,
+          }))
+        : [],
     });
     setStepDialogOpen(true);
   };
@@ -358,6 +378,15 @@ export default function SequenceDetailPage() {
       toast({ title: "Title required", variant: "destructive" });
       return;
     }
+    // Quick replies only apply to messenger steps. Drop empty rows; send null
+    // when there are none so the column is cleared.
+    const cleanedQuickReplies = stepForm.quick_replies
+      .map((qr) => ({ title: qr.title.trim(), payload: qr.payload.trim() }))
+      .filter((qr) => qr.title !== "" && qr.payload !== "");
+    const quickRepliesPayload =
+      stepForm.step_type === "messenger" && cleanedQuickReplies.length > 0
+        ? cleanedQuickReplies
+        : null;
     try {
       setSavingStep(true);
       if (editingStep) {
@@ -370,6 +399,7 @@ export default function SequenceDetailPage() {
             step_type: stepForm.step_type,
             message_content: stepForm.message_content,
             delay_hours: Number(stepForm.delay_hours) || 0,
+            quick_replies: quickRepliesPayload,
           }),
         });
         if (!res.ok) throw new Error("Failed to update step");
@@ -382,6 +412,7 @@ export default function SequenceDetailPage() {
             step_type: stepForm.step_type,
             message_content: stepForm.message_content,
             delay_hours: Number(stepForm.delay_hours) || 0,
+            quick_replies: quickRepliesPayload,
           }),
         });
         if (!res.ok) throw new Error("Failed to add step");
@@ -969,6 +1000,79 @@ export default function SequenceDetailPage() {
                 rows={4}
               />
             </div>
+            {stepForm.step_type === "messenger" && (
+              <div className="space-y-2">
+                <Label>Quick Replies (optional)</Label>
+                <p className="text-xs text-slate-500">
+                  Quick Reply Buttons (max 13, helps keep FB 24h window open)
+                </p>
+                {stepForm.quick_replies.length > 0 && (
+                  <div className="space-y-2">
+                    {stepForm.quick_replies.map((qr, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Title"
+                          value={qr.title}
+                          onChange={(e) => {
+                            const next = stepForm.quick_replies.map((row, i) =>
+                              i === index
+                                ? { ...row, title: e.target.value }
+                                : row
+                            );
+                            setStepForm({ ...stepForm, quick_replies: next });
+                          }}
+                        />
+                        <Input
+                          placeholder="Payload"
+                          value={qr.payload}
+                          onChange={(e) => {
+                            const next = stepForm.quick_replies.map((row, i) =>
+                              i === index
+                                ? { ...row, payload: e.target.value }
+                                : row
+                            );
+                            setStepForm({ ...stepForm, quick_replies: next });
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setStepForm({
+                              ...stepForm,
+                              quick_replies: stepForm.quick_replies.filter(
+                                (_, i) => i !== index
+                              ),
+                            })
+                          }
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={stepForm.quick_replies.length >= 13}
+                  onClick={() =>
+                    setStepForm({
+                      ...stepForm,
+                      quick_replies: [
+                        ...stepForm.quick_replies,
+                        { title: "", payload: "" },
+                      ],
+                    })
+                  }
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Quick Reply
+                </Button>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="step-delay">Delay (hours)</Label>
               <Input
