@@ -208,6 +208,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .maybeSingle();
 
             // ── 2. SAVE INBOUND MESSAGE ──────────────────────────────
+            // Quick reply taps include an intent payload alongside the title text;
+            // null for normal text messages.
+            const quickReplyPayload = event.message.quick_reply?.payload ?? null;
             await supabase.from("conversations").insert({
               lead_id: leadId,
               client_id: clientId,
@@ -215,6 +218,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               direction: "inbound",
               channel: "messenger",
               message_content: messageText,
+              intent_tag: quickReplyPayload,
               external_msg_id: externalMsgId,
               delivery_status: "received",
               sent_via: "facebook",
