@@ -132,24 +132,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let conversationSummary = "";
 
             if (!existingLead) {
-              // Fetch sender's real name from Facebook Graph API
-              let leadName = `Messenger Lead`;
+              // Resolve lead's real name from Facebook Graph API before insert
+              let leadName = "Messenger Lead";
+              const nameLookupAt = new Date().toISOString();
+              let nameLookupMeta: Record<string, unknown>;
+
               if (fbToken) {
                 try {
                   const profileRes = await fetch(
-                    `https://graph.facebook.com/v19.0/${psid}?fields=name,first_name,last_name&access_token=${fbToken}`
+                    `https://graph.facebook.com/v21.0/${psid}?fields=first_name,last_name&access_token=${fbToken}`
                   );
                   const profileData = await profileRes.json();
-                  if (profileData.name) {
-                    leadName = profileData.name;
-                  } else if (profileData.error) {
-                    console.warn(`FB Graph API name fetch failed for PSID ${psid}:`, profileData.error.message);
+                  if (profileData.first_name) {
+                    leadName = `${profileData.first_name} ${profileData.last_name ?? ""}`.trim();
+                    nameLookupMeta = { ok: true, at: nameLookupAt };
+                  } else {
+                    const fbError = profileData.error ?? "empty_response";
+                    console.warn(`FB Graph API name fetch failed for PSID ${psid}:`, fbError);
+                    nameLookupMeta = { ok: false, at: nameLookupAt, error: fbError };
                   }
                 } catch (e) {
                   console.warn(`FB Graph API name fetch exception for PSID ${psid}:`, e);
+                  nameLookupMeta = { ok: false, at: nameLookupAt, error: String(e) };
                 }
               } else {
                 console.warn(`No FB page token for client ${clientId} — cannot fetch Messenger lead name`);
+                nameLookupMeta = { ok: false, at: nameLookupAt, error: "no_token" };
               }
 
               const { data: newLead, error: createError } = await supabase
@@ -162,6 +170,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   lead_temperature: "cold",
                   client_id: clientId,
                   automation_enabled: false,
+                  metadata: { name_lookup: nameLookupMeta! },
                 })
                 .select("id")
                 .single();
