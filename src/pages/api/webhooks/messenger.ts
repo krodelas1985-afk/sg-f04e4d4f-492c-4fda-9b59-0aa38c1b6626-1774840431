@@ -101,6 +101,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   if (echoInsertError && !echoInsertError.message?.includes("unique")) {
                     console.error("Echo insert error:", echoInsertError);
                   }
+
+                  // Track outbound activity from agent inbox replies. Use current
+                  // time — the FB echo timestamp isn't reliable for echo events.
+                  if (!echoInsertError) {
+                    await supabase
+                      .from("leads")
+                      .update({ last_outbound_at: new Date().toISOString() })
+                      .eq("id", echoLead.id);
+                  }
                 }
               }
             } catch (echoErr) {
@@ -214,7 +223,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             await supabase
               .from("leads")
-              .update({ last_message_at: new Date(timestamp).toISOString() })
+              .update({
+                last_message_at: new Date(timestamp).toISOString(),
+                last_inbound_at: new Date(timestamp).toISOString(),
+              })
               .eq("id", leadId);
 
             // ── TRIGGER LEAD PROFILE UPDATE (fire-and-forget) ────────
