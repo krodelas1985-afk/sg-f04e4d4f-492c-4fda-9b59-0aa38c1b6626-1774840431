@@ -194,7 +194,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               });
             } else {
               leadId = existingLead.id;
-              automationEnabled = existingLead.automation_enabled ?? false;
+              automationEnabled = existingLead.automation_enabled ?? true;
               conversationSummary = existingLead.conversation_summary ?? "";
             }
 
@@ -289,6 +289,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
               campaignState = existingState;
             }
+
+            // Enforce automation opt-out: inbound logging, last_inbound_at, and the
+            // update-lead-profile (W1) call above MUST still run, but stop here so the
+            // AI responder does not auto-reply when automation is off for this lead.
+            if (!automationEnabled) continue;
 
             // ── 4. FETCH SUPPORTING DATA FOR n8n ────────────────────
             const campaign = campaignState?.campaign as any;

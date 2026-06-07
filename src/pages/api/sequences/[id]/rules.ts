@@ -89,6 +89,8 @@ export default async function handler(
       rule_name,
       source_filter,
       inactivity_days,
+      last_inbound_max_hours,
+      last_contacted_min_hours,
       temperature_filter,
       conversation_stage_filter,
       enabled,
@@ -108,6 +110,16 @@ export default async function handler(
           inactivity_days === undefined || inactivity_days === null
             ? null
             : inactivity_days,
+        last_inbound_max_hours:
+          last_inbound_max_hours === undefined ||
+          last_inbound_max_hours === null
+            ? null
+            : last_inbound_max_hours,
+        last_contacted_min_hours:
+          last_contacted_min_hours === undefined ||
+          last_contacted_min_hours === null
+            ? null
+            : last_contacted_min_hours,
         temperature_filter: toArrayOrNull(temperature_filter),
         conversation_stage_filter: toArrayOrNull(conversation_stage_filter),
         enabled: enabled ?? true,
@@ -128,6 +140,8 @@ export default async function handler(
       rule_name,
       source_filter,
       inactivity_days,
+      last_inbound_max_hours,
+      last_contacted_min_hours,
       temperature_filter,
       conversation_stage_filter,
       enabled,
@@ -143,6 +157,10 @@ export default async function handler(
       updateData.source_filter = toArrayOrNull(source_filter);
     if (inactivity_days !== undefined)
       updateData.inactivity_days = inactivity_days;
+    if (last_inbound_max_hours !== undefined)
+      updateData.last_inbound_max_hours = last_inbound_max_hours;
+    if (last_contacted_min_hours !== undefined)
+      updateData.last_contacted_min_hours = last_contacted_min_hours;
     if (temperature_filter !== undefined)
       updateData.temperature_filter = toArrayOrNull(temperature_filter);
     if (conversation_stage_filter !== undefined)

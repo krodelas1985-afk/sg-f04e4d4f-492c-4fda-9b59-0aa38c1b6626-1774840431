@@ -80,6 +80,8 @@ interface Rule {
   rule_name: string;
   source_filter: string[] | null;
   inactivity_days: number | null;
+  last_inbound_max_hours: number | null;
+  last_contacted_min_hours: number | null;
   temperature_filter: string[] | null;
   conversation_stage_filter: string[] | null;
   enabled: boolean;
@@ -196,6 +198,7 @@ export default function SequenceDetailPage() {
     quick_replies: [],
   });
   const [savingStep, setSavingStep] = useState(false);
+  const [stepWindowError, setStepWindowError] = useState<string | null>(null);
 
   // Rules
   const [rules, setRules] = useState<Rule[]>([]);
@@ -205,6 +208,8 @@ export default function SequenceDetailPage() {
     rule_name: string;
     source_filter: string[];
     inactivity_days: string;
+    last_inbound_max_hours: string;
+    last_contacted_min_hours: string;
     temperature_filter: string[];
     conversation_stage_filter: string[];
     enabled: boolean;
@@ -212,6 +217,8 @@ export default function SequenceDetailPage() {
     rule_name: "",
     source_filter: [],
     inactivity_days: "",
+    last_inbound_max_hours: "",
+    last_contacted_min_hours: "",
     temperature_filter: [],
     conversation_stage_filter: [],
     enabled: true,
@@ -346,6 +353,7 @@ export default function SequenceDetailPage() {
   // ---- Steps ----
   const openNewStep = () => {
     setEditingStep(null);
+    setStepWindowError(null);
     setStepForm({
       title: "",
       step_type: "messenger",
@@ -358,6 +366,7 @@ export default function SequenceDetailPage() {
 
   const openEditStep = (step: Step) => {
     setEditingStep(step);
+    setStepWindowError(null);
     setStepForm({
       title: step.title,
       step_type: step.step_type,
@@ -373,9 +382,32 @@ export default function SequenceDetailPage() {
     setStepDialogOpen(true);
   };
 
+  const checkMessengerWindow = (formDelay: number): string | null => {
+    if (stepForm.step_type !== "messenger") return null;
+    const thisOrder = editingStep
+      ? editingStep.step_order
+      : (steps.length > 0 ? Math.max(...steps.map((s) => s.step_order)) : 0) + 1;
+    const cumulative = steps
+      .filter((s) => s.step_order <= thisOrder)
+      .reduce((sum, s) => {
+        const hours =
+          editingStep && s.id === editingStep.id ? formDelay : s.delay_hours;
+        return sum + hours;
+      }, editingStep ? 0 : formDelay);
+    if (cumulative > 24) {
+      return `This Messenger step falls outside the 24-hour messaging window. The cumulative delay at this position is ${cumulative}h. Reduce the delay, move the step earlier, or use Email/Call instead.`;
+    }
+    return null;
+  };
+
   const saveStep = async () => {
     if (!stepForm.title.trim()) {
       toast({ title: "Title required", variant: "destructive" });
+      return;
+    }
+    const windowErr = checkMessengerWindow(Number(stepForm.delay_hours) || 0);
+    if (windowErr) {
+      setStepWindowError(windowErr);
       return;
     }
     // Quick replies only apply to messenger steps. Drop empty rows; send null
@@ -481,6 +513,8 @@ export default function SequenceDetailPage() {
       rule_name: "",
       source_filter: [],
       inactivity_days: "",
+      last_inbound_max_hours: "",
+      last_contacted_min_hours: "",
       temperature_filter: [],
       conversation_stage_filter: [],
       enabled: true,
@@ -495,6 +529,14 @@ export default function SequenceDetailPage() {
       source_filter: rule.source_filter || [],
       inactivity_days:
         rule.inactivity_days === null ? "" : String(rule.inactivity_days),
+      last_inbound_max_hours:
+        rule.last_inbound_max_hours === null
+          ? ""
+          : String(rule.last_inbound_max_hours),
+      last_contacted_min_hours:
+        rule.last_contacted_min_hours === null
+          ? ""
+          : String(rule.last_contacted_min_hours),
       temperature_filter: rule.temperature_filter || [],
       conversation_stage_filter: rule.conversation_stage_filter || [],
       enabled: rule.enabled,
@@ -514,6 +556,16 @@ export default function SequenceDetailPage() {
         ruleForm.inactivity_days.trim() === ""
           ? null
           : Number(ruleForm.inactivity_days),
+      last_inbound_max_hours:
+        ruleForm.last_inbound_max_hours.trim() === "" ||
+        Number(ruleForm.last_inbound_max_hours) < 1
+          ? null
+          : Number(ruleForm.last_inbound_max_hours),
+      last_contacted_min_hours:
+        ruleForm.last_contacted_min_hours.trim() === "" ||
+        Number(ruleForm.last_contacted_min_hours) < 1
+          ? null
+          : Number(ruleForm.last_contacted_min_hours),
       temperature_filter: ruleForm.temperature_filter,
       conversation_stage_filter: ruleForm.conversation_stage_filter,
       enabled: ruleForm.enabled,
@@ -970,9 +1022,10 @@ export default function SequenceDetailPage() {
               <Label>Step type</Label>
               <Select
                 value={stepForm.step_type}
-                onValueChange={(v) =>
-                  setStepForm({ ...stepForm, step_type: v })
-                }
+                onValueChange={(v) => {
+                  setStepForm({ ...stepForm, step_type: v });
+                  if (v !== "messenger") setStepWindowError(null);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1080,15 +1133,17 @@ export default function SequenceDetailPage() {
                 type="number"
                 min={0}
                 value={stepForm.delay_hours}
-                onChange={(e) =>
-                  setStepForm({
-                    ...stepForm,
-                    delay_hours: Number(e.target.value),
-                  })
-                }
+                onChange={(e) => {
+                  const newDelay = Number(e.target.value);
+                  setStepForm({ ...stepForm, delay_hours: newDelay });
+                  setStepWindowError(checkMessengerWindow(newDelay));
+                }}
               />
             </div>
           </div>
+          {stepWindowError && (
+            <p className="text-xs text-red-600 mt-1 mb-2">{stepWindowError}</p>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
@@ -1098,7 +1153,7 @@ export default function SequenceDetailPage() {
             </Button>
             <Button
               onClick={saveStep}
-              disabled={savingStep}
+              disabled={savingStep || !!stepWindowError}
               className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
             >
               {savingStep ? "Saving..." : editingStep ? "Save" : "Add Step"}
@@ -1153,6 +1208,50 @@ export default function SequenceDetailPage() {
                 }
                 placeholder="e.g. 7"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rule-last-inbound">
+                Last inbound within (hours)
+              </Label>
+              <Input
+                id="rule-last-inbound"
+                type="number"
+                min={1}
+                value={ruleForm.last_inbound_max_hours}
+                onChange={(e) =>
+                  setRuleForm({
+                    ...ruleForm,
+                    last_inbound_max_hours: e.target.value,
+                  })
+                }
+                placeholder="e.g. 24"
+              />
+              <p className="text-xs text-slate-500">
+                Only enroll leads who messaged within this many hours. Set to 24
+                for the Messenger window.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rule-last-contacted">
+                Min hours since last contacted
+              </Label>
+              <Input
+                id="rule-last-contacted"
+                type="number"
+                min={1}
+                value={ruleForm.last_contacted_min_hours}
+                onChange={(e) =>
+                  setRuleForm({
+                    ...ruleForm,
+                    last_contacted_min_hours: e.target.value,
+                  })
+                }
+                placeholder="e.g. 48"
+              />
+              <p className="text-xs text-slate-500">
+                Skip leads contacted within this many hours. Prevents
+                double-tapping.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Temperature filter</Label>
