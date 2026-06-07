@@ -69,6 +69,8 @@ interface Lead {
   property_type: string | null;
   bedrooms: number | null;
   buyer_type: string | null;
+  last_inbound_at: string | null;
+  last_contacted_at: string | null;
 }
 
 export default function LeadsPage() {
@@ -84,6 +86,8 @@ export default function LeadsPage() {
   const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>("All");
   const [campaignFilter, setCampaignFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastInboundSort, setLastInboundSort] = useState<string>("");
+  const [lastContactedSort, setLastContactedSort] = useState<string>("");
   
   // Summary counts
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -141,7 +145,7 @@ export default function LeadsPage() {
       fetchAgents();
       fetchCampaigns();
     }
-  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery]);
+  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery, lastInboundSort, lastContactedSort]);
   
   const { profile: userProfile } = useUserProfile();
 
@@ -157,6 +161,13 @@ export default function LeadsPage() {
     
     try {
       const supabase = createClient();
+      const sortBy = lastInboundSort
+        ? "last_inbound_at"
+        : lastContactedSort
+        ? "last_contacted_at"
+        : "created_at";
+      const sortDir = lastInboundSort || lastContactedSort || "desc";
+
       const { data, error: rpcError } = await supabase.rpc("get_leads_with_details", {
         p_client_id: clientId,
         p_limit: 100,
@@ -167,6 +178,8 @@ export default function LeadsPage() {
         p_assigned_user_id: assignedAgentFilter === "All" ? null : assignedAgentFilter,
         p_campaign_id: campaignFilter === "All" ? null : (campaignFilter === "No Campaign" ? "00000000-0000-0000-0000-000000000000" : campaignFilter),
         p_search: searchQuery || null,
+        p_sort_by: sortBy,
+        p_sort_dir: sortDir,
       });
       
       if (rpcError) throw rpcError;
@@ -551,7 +564,41 @@ export default function LeadsPage() {
                 ))}
               </SelectContent>
             </Select>
-            
+
+            <Select
+              value={lastInboundSort || "default"}
+              onValueChange={(val) => {
+                setLastInboundSort(val === "default" ? "" : val);
+                setLastContactedSort("");
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Last Inbound" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Last Inbound</SelectItem>
+                <SelectItem value="desc">Newest First</SelectItem>
+                <SelectItem value="asc">Oldest First</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={lastContactedSort || "default"}
+              onValueChange={(val) => {
+                setLastContactedSort(val === "default" ? "" : val);
+                setLastInboundSort("");
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Last Contacted" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Last Contacted</SelectItem>
+                <SelectItem value="desc">Newest First</SelectItem>
+                <SelectItem value="asc">Oldest First</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="relative flex-1 min-w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
