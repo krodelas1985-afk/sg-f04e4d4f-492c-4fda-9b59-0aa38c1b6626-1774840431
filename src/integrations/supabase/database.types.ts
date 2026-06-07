@@ -837,6 +837,8 @@ export type Database = {
           p_limit?: number
           p_offset?: number
           p_search?: string
+          p_sort_by?: string
+          p_sort_dir?: string
           p_source?: string
           p_stage?: string
           p_status?: string
@@ -857,6 +859,7 @@ export type Database = {
           email: string
           id: string
           last_contacted_at: string
+          last_inbound_at: string
           last_message: string
           lead_score: number
           lead_temperature: string

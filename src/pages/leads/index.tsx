@@ -88,7 +88,11 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [lastInboundSort, setLastInboundSort] = useState<string>("");
   const [lastContactedSort, setLastContactedSort] = useState<string>("");
-  
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+
   // Summary counts
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [baymoCount, setBaymoCount] = useState(0);
@@ -137,7 +141,12 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchClientId();
   }, []);
-  
+
+  // Reset to page 1 whenever any filter or sort changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery, lastInboundSort, lastContactedSort]);
+
   useEffect(() => {
     if (clientId) {
       fetchLeads();
@@ -145,7 +154,7 @@ export default function LeadsPage() {
       fetchAgents();
       fetchCampaigns();
     }
-  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery, lastInboundSort, lastContactedSort]);
+  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery, lastInboundSort, lastContactedSort, currentPage]);
   
   const { profile: userProfile } = useUserProfile();
 
@@ -170,8 +179,8 @@ export default function LeadsPage() {
 
       const { data, error: rpcError } = await supabase.rpc("get_leads_with_details", {
         p_client_id: clientId,
-        p_limit: 100,
-        p_offset: 0,
+        p_limit: 51,
+        p_offset: currentPage * 50,
         p_status: statusFilter === "All" ? null : statusFilter,
         p_stage: stageFilter === "All" ? null : stageFilter,
         p_source: sourceFilter === "All" ? null : sourceFilter,
@@ -181,9 +190,11 @@ export default function LeadsPage() {
         p_sort_by: sortBy,
         p_sort_dir: sortDir,
       });
-      
+
       if (rpcError) throw rpcError;
-      setLeads(data || []);
+      const raw = data || [];
+      setHasNextPage(raw.length > 50);
+      setLeads(raw.slice(0, 50));
     } catch (err) {
       console.error("Error fetching leads:", err);
       setError("Failed to load leads. Please refresh.");
@@ -646,7 +657,10 @@ export default function LeadsPage() {
                   <tr key={lead.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => setSelectedLeadId(lead.id)}
+                        onClick={() => {
+                          sessionStorage.setItem("bamo_lead_nav", JSON.stringify(leads.map(l => l.id)));
+                          setSelectedLeadId(lead.id);
+                        }}
                         className="text-[#1B3A5C] hover:text-[#E87722] hover:underline font-medium"
                       >
                         {lead.name}
@@ -775,10 +789,37 @@ export default function LeadsPage() {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination bar */}
+            <div className="flex items-center justify-between px-6 py-3 border-t bg-gray-50/50">
+              <span className="text-sm text-gray-500">
+                Page {currentPage + 1}{hasNextPage ? "" : ` · ${leads.length} lead${leads.length !== 1 ? "s" : ""}`}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 0}
+                  className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10 disabled:opacity-40"
+                >
+                  ← Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={!hasNextPage}
+                  className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10 disabled:opacity-40"
+                >
+                  Next →
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-      
+
       {/* Quick Add Modal */}
       <Dialog open={showQuickAdd} onOpenChange={setShowQuickAdd}>
         <DialogContent>

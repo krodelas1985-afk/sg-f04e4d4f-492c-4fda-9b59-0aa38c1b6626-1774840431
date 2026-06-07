@@ -135,15 +135,30 @@ export default function LeadDetailPage() {
     }
   };
 
-  // Load the same ordered lead list the Leads page shows, so Prev/Next follows it.
+  // Build Prev/Next order: use the batch saved by the Leads list page (same filters/sort/page),
+  // falling back to an unfiltered RPC fetch for direct URL navigation.
   useEffect(() => {
+    if (!leadId) return;
+
+    try {
+      const stored = sessionStorage.getItem("bamo_lead_nav");
+      if (stored) {
+        const ids: string[] = JSON.parse(stored);
+        if (Array.isArray(ids) && ids.includes(leadId)) {
+          setLeadOrder(ids);
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback for direct URL navigation — fetch first 50 leads, default sort
     const fetchLeadOrder = async () => {
       try {
         if (!userProfile?.client_id) return;
         const supabase = createClient();
         const { data } = await supabase.rpc("get_leads_with_details", {
           p_client_id: userProfile.client_id,
-          p_limit: 100,
+          p_limit: 50,
           p_offset: 0,
           p_status: null,
           p_stage: null,
@@ -158,7 +173,7 @@ export default function LeadDetailPage() {
       }
     };
     fetchLeadOrder();
-  }, [userProfile?.client_id]);
+  }, [leadId, userProfile?.client_id]);
 
   const currentIndex = leadOrder.indexOf(leadId);
   const prevLeadId = currentIndex > 0 ? leadOrder[currentIndex - 1] : null;
