@@ -4,10 +4,10 @@ import Link from "next/link";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useUserProfile } from "@/contexts/UserProfileContext";
-import { 
-  ArrowLeft, MessageSquare, Activity, CheckSquare, Home, 
+import {
+  ArrowLeft, MessageSquare, Activity, CheckSquare, Home,
   Paperclip, Sparkles, UserPlus, Bot, FileText, StickyNote,
-  X, Loader2
+  X, Loader2, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,9 @@ export default function LeadDetailPage() {
   // Agents and campaigns for dropdowns
   const [agents, setAgents] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+
+  // Lead navigation (Prev/Next) — mirrors the ordering of the Leads list
+  const [leadOrder, setLeadOrder] = useState<string[]>([]);
 
   useEffect(() => {
     if (leadId) {
@@ -130,6 +133,42 @@ export default function LeadDetailPage() {
     } catch (err) {
       console.error("Error fetching campaigns:", err);
     }
+  };
+
+  // Load the same ordered lead list the Leads page shows, so Prev/Next follows it.
+  useEffect(() => {
+    const fetchLeadOrder = async () => {
+      try {
+        if (!userProfile?.client_id) return;
+        const supabase = createClient();
+        const { data } = await supabase.rpc("get_leads_with_details", {
+          p_client_id: userProfile.client_id,
+          p_limit: 100,
+          p_offset: 0,
+          p_status: null,
+          p_stage: null,
+          p_source: null,
+          p_assigned_user_id: null,
+          p_campaign_id: null,
+          p_search: null,
+        });
+        setLeadOrder((data || []).map((l: any) => l.id));
+      } catch (err) {
+        console.error("Error fetching lead order:", err);
+      }
+    };
+    fetchLeadOrder();
+  }, [userProfile?.client_id]);
+
+  const currentIndex = leadOrder.indexOf(leadId);
+  const prevLeadId = currentIndex > 0 ? leadOrder[currentIndex - 1] : null;
+  const nextLeadId =
+    currentIndex >= 0 && currentIndex < leadOrder.length - 1
+      ? leadOrder[currentIndex + 1]
+      : null;
+
+  const goToLead = (targetId: string | null) => {
+    if (targetId) router.push(`/leads/${targetId}`);
   };
 
   const fetchMessages = async () => {
@@ -349,12 +388,42 @@ export default function LeadDetailPage() {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto pb-12">
-        <Link href="/leads">
-          <Button variant="ghost" className="mb-4 -ml-4 text-[#1B3A5C] hover:text-[#E87722]">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Leads
-          </Button>
-        </Link>
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/leads">
+            <Button variant="ghost" className="-ml-4 text-[#1B3A5C] hover:text-[#E87722]">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Leads
+            </Button>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10 disabled:opacity-40"
+              onClick={() => goToLead(prevLeadId)}
+              disabled={!prevLeadId}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous
+            </Button>
+            {currentIndex >= 0 && leadOrder.length > 0 && (
+              <span className="text-sm text-gray-500 px-1 tabular-nums">
+                {currentIndex + 1} / {leadOrder.length}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10 disabled:opacity-40"
+              onClick={() => goToLead(nextLeadId)}
+              disabled={!nextLeadId}
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
 
         {/* Page Header */}
         <div className="bg-white rounded-lg border shadow-sm p-6 mb-6">
