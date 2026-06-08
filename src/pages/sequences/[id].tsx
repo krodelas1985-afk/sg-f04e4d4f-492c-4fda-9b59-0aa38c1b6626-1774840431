@@ -13,7 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -1088,28 +1090,38 @@ export default function SequenceDetailPage() {
                             <SelectValue placeholder="Select payload" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="" disabled>— Intent —</SelectItem>
-                            <SelectItem value="INTERESTED">INTERESTED</SelectItem>
-                            <SelectItem value="NOT_INTERESTED">NOT_INTERESTED</SelectItem>
-                            <SelectItem value="NEED_MORE_INFO">NEED_MORE_INFO</SelectItem>
-                            <SelectItem value="STILL_CONSIDERING">STILL_CONSIDERING</SelectItem>
-                            <SelectItem value="" disabled>— Action —</SelectItem>
-                            <SelectItem value="SCHEDULE_VIEWING">SCHEDULE_VIEWING</SelectItem>
-                            <SelectItem value="SCHEDULE_CALL">SCHEDULE_CALL</SelectItem>
-                            <SelectItem value="SEND_PRICE_LIST">SEND_PRICE_LIST</SelectItem>
-                            <SelectItem value="SEND_LOCATION">SEND_LOCATION</SelectItem>
-                            <SelectItem value="" disabled>— Timeline —</SelectItem>
-                            <SelectItem value="READY_NOW">READY_NOW (ASAP)</SelectItem>
-                            <SelectItem value="IN_3_MONTHS">IN_3_MONTHS</SelectItem>
-                            <SelectItem value="JUST_LOOKING">JUST_LOOKING</SelectItem>
-                            <SelectItem value="UNDECIDED">UNDECIDED</SelectItem>
-                            <SelectItem value="" disabled>— Financing —</SelectItem>
-                            <SelectItem value="PAG_IBIG">PAG_IBIG</SelectItem>
-                            <SelectItem value="BANK_LOAN">BANK_LOAN</SelectItem>
-                            <SelectItem value="CASH">CASH</SelectItem>
-                            <SelectItem value="" disabled>— Re-engagement —</SelectItem>
-                            <SelectItem value="FOLLOW_UP_LATER">FOLLOW_UP_LATER</SelectItem>
-                            <SelectItem value="STOP">STOP</SelectItem>
+                            <SelectGroup>
+                              <SelectLabel>Intent</SelectLabel>
+                              <SelectItem value="INTERESTED">INTERESTED</SelectItem>
+                              <SelectItem value="NOT_INTERESTED">NOT_INTERESTED</SelectItem>
+                              <SelectItem value="NEED_MORE_INFO">NEED_MORE_INFO</SelectItem>
+                              <SelectItem value="STILL_CONSIDERING">STILL_CONSIDERING</SelectItem>
+                            </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel>Action</SelectLabel>
+                              <SelectItem value="SCHEDULE_VIEWING">SCHEDULE_VIEWING</SelectItem>
+                              <SelectItem value="SCHEDULE_CALL">SCHEDULE_CALL</SelectItem>
+                              <SelectItem value="SEND_PRICE_LIST">SEND_PRICE_LIST</SelectItem>
+                              <SelectItem value="SEND_LOCATION">SEND_LOCATION</SelectItem>
+                            </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel>Timeline</SelectLabel>
+                              <SelectItem value="READY_NOW">READY_NOW (ASAP)</SelectItem>
+                              <SelectItem value="IN_3_MONTHS">IN_3_MONTHS</SelectItem>
+                              <SelectItem value="JUST_LOOKING">JUST_LOOKING</SelectItem>
+                              <SelectItem value="UNDECIDED">UNDECIDED</SelectItem>
+                            </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel>Financing</SelectLabel>
+                              <SelectItem value="PAG_IBIG">PAG_IBIG</SelectItem>
+                              <SelectItem value="BANK_LOAN">BANK_LOAN</SelectItem>
+                              <SelectItem value="CASH">CASH</SelectItem>
+                            </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel>Re-engagement</SelectLabel>
+                              <SelectItem value="FOLLOW_UP_LATER">FOLLOW_UP_LATER</SelectItem>
+                              <SelectItem value="STOP">STOP</SelectItem>
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                         <Button
