@@ -54,6 +54,9 @@ interface Lead {
   company: string;
   status: string;
   lead_temperature: string;
+  lead_quality: string;
+  lead_score: number;
+  lead_quality_source: string;
   source: string;
   source_override: boolean;
   assigned_user_id: string | null;
@@ -85,6 +88,8 @@ export default function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState<string>("All");
   const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>("All");
   const [campaignFilter, setCampaignFilter] = useState<string>("All");
+  const [qualityFilter, setQualityFilter] = useState<string>("All");
+  const [scoreSort, setScoreSort] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [lastInboundSort, setLastInboundSort] = useState<string>("");
   const [lastContactedSort, setLastContactedSort] = useState<string>("");
@@ -154,7 +159,7 @@ export default function LeadsPage() {
       fetchAgents();
       fetchCampaigns();
     }
-  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery, lastInboundSort, lastContactedSort, currentPage]);
+  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, qualityFilter, scoreSort, searchQuery, lastInboundSort, lastContactedSort, currentPage]);
   
   const { profile: userProfile } = useUserProfile();
 
@@ -186,9 +191,10 @@ export default function LeadsPage() {
         p_source: sourceFilter === "All" ? null : sourceFilter,
         p_assigned_user_id: assignedAgentFilter === "All" ? null : assignedAgentFilter,
         p_campaign_id: campaignFilter === "All" ? null : (campaignFilter === "No Campaign" ? "00000000-0000-0000-0000-000000000000" : campaignFilter),
+        p_quality: qualityFilter === "All" ? null : qualityFilter,
         p_search: searchQuery || null,
-        p_sort_by: sortBy,
-        p_sort_dir: sortDir,
+        p_sort_by: scoreSort ? "lead_score" : sortBy,
+        p_sort_dir: scoreSort || sortDir,
       });
 
       if (rpcError) throw rpcError;
@@ -423,6 +429,18 @@ export default function LeadsPage() {
     const stageConfig = STAGE_OPTIONS.find((s) => s.value === stage);
     return stageConfig || { emoji: "", color: "bg-gray-100 text-gray-600" };
   };
+
+  const getQualityStyle = (quality: string) => {
+    switch (quality) {
+      case "Ready":     return { color: "bg-green-100 text-green-800",   emoji: "⭐" };
+      case "Qualified": return { color: "bg-blue-100 text-blue-800",     emoji: "✅" };
+      case "Motivated": return { color: "bg-purple-100 text-purple-800", emoji: "💪" };
+      case "Interested":return { color: "bg-yellow-100 text-yellow-800", emoji: "👀" };
+      case "Browsing":  return { color: "bg-gray-100 text-gray-600",     emoji: "🔍" };
+      case "Nurture":   return { color: "bg-orange-100 text-orange-800", emoji: "🌱" };
+      default:          return { color: "bg-gray-100 text-gray-500",     emoji: "" };
+    }
+  };
   
   const getStatusStyle = (status: string) => {
     const styles: Record<string, string> = {
@@ -581,6 +599,7 @@ export default function LeadsPage() {
               onValueChange={(val) => {
                 setLastInboundSort(val === "default" ? "" : val);
                 setLastContactedSort("");
+                setScoreSort("");
               }}
             >
               <SelectTrigger className="w-[180px]">
@@ -598,6 +617,7 @@ export default function LeadsPage() {
               onValueChange={(val) => {
                 setLastContactedSort(val === "default" ? "" : val);
                 setLastInboundSort("");
+                setScoreSort("");
               }}
             >
               <SelectTrigger className="w-[180px]">
@@ -607,6 +627,29 @@ export default function LeadsPage() {
                 <SelectItem value="default">Last Contacted</SelectItem>
                 <SelectItem value="desc">Newest First</SelectItem>
                 <SelectItem value="asc">Oldest First</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={qualityFilter} onValueChange={setQualityFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Quality" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Quality</SelectItem>
+                {["Browsing","Interested","Motivated","Qualified","Ready","Nurture"].map(q => (
+                  <SelectItem key={q} value={q}>{getQualityStyle(q).emoji} {q}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={scoreSort || "default"} onValueChange={(val) => { setScoreSort(val === "default" ? "" : val); setLastInboundSort(""); setLastContactedSort(""); }}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Sort by Score" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Sort by Score</SelectItem>
+                <SelectItem value="asc">Score: Low → High</SelectItem>
+                <SelectItem value="desc">Score: High → Low</SelectItem>
               </SelectContent>
             </Select>
 
@@ -724,6 +767,14 @@ export default function LeadsPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <div className="flex flex-col gap-1 mt-1">
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${getQualityStyle(lead.lead_quality).color}`}>
+                          {getQualityStyle(lead.lead_quality).emoji} {lead.lead_quality || "—"}
+                        </span>
+                        {lead.lead_score > 0 && (
+                          <span className="text-xs text-gray-400 font-mono">Score: {lead.lead_score}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Select

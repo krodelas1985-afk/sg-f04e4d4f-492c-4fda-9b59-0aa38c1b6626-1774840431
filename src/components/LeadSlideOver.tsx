@@ -181,6 +181,20 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
     }
   };
 
+  const handleCampaignUpdate = async (campaignId: string | null) => {
+    try {
+      await fetch(`/api/leads/${leadId}/campaign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      setLead((prev: any) => ({ ...prev, campaign_id: campaignId }));
+      onUpdate?.();
+    } catch (err) {
+      console.error("Error updating campaign:", err);
+    }
+  };
+
   const handleFieldUpdate = async (field: string, value: any) => {
     try {
       const supabase = createClient();
@@ -300,6 +314,26 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
     }
   };
 
+  const getQualityStyle = (quality: string) => {
+    switch (quality) {
+      case "Ready":     return "bg-green-100 text-green-800";
+      case "Qualified": return "bg-blue-100 text-blue-800";
+      case "Motivated": return "bg-purple-100 text-purple-800";
+      case "Interested":return "bg-yellow-100 text-yellow-800";
+      case "Browsing":  return "bg-gray-100 text-gray-600";
+      case "Nurture":   return "bg-orange-100 text-orange-800";
+      default:          return "bg-gray-100 text-gray-500";
+    }
+  };
+
+  const qualityEmoji = (quality: string) => {
+    const map: Record<string, string> = {
+      Ready: "⭐", Qualified: "✅", Motivated: "💪",
+      Interested: "👀", Browsing: "🔍", Nurture: "🌱",
+    };
+    return map[quality] || "";
+  };
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case "New": return "bg-blue-100 text-blue-800";
@@ -335,6 +369,26 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                     {lead?.status}
                   </Badge>
                 </div>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <Badge className={getQualityStyle(lead?.lead_quality || "")}>
+                    {qualityEmoji(lead?.lead_quality || "")} {lead?.lead_quality || "—"}
+                  </Badge>
+                  {(lead?.lead_score ?? 0) > 0 && (
+                    <span className="text-xs text-gray-500">Score: {lead.lead_score}/100</span>
+                  )}
+                  {lead?.lead_quality_source === "manual" && (
+                    <span className="text-xs text-orange-500 font-medium">🔒 Manual</span>
+                  )}
+                </div>
+                {lead?.lead_quality_reason && (
+                  <p className="text-xs text-gray-400 italic mt-1">{lead.lead_quality_reason}</p>
+                )}
+                {lead?.metadata?.is_ofw && (
+                  <div className="flex items-center gap-1 text-xs text-blue-600 font-medium mt-1">
+                    ✈️ OFW — {lead.metadata.current_location || "Abroad"}
+                    {lead.metadata.ofw_source === "manual" && <span className="text-orange-500 ml-1">🔒</span>}
+                  </div>
+                )}
                 {lead?.tags && lead.tags.length > 0 && (
                   <div className="flex gap-1 mt-2 flex-wrap">
                     {lead.tags.map((tag: string, idx: number) => (
@@ -480,7 +534,35 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-500">Lead Quality</label>
+                    <Select
+                      value={lead?.lead_quality || ""}
+                      onValueChange={(val) => {
+                        handleFieldUpdate("lead_quality", val);
+                        handleFieldUpdate("lead_quality_source", "manual");
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Set quality" /></SelectTrigger>
+                      <SelectContent>
+                        {["Browsing","Interested","Motivated","Qualified","Ready","Nurture"].map(q => (
+                          <SelectItem key={q} value={q}>
+                            {qualityEmoji(q)} {q}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {lead?.lead_quality_source === "manual" && (
+                      <button
+                        className="text-xs text-blue-500 underline mt-1"
+                        onClick={() => handleFieldUpdate("lead_quality_source", "auto")}
+                      >
+                        Release lock → let AI score this lead
+                      </button>
+                    )}
+                  </div>
+
                   <div>
                     <Label>Source</Label>
                     <Select value={lead?.source || ""} onValueChange={(val) => handleFieldUpdate("source", val)}>
@@ -518,7 +600,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                   
                   <div>
                     <Label>Campaign</Label>
-                    <Select value={lead?.campaign_id || "none"} onValueChange={(val) => handleFieldUpdate("campaign_id", val === "none" ? null : val)}>
+                    <Select value={lead?.campaign_id || "none"} onValueChange={(val) => handleCampaignUpdate(val === "none" ? null : val)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
