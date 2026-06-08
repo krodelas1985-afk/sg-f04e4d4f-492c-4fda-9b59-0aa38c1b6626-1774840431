@@ -280,10 +280,34 @@ export default function LeadDetailPage() {
   const handleCampaignUpdate = async (campaignId: string | null) => {
     try {
       const supabase = createClient();
-      await supabase.from("leads").update({ campaign_id: campaignId }).eq("id", leadId);
+
+      const { error: leadError } = await supabase
+        .from("leads")
+        .update({ campaign_id: campaignId })
+        .eq("id", leadId);
+      if (leadError) throw leadError;
+
+      if (campaignId && lead?.client_id) {
+        const { error: stateError } = await supabase
+          .from("lead_campaign_states")
+          .upsert(
+            {
+              lead_id: leadId,
+              campaign_id: campaignId,
+              client_id: lead.client_id,
+              current_step: 1,
+              state: "active",
+              next_step_at: new Date().toISOString(),
+            },
+            { onConflict: "lead_id,campaign_id" }
+          );
+        if (stateError) throw stateError;
+      }
+
       setLead((prev: any) => ({ ...prev, campaign_id: campaignId }));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating campaign:", err);
+      alert(`Failed to assign campaign: ${err?.message || "Unknown error"}`);
     }
   };
 
@@ -366,6 +390,18 @@ export default function LeadDetailPage() {
       case "Inactive": return "bg-gray-100 text-gray-600";
       case "Closed": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-600";
+    }
+  };
+
+  const getQualityStyle = (quality: string) => {
+    switch (quality) {
+      case "Ready":     return { color: "bg-green-100 text-green-800",   emoji: "⭐" };
+      case "Qualified": return { color: "bg-blue-100 text-blue-800",     emoji: "✅" };
+      case "Motivated": return { color: "bg-purple-100 text-purple-800", emoji: "💪" };
+      case "Interested":return { color: "bg-yellow-100 text-yellow-800", emoji: "👀" };
+      case "Browsing":  return { color: "bg-gray-100 text-gray-600",     emoji: "🔍" };
+      case "Nurture":   return { color: "bg-orange-100 text-orange-800", emoji: "🌱" };
+      default:          return { color: "bg-gray-100 text-gray-500",     emoji: "" };
     }
   };
 
@@ -452,6 +488,14 @@ export default function LeadDetailPage() {
                 <Badge className={getStatusStyle(lead.status || "")}>
                   {lead.status || "New"}
                 </Badge>
+                {lead.lead_quality && (
+                  <Badge className={getQualityStyle(lead.lead_quality).color}>
+                    {getQualityStyle(lead.lead_quality).emoji} {lead.lead_quality}
+                  </Badge>
+                )}
+                {lead.lead_quality_source === "manual" && (
+                  <span className="text-xs text-orange-500 font-medium">🔒 Manual</span>
+                )}
               </div>
               
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
@@ -522,6 +566,9 @@ export default function LeadDetailPage() {
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Lead Score</p>
               <p className="text-lg font-medium text-[#1B3A5C]">{lead.lead_score || 0}</p>
+              {lead.lead_quality_reason && (
+                <p className="text-xs text-gray-400 italic mt-1">{lead.lead_quality_reason}</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Last Contact</p>
@@ -672,6 +719,36 @@ export default function LeadDetailPage() {
                   </div>
                 </div>
 
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">Lead Quality</Label>
+                  <Select
+                    value={lead.lead_quality || ""}
+                    onValueChange={(val) => {
+                      handleFieldUpdate("lead_quality", val);
+                      handleFieldUpdate("lead_quality_source", "manual");
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm focus:ring-[#E87722]">
+                      <SelectValue placeholder="Set quality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Browsing","Interested","Motivated","Qualified","Ready","Nurture"].map(q => (
+                        <SelectItem key={q} value={q}>
+                          {getQualityStyle(q).emoji} {q}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {lead.lead_quality_source === "manual" && (
+                    <button
+                      className="text-xs text-blue-500 underline mt-1"
+                      onClick={() => handleFieldUpdate("lead_quality_source", "auto")}
+                    >
+                      Release lock → let AI score this lead
+                    </button>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs text-gray-500">Source</Label>
@@ -765,6 +842,47 @@ export default function LeadDetailPage() {
                           className="h-8 text-sm focus-visible:ring-[#E87722]"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-gray-500">Timeframe</Label>
+                      <Select
+                        value={lead.timeframe || ""}
+                        onValueChange={(val) => handleFieldUpdate("timeframe", val)}
+                      >
+                        <SelectTrigger className="h-8 text-sm focus:ring-[#E87722]">
+                          <SelectValue placeholder="Select timeframe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ASAP">ASAP</SelectItem>
+                          <SelectItem value="1-3 months">1–3 months</SelectItem>
+                          <SelectItem value="3-6 months">3–6 months</SelectItem>
+                          <SelectItem value="6-12 months">6–12 months</SelectItem>
+                          <SelectItem value="1 year+">1 year+</SelectItem>
+                          <SelectItem value="Just looking">Just looking</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-gray-500">Motivation</Label>
+                      <Select
+                        value={lead.motivation || ""}
+                        onValueChange={(val) => handleFieldUpdate("motivation", val)}
+                      >
+                        <SelectTrigger className="h-8 text-sm focus:ring-[#E87722]">
+                          <SelectValue placeholder="Select motivation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Own use">Own use</SelectItem>
+                          <SelectItem value="Investment">Investment</SelectItem>
+                          <SelectItem value="OFW / Family">OFW / Family</SelectItem>
+                          <SelectItem value="Retirement">Retirement</SelectItem>
+                          <SelectItem value="Relocation">Relocation</SelectItem>
+                          <SelectItem value="Upgrade">Upgrade</SelectItem>
+                          <SelectItem value="Unknown">Unknown</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
