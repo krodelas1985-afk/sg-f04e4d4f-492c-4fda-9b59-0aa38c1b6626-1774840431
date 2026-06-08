@@ -1078,7 +1078,7 @@ export default function SequenceDetailPage() {
                           }}
                         />
                         <Select
-                          value={qr.payload}
+                          value={qr.payload || "INTERESTED"}
                           onValueChange={(value) => {
                             const next = stepForm.quick_replies.map((row, i) =>
                               i === index ? { ...row, payload: value } : row
@@ -1153,7 +1153,7 @@ export default function SequenceDetailPage() {
                       ...stepForm,
                       quick_replies: [
                         ...stepForm.quick_replies,
-                        { title: "", payload: "" },
+                        { title: "", payload: "INTERESTED" },
                       ],
                     })
                   }
