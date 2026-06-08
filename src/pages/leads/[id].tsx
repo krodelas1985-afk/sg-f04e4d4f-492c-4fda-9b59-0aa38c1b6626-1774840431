@@ -693,7 +693,10 @@ export default function LeadDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs text-gray-500">Pipeline Stage</Label>
-                    <Select value={lead.status || ""} onValueChange={(val) => handleFieldUpdate("status", val)}>
+                    <Select value={lead.status || ""} onValueChange={(val) => {
+                      handleFieldUpdate("status", val);
+                      handleFieldUpdate("status_source", "manual");
+                    }}>
                       <SelectTrigger className={`h-8 text-sm focus:ring-[#1F3C88] ${lead.status ? "border-[#93b3e8] text-[#1F3C88]" : ""}`}>
                         <SelectValue />
                       </SelectTrigger>
@@ -712,7 +715,10 @@ export default function LeadDetailPage() {
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Temperature</Label>
-                    <Select value={lead.lead_temperature || ""} onValueChange={(val) => handleFieldUpdate("lead_temperature", val)}>
+                    <Select value={lead.lead_temperature || ""} onValueChange={(val) => {
+                      handleFieldUpdate("lead_temperature", val);
+                      handleFieldUpdate("temperature_source", "manual");
+                    }}>
                       <SelectTrigger className={`h-8 text-sm focus:ring-[#E67E22] ${lead.lead_temperature ? "border-[#F3C098] text-[#BF6516]" : ""}`}>
                         <SelectValue />
                       </SelectTrigger>

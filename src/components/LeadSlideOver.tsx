@@ -506,7 +506,10 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                   
                   <div>
                     <Label>Status</Label>
-                    <Select value={lead?.status || ""} onValueChange={(val) => handleFieldUpdate("status", val)}>
+                    <Select value={lead?.status || ""} onValueChange={(val) => {
+                      handleFieldUpdate("status", val);
+                      handleFieldUpdate("status_source", "manual");
+                    }}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -522,7 +525,10 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                   
                   <div>
                     <Label>Stage</Label>
-                    <Select value={lead?.lead_temperature || ""} onValueChange={(val) => handleFieldUpdate("lead_temperature", val)}>
+                    <Select value={lead?.lead_temperature || ""} onValueChange={(val) => {
+                      handleFieldUpdate("lead_temperature", val);
+                      handleFieldUpdate("temperature_source", "manual");
+                    }}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
