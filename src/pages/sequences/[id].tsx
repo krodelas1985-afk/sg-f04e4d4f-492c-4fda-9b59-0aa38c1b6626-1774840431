@@ -47,7 +47,13 @@ const SOURCE_OPTIONS = [
   "Other",
   "webform",
 ];
-const TEMPERATURE_OPTIONS = ["cold", "warm", "hot"];
+const TEMPERATURE_OPTIONS = ["New", "Cold", "Warm", "Hot"];
+const QUALITY_OPTIONS = [
+  "Browsing", "Interested", "Motivated", "Qualified", "Ready", "Nurture",
+];
+const PIPELINE_STAGE_OPTIONS = [
+  "New", "In Contact", "Qualifying", "Qualified", "Viewing", "Negotiating", "Nurture",
+];
 const STAGE_OPTIONS = ["greeting", "nurturing", "qualifying"];
 const ENROLLMENT_STATES = ["active", "paused", "completed", "exited"];
 
@@ -86,6 +92,8 @@ interface Rule {
   last_contacted_min_hours: number | null;
   temperature_filter: string[] | null;
   conversation_stage_filter: string[] | null;
+  quality_filter: string[] | null;
+  pipeline_stage_filter: string[] | null;
   enabled: boolean;
 }
 
@@ -214,6 +222,8 @@ export default function SequenceDetailPage() {
     last_contacted_min_hours: string;
     temperature_filter: string[];
     conversation_stage_filter: string[];
+    quality_filter: string[];
+    pipeline_stage_filter: string[];
     enabled: boolean;
   }>({
     rule_name: "",
@@ -223,6 +233,8 @@ export default function SequenceDetailPage() {
     last_contacted_min_hours: "",
     temperature_filter: [],
     conversation_stage_filter: [],
+    quality_filter: [],
+    pipeline_stage_filter: [],
     enabled: true,
   });
   const [savingRule, setSavingRule] = useState(false);
@@ -412,6 +424,15 @@ export default function SequenceDetailPage() {
       setStepWindowError(windowErr);
       return;
     }
+    const longTitle = stepForm.quick_replies.find((qr) => qr.title.trim().length > 20);
+    if (longTitle) {
+      toast({
+        title: "Quick reply title too long",
+        description: `"${longTitle.title.trim()}" exceeds 20 characters. Please shorten it.`,
+        variant: "destructive",
+      });
+      return;
+    }
     // Quick replies only apply to messenger steps. Drop empty rows; send null
     // when there are none so the column is cleared.
     const cleanedQuickReplies = stepForm.quick_replies
@@ -436,7 +457,10 @@ export default function SequenceDetailPage() {
             quick_replies: quickRepliesPayload,
           }),
         });
-        if (!res.ok) throw new Error("Failed to update step");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || body.message || res.statusText || "Unknown error");
+        }
       } else {
         const res = await fetch(`/api/sequences/${id}/steps`, {
           method: "POST",
@@ -449,7 +473,10 @@ export default function SequenceDetailPage() {
             quick_replies: quickRepliesPayload,
           }),
         });
-        if (!res.ok) throw new Error("Failed to add step");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || body.message || res.statusText || "Unknown error");
+        }
       }
       setStepDialogOpen(false);
       await fetchSteps();
@@ -519,6 +546,8 @@ export default function SequenceDetailPage() {
       last_contacted_min_hours: "",
       temperature_filter: [],
       conversation_stage_filter: [],
+      quality_filter: [],
+      pipeline_stage_filter: [],
       enabled: true,
     });
     setRuleDialogOpen(true);
@@ -541,6 +570,8 @@ export default function SequenceDetailPage() {
           : String(rule.last_contacted_min_hours),
       temperature_filter: rule.temperature_filter || [],
       conversation_stage_filter: rule.conversation_stage_filter || [],
+      quality_filter: rule.quality_filter || [],
+      pipeline_stage_filter: rule.pipeline_stage_filter || [],
       enabled: rule.enabled,
     });
     setRuleDialogOpen(true);
@@ -570,6 +601,8 @@ export default function SequenceDetailPage() {
           : Number(ruleForm.last_contacted_min_hours),
       temperature_filter: ruleForm.temperature_filter,
       conversation_stage_filter: ruleForm.conversation_stage_filter,
+      quality_filter: ruleForm.quality_filter?.length ? ruleForm.quality_filter : null,
+      pipeline_stage_filter: ruleForm.pipeline_stage_filter?.length ? ruleForm.pipeline_stage_filter : null,
       enabled: ruleForm.enabled,
     };
     try {
@@ -580,14 +613,20 @@ export default function SequenceDetailPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: editingRule.id, ...payload }),
         });
-        if (!res.ok) throw new Error("Failed to update rule");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || body.message || res.statusText || "Unknown error");
+        }
       } else {
         const res = await fetch(`/api/sequences/${id}/rules`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error("Failed to add rule");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || body.message || res.statusText || "Unknown error");
+        }
       }
       setRuleDialogOpen(false);
       await fetchRules();
@@ -1065,18 +1104,30 @@ export default function SequenceDetailPage() {
                   <div className="space-y-2">
                     {stepForm.quick_replies.map((qr, index) => (
                       <div key={index} className="flex items-center gap-2">
-                        <Input
-                          placeholder="Title"
-                          value={qr.title}
-                          onChange={(e) => {
-                            const next = stepForm.quick_replies.map((row, i) =>
-                              i === index
-                                ? { ...row, title: e.target.value }
-                                : row
-                            );
-                            setStepForm({ ...stepForm, quick_replies: next });
-                          }}
-                        />
+                        <div className="flex-1">
+                          <div className="relative">
+                            <Input
+                              placeholder="Title"
+                              value={qr.title}
+                              maxLength={20}
+                              className={qr.title.trim().length > 20 ? "border-red-500" : ""}
+                              onChange={(e) => {
+                                const next = stepForm.quick_replies.map((row, i) =>
+                                  i === index
+                                    ? { ...row, title: e.target.value }
+                                    : row
+                                );
+                                setStepForm({ ...stepForm, quick_replies: next });
+                              }}
+                            />
+                            <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${qr.title.trim().length > 20 ? "text-red-500" : "text-slate-400"}`}>
+                              {qr.title.trim().length}/20
+                            </span>
+                          </div>
+                          {qr.title.trim().length > 20 && (
+                            <p className="text-xs text-red-500 mt-0.5">Title must be 20 characters or fewer</p>
+                          )}
+                        </div>
                         <Select
                           value={qr.payload || "INTERESTED"}
                           onValueChange={(value) => {
@@ -1297,6 +1348,32 @@ export default function SequenceDetailPage() {
                 selected={ruleForm.temperature_filter}
                 onChange={(next) =>
                   setRuleForm({ ...ruleForm, temperature_filter: next })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Lead Quality</Label>
+              <p className="text-xs text-slate-500">
+                Target leads by their quality tier regardless of temperature.
+              </p>
+              <MultiCheck
+                options={QUALITY_OPTIONS}
+                selected={ruleForm.quality_filter}
+                onChange={(next) =>
+                  setRuleForm({ ...ruleForm, quality_filter: next })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Pipeline Stage</Label>
+              <p className="text-xs text-slate-500">
+                Only enroll leads at specific stages in the sales pipeline.
+              </p>
+              <MultiCheck
+                options={PIPELINE_STAGE_OPTIONS}
+                selected={ruleForm.pipeline_stage_filter}
+                onChange={(next) =>
+                  setRuleForm({ ...ruleForm, pipeline_stage_filter: next })
                 }
               />
             </div>

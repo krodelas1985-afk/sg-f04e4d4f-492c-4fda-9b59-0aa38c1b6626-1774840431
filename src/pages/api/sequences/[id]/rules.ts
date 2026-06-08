@@ -93,6 +93,8 @@ export default async function handler(
       last_contacted_min_hours,
       temperature_filter,
       conversation_stage_filter,
+      quality_filter,
+      pipeline_stage_filter,
       enabled,
     } = req.body;
 
@@ -122,6 +124,8 @@ export default async function handler(
             : last_contacted_min_hours,
         temperature_filter: toArrayOrNull(temperature_filter),
         conversation_stage_filter: toArrayOrNull(conversation_stage_filter),
+        quality_filter: toArrayOrNull(quality_filter),
+        pipeline_stage_filter: toArrayOrNull(pipeline_stage_filter),
         enabled: enabled ?? true,
       })
       .select()
@@ -144,6 +148,8 @@ export default async function handler(
       last_contacted_min_hours,
       temperature_filter,
       conversation_stage_filter,
+      quality_filter,
+      pipeline_stage_filter,
       enabled,
     } = req.body;
 
@@ -167,6 +173,10 @@ export default async function handler(
       updateData.conversation_stage_filter = toArrayOrNull(
         conversation_stage_filter
       );
+    if (quality_filter !== undefined)
+      updateData.quality_filter = toArrayOrNull(quality_filter);
+    if (pipeline_stage_filter !== undefined)
+      updateData.pipeline_stage_filter = toArrayOrNull(pipeline_stage_filter);
     if (enabled !== undefined) updateData.enabled = enabled;
     updateData.updated_at = new Date().toISOString();
 
