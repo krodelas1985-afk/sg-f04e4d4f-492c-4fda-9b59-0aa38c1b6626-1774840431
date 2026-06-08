@@ -233,6 +233,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               })
               .eq("id", leadId);
 
+            // ── QUICK REPLY PAYLOAD AUTOMATION ───────────────────────
+            if (quickReplyPayload === "STOP") {
+              await supabase
+                .from("leads")
+                .update({ automation_enabled: false })
+                .eq("id", leadId);
+            } else if (quickReplyPayload === "SCHEDULE_VIEWING") {
+              await supabase
+                .from("leads")
+                .update({ status: "Viewing" })
+                .eq("id", leadId);
+            }
+            // ─────────────────────────────────────────────────────────
             // ── TRIGGER LEAD PROFILE UPDATE (fire-and-forget) ────────
             fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
               method: "POST",
