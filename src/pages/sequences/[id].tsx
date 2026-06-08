@@ -1075,18 +1075,43 @@ export default function SequenceDetailPage() {
                             setStepForm({ ...stepForm, quick_replies: next });
                           }}
                         />
-                        <Input
-                          placeholder="Payload"
+                        <Select
                           value={qr.payload}
-                          onChange={(e) => {
+                          onValueChange={(value) => {
                             const next = stepForm.quick_replies.map((row, i) =>
-                              i === index
-                                ? { ...row, payload: e.target.value }
-                                : row
+                              i === index ? { ...row, payload: value } : row
                             );
                             setStepForm({ ...stepForm, quick_replies: next });
                           }}
-                        />
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Select payload" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="" disabled>— Intent —</SelectItem>
+                            <SelectItem value="INTERESTED">INTERESTED</SelectItem>
+                            <SelectItem value="NOT_INTERESTED">NOT_INTERESTED</SelectItem>
+                            <SelectItem value="NEED_MORE_INFO">NEED_MORE_INFO</SelectItem>
+                            <SelectItem value="STILL_CONSIDERING">STILL_CONSIDERING</SelectItem>
+                            <SelectItem value="" disabled>— Action —</SelectItem>
+                            <SelectItem value="SCHEDULE_VIEWING">SCHEDULE_VIEWING</SelectItem>
+                            <SelectItem value="SCHEDULE_CALL">SCHEDULE_CALL</SelectItem>
+                            <SelectItem value="SEND_PRICE_LIST">SEND_PRICE_LIST</SelectItem>
+                            <SelectItem value="SEND_LOCATION">SEND_LOCATION</SelectItem>
+                            <SelectItem value="" disabled>— Timeline —</SelectItem>
+                            <SelectItem value="READY_NOW">READY_NOW (ASAP)</SelectItem>
+                            <SelectItem value="IN_3_MONTHS">IN_3_MONTHS</SelectItem>
+                            <SelectItem value="JUST_LOOKING">JUST_LOOKING</SelectItem>
+                            <SelectItem value="UNDECIDED">UNDECIDED</SelectItem>
+                            <SelectItem value="" disabled>— Financing —</SelectItem>
+                            <SelectItem value="PAG_IBIG">PAG_IBIG</SelectItem>
+                            <SelectItem value="BANK_LOAN">BANK_LOAN</SelectItem>
+                            <SelectItem value="CASH">CASH</SelectItem>
+                            <SelectItem value="" disabled>— Re-engagement —</SelectItem>
+                            <SelectItem value="FOLLOW_UP_LATER">FOLLOW_UP_LATER</SelectItem>
+                            <SelectItem value="STOP">STOP</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Button
                           type="button"
                           variant="ghost"
