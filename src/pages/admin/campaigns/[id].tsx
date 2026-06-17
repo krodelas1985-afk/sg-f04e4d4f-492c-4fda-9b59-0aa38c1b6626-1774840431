@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff, Upload, FileText } from "lucide-react";
+import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
 
 interface Client {
   id: string;
@@ -100,8 +100,7 @@ export default function AdminCampaignDetailPage() {
     notification_message: ""
   });
 
-  const [kbDocuments, setKbDocuments] = useState<any[]>([]);
-  const [kbUploading, setKbUploading] = useState(false);
+  const [initialKb, setInitialKb] = useState<any>(null);
 
   const [aiDecisionInstructions, setAiDecisionInstructions] = useState("");
   const [aiMessageInstructions, setAiMessageInstructions] = useState("");
@@ -228,14 +227,15 @@ export default function AdminCampaignDetailPage() {
       const stepsRes = await fetch(`/api/campaigns/${id}/steps`);
       if (stepsRes.ok) setCampaignSteps(await stepsRes.json());
 
-      // ── Fetch KB documents ───────────────────────────────────────────────────
-      const kbSupabase = await import("@/lib/supabase/client").then(m => m.createClient());
-      const { data: kbData } = await kbSupabase
-        .from("kb_documents")
-        .select("*")
-        .eq("campaign_id", id as string)
-        .order("created_at", { ascending: true });
-      setKbDocuments(kbData || []);
+      // ── Fetch active KB row from campaign_knowledge_base ──────────────────────
+      const token = await getToken();
+      const kbRes = await fetch(`/api/kb?campaign_id=${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (kbRes.ok) {
+        const { kb: kbData } = await kbRes.json();
+        setInitialKb(kbData ?? null);
+      }
 
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
       if (tRes.ok) setTemplates(await tRes.json());
@@ -320,62 +320,6 @@ export default function AdminCampaignDetailPage() {
       if (!res.ok) throw new Error("Failed to delete step");
       setCampaignSteps(prev => prev.filter(s => s.id !== stepId));
       toast({ title: "Step removed" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    }
-  };
-
-  // ── KB document handlers ─────────────────────────────────────────────────────
-
-  const fetchKbDocuments = async () => {
-    const supabase = await import("@/lib/supabase/client").then(m => m.createClient());
-    const { data } = await supabase
-      .from("kb_documents")
-      .select("*")
-      .eq("campaign_id", id as string)
-      .order("created_at", { ascending: true });
-    setKbDocuments(data || []);
-  };
-
-  const handleKbFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setKbUploading(true);
-    try {
-      const supabase = await import("@/lib/supabase/client").then(m => m.createClient());
-      for (const file of Array.from(files)) {
-        const filePath = `kb/${id}/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("knowledge-base")
-          .upload(filePath, file, { upsert: true });
-        if (uploadError) throw uploadError;
-        const { error: insertError } = await supabase.from("kb_documents").insert({
-          client_id: campaign.client_id || null,
-          campaign_id: id as string,
-          file_name: file.name,
-          file_url: filePath,
-          file_type: file.type,
-          status: "processing",
-        });
-        if (insertError) throw insertError;
-      }
-      await fetchKbDocuments();
-      toast({ title: "File(s) uploaded successfully" });
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
-    } finally {
-      setKbUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleDeleteKbDocument = async (docId: string, filePath: string) => {
-    try {
-      const supabase = await import("@/lib/supabase/client").then(m => m.createClient());
-      await supabase.storage.from("knowledge-base").remove([filePath]);
-      await supabase.from("kb_documents").delete().eq("id", docId);
-      setKbDocuments(prev => prev.filter(d => d.id !== docId));
-      toast({ title: "File removed" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -909,63 +853,16 @@ export default function AdminCampaignDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Section 7b: Knowledge Base</CardTitle>
-              <p className="text-sm text-slate-500">Upload PDF, DOCX, or TXT files that BayMo will use as reference material when replying to leads.</p>
+              <p className="text-sm text-slate-500">
+                Configure the facts BayMo uses when replying to leads in this campaign. One source at a time.
+              </p>
             </CardHeader>
-            <CardContent className="space-y-6">
-
-              {/* Upload zone */}
-              <div className="space-y-2">
-                <Label>Upload Documents</Label>
-                <label
-                  htmlFor="kb-file-upload"
-                  className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-lg p-8 cursor-pointer transition-colors ${kbUploading ? "opacity-50 cursor-not-allowed" : "hover:border-slate-400 hover:bg-slate-50"}`}
-                >
-                  <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                  <p className="text-sm font-medium text-slate-600">
-                    {kbUploading ? "Uploading..." : "Click to upload files"}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">PDF, DOCX, TXT · Multiple files supported</p>
-                  <input
-                    id="kb-file-upload"
-                    type="file"
-                    accept=".pdf,.docx,.txt"
-                    multiple
-                    className="hidden"
-                    disabled={kbUploading}
-                    onChange={handleKbFileUpload}
-                  />
-                </label>
-              </div>
-
-              {/* Documents list */}
-              {kbDocuments.length > 0 ? (
-                <div className="space-y-2">
-                  {kbDocuments.map(doc => (
-                    <div key={doc.id} className="border rounded-lg p-3 flex items-center justify-between gap-3 bg-white">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                        <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge
-                          variant={doc.status === "ready" ? "default" : doc.status === "failed" ? "destructive" : "secondary"}
-                          className={doc.status === "processing" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : ""}
-                        >
-                          {doc.status}
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteKbDocument(doc.id, doc.file_url)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-slate-400 text-sm border border-dashed rounded-lg">
-                  No documents uploaded yet.
-                </div>
-              )}
-
+            <CardContent>
+              <KnowledgeBaseSection
+                campaignId={id as string}
+                initialKb={initialKb}
+                getToken={getToken}
+              />
             </CardContent>
           </Card>
 
