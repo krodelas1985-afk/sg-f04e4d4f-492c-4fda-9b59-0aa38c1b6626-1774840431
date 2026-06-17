@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { fields, availability_status, promo_valid_until } = req.body
 
     const { data: campaign } = await supabase
-      .from('ad_campaigns').select('id, client_id, name').eq('id', campaignId).single()
+      .from('campaigns').select('id, client_id, name').eq('id', campaignId).single()
     if (!campaign) return res.status(404).json({ error: 'Campaign not found' })
     if (profile.role !== 'baymo_admin' && campaign.client_id !== profile.client_id) {
       return res.status(403).json({ error: 'Forbidden' })

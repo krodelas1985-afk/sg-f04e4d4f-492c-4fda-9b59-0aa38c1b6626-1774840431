@@ -38,7 +38,7 @@ export default function CampaignKbPage() {
 
       // Fetch campaign name directly from the browser client
       const { data: campaignData } = await supabase
-        .from('ad_campaigns')
+        .from('campaigns')
         .select('id, name')
         .eq('id', id as string)
         .single()
