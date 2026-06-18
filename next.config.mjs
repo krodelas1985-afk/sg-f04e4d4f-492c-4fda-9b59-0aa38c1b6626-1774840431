@@ -29,6 +29,7 @@ function getTurboRules() {
 
 const nextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ['pdf-parse', 'mammoth', 'formidable'],
   experimental: {
     turbo: {
       rules: getTurboRules(),

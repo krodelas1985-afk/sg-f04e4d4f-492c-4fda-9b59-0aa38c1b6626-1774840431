@@ -68,8 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let source_text = ''
   try {
     source_text = await extractDocumentText(buffer, fileType)
-  } catch {
-    return res.status(422).json({ error: 'Failed to extract text from document' })
+  } catch (err: any) {
+    console.error('KB extraction error:', err)
+    return res.status(422).json({ error: `Failed to extract text: ${err?.message || 'unknown error'}` })
   }
 
   const ext = origName.split('.').pop()?.toLowerCase() ?? fileType
