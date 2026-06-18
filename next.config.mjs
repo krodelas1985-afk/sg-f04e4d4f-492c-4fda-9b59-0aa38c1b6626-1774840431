@@ -29,7 +29,7 @@ function getTurboRules() {
 
 const nextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['pdf-parse', 'mammoth', 'formidable'],
+  serverExternalPackages: ['pdf-parse', 'mammoth', 'formidable', '@napi-rs/canvas'],
   experimental: {
     turbo: {
       rules: getTurboRules(),
