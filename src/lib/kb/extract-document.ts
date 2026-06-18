@@ -1,3 +1,16 @@
+import DOMMatrixPolyfill from '@thednp/dommatrix'
+
+// pdf-parse → pdfjs-dist needs a `DOMMatrix` global in Node. By default pdf-parse
+// pulls one from the native `@napi-rs/canvas` module, which fails to load in the
+// Vercel serverless runtime → "DOMMatrix is not defined". pdf-parse uses
+// `globalThis.DOMMatrix` if it is already set, so we provide a pure-JS one here
+// (set at module load, before pdf-parse is dynamically imported). Text extraction
+// only constructs/multiplies matrices; the canvas-only methods (invertSelf, Path2D)
+// are never reached on the getText() path.
+if (typeof (globalThis as { DOMMatrix?: unknown }).DOMMatrix === 'undefined') {
+  ;(globalThis as { DOMMatrix?: unknown }).DOMMatrix = DOMMatrixPolyfill
+}
+
 export type ExtractFileType = 'pdf' | 'docx' | 'txt' | 'md'
 
 const MIME_TO_TYPE: Record<string, ExtractFileType> = {
