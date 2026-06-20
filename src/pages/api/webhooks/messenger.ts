@@ -176,7 +176,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   messenger_id: psid,
                   source: "FB Messenger",
                   status: "New",
-                  lead_temperature: "cold",
+                  lead_temperature: "Cold",
                   client_id: clientId,
                   automation_enabled: false,
                   metadata: { name_lookup: nameLookupMeta! },
@@ -184,7 +184,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .select("id")
                 .single();
 
-              if (createError || !newLead) continue;
+              if (createError || !newLead) {
+                console.error(
+                  `Lead insert failed (PSID ${psid}, client ${clientId}):`,
+                  createError
+                );
+                continue;
+              }
               leadId = newLead.id;
               isNewLead = true;
 
