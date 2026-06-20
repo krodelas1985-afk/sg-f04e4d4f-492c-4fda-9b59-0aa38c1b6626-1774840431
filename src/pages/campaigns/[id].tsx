@@ -954,7 +954,7 @@ export default function CampaignDetailPage() {
                   className="max-w-xs"
                   min={1}
                 />
-                <p className="text-xs text-slate-500">If a returning lead has not been contacted in this many days, notify the agent instead of auto-enrolling.</p>
+                <p className="text-xs text-slate-500">A returning (existing) lead is auto-enrolled only if it has had no inbound activity for at least this many days; more recently active leads are left as-is.</p>
               </div>
               <div className="space-y-2">
                 <Label>Lead Temperature Filter</Label>
