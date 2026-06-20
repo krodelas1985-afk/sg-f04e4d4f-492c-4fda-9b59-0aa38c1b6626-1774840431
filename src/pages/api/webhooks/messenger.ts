@@ -309,8 +309,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               message: c.message_content,
             }));
 
-            // ── TRIGGER AI CAMPAIGN RESPONDER (fire-and-forget) ──────
-            fetch("https://n8n-bahaymo.onrender.com/webhook/baymo-ai-campaign-responder", {
+            // ── TRIGGER AI CAMPAIGN RESPONDER ────────────────────────
+            // MUST be awaited. This fetch is the last thing the handler does
+            // before returning its 200; on Vercel the serverless function can
+            // be frozen/terminated the instant the response is sent, killing an
+            // un-awaited (fire-and-forget) request before it ever reaches n8n.
+            // That is exactly how W2 was silently dropped for some leads while
+            // W1 (fired earlier, with awaited DB work after it) survived. W2's
+            // webhook responds immediately ("Workflow got started"), so awaiting
+            // adds negligible latency but guarantees the request is delivered.
+            // .catch keeps a transient n8n error from throwing — we still 200 FB.
+            await fetch("https://n8n-bahaymo.onrender.com/webhook/baymo-ai-campaign-responder", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -321,7 +330,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 last_5_messages: last5,
                 conversation_summary: conversationSummary,
               }),
-            });
+            }).catch((err) => console.error("baymo-ai-campaign-responder n8n error:", err));
 
             // The AI reply is handled entirely by the fire-and-forget W2
             // responder above (it sends via FB Messenger and logs the reply
