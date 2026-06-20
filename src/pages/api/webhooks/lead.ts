@@ -141,108 +141,29 @@ export default async function handler(
 
   // ─────────────────────────────────────────
   // STEP 3 — CIE CAMPAIGN ENROLLMENT
-  // Smart matching: if payload has campaign_id use it directly.
-  // If not, find best matching active campaign via enrollment_rules.
+  // Delegated to the single enroll_lead() authority. A payload campaign_id is a
+  // direct (forced) assignment; otherwise auto-match on enrollment_rules.
+  // Leads from this webhook are always newly created (is_new = true).
   // ─────────────────────────────────────────
 
   try {
-    const { data: existingState } = await supabase
-      .from('lead_campaign_states')
-      .select('id, state')
-      .eq('lead_id', lead.id)
-      .in('state', ['active', 'paused'])
-      .limit(1)
-      .maybeSingle();
+    const attribution = {
+      fb_ad_id: payload.fb_ad_id || payload.ad_id || null,
+      webform_id: payload.webform_id || payload.form_id || null,
+      sms_number: payload.sms_number || payload.to_number || null,
+    };
 
-    if (existingState) {
-      console.log('⏭️ Lead already has active campaign — skipping auto-enroll');
-    } else {
-      let campaignIdToEnroll: string | null = lead.campaign_id || null;
+    const { error: enrollError } = await supabase.rpc('enroll_lead', {
+      p_lead_id: lead.id,
+      p_is_new: true,
+      p_source: payload.source || null,
+      p_attribution: attribution,
+      p_campaign_id: payload.campaign_id || null,
+      p_force: !!payload.campaign_id,
+    });
 
-      if (!campaignIdToEnroll) {
-        const { data: activeCampaigns } = await supabase
-          .from('campaigns')
-          .select('id, name, enrollment_rules, priority')
-          .eq('client_id', client.id)
-          .eq('status', 'active')
-          .order('priority', { ascending: true });
-
-        if (activeCampaigns && activeCampaigns.length > 0) {
-          const incomingSource = (payload.source || '').toLowerCase();
-          const incomingFbAdId = payload.fb_ad_id || payload.ad_id || null;
-          const incomingWebformId = payload.webform_id || payload.form_id || null;
-          const incomingSmsNumber = payload.sms_number || payload.to_number || null;
-
-          for (const campaign of activeCampaigns) {
-            const rules = campaign.enrollment_rules;
-            if (!rules) continue;
-
-            const allowedSources: string[] = rules.sources || [];
-            if (allowedSources.length > 0) {
-              const sourceMatches = allowedSources.some(
-                (s: string) => s.toLowerCase() === incomingSource
-              );
-              if (!sourceMatches) continue;
-            }
-
-            if (rules.fb_ad_id && incomingFbAdId) {
-              if (rules.fb_ad_id !== incomingFbAdId) continue;
-            }
-
-            if (rules.webform_id && incomingWebformId) {
-              if (rules.webform_id !== incomingWebformId) continue;
-            }
-
-            if (rules.sms_number && incomingSmsNumber) {
-              if (rules.sms_number !== incomingSmsNumber) continue;
-            }
-
-            campaignIdToEnroll = campaign.id;
-            console.log('✅ Smart match found campaign:', campaign.name);
-            break;
-          }
-        }
-      }
-
-      if (campaignIdToEnroll) {
-        const { data: firstStep } = await supabase
-          .from('campaign_steps')
-          .select('id, delay_hours')
-          .eq('campaign_id', campaignIdToEnroll)
-          .eq('step_order', 1)
-          .eq('is_active', true)
-          .limit(1)
-          .maybeSingle();
-
-        if (firstStep) {
-          const nextStepAt = new Date();
-          nextStepAt.setHours(
-            nextStepAt.getHours() + (firstStep.delay_hours || 0)
-          );
-
-          await supabase.from('lead_campaign_states').insert({
-            lead_id: lead.id,
-            campaign_id: campaignIdToEnroll,
-            client_id: client.id,
-            state: 'active',
-            current_step: 1,
-            enrolled_at: new Date().toISOString(),
-            next_step_at: nextStepAt.toISOString(),
-            conversational_ai: true,
-          });
-
-          await supabase
-            .from('leads')
-            .update({ campaign_id: campaignIdToEnroll })
-            .eq('id', lead.id);
-
-          console.log('✅ Lead enrolled in campaign:', campaignIdToEnroll);
-        } else {
-          console.log('⚠️ Campaign found but no active Step 1 — skipping enrollment');
-        }
-      } else {
-        console.log('ℹ️ No matching campaign found — lead created without campaign');
-      }
+    if (enrollError) {
+      console.error('❌ enroll_lead failed:', enrollError);
     }
   } catch (enrollError) {
     console.error('❌ Error in campaign enrollment:', enrollError);

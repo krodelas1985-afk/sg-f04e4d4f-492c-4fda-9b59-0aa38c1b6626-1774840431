@@ -259,55 +259,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               body: JSON.stringify({ lead_id: leadId, message: messageText, client_id: clientId }),
             }).catch((err) => console.error("update-lead-profile n8n error:", err));
 
-            // ── 3. CAMPAIGN MATCHING (new leads only) ────────────────
-            let campaignState: any = null;
+            // ── 3. CAMPAIGN ENROLLMENT (single authority) ────────────
+            // enroll_lead() owns all enrollment_rules logic (source, new vs
+            // existing, temperature, returning-window, skip-if-active) and
+            // atomically sets campaign_id + lead_campaign_states. Safe to call
+            // on every inbound — its guards skip opted-out / already-active
+            // leads, so existing leads are picked up only when a campaign's
+            // rules allow it (e.g. an existing-leads campaign).
+            await supabase.rpc("enroll_lead", {
+              p_lead_id: leadId,
+              p_is_new: isNewLead,
+              p_source: "messenger",
+            });
 
-            if (isNewLead) {
-              const { data: matchedCampaign } = await supabase
-                .from("campaigns")
-                .select("id, name, target_action, campaign_rules, tone, conversational_ai_enabled")
-                .eq("client_id", clientId)
-                .eq("status", "active")
-                .eq("is_active", true)
-                .filter("enrollment_rules->sources", "cs", '["messenger"]')
-                .order("priority", { ascending: true })
-                .limit(1)
-                .maybeSingle();
+            // Load the lead's active campaign (if any) for the n8n payload, and
+            // refresh automation_enabled since enroll_lead may have toggled it.
+            const { data: campaignState } = await supabase
+              .from("lead_campaign_states")
+              .select(`
+                id, campaign_id,
+                campaign:campaigns (
+                  id, name, target_action, campaign_rules, tone, conversational_ai_enabled
+                )
+              `)
+              .eq("lead_id", leadId)
+              .eq("client_id", clientId)
+              .eq("state", "active")
+              .maybeSingle();
 
-              if (matchedCampaign) {
-                await supabase.from("lead_campaign_states").insert({
-                  lead_id: leadId,
-                  campaign_id: matchedCampaign.id,
-                  client_id: clientId,
-                  state: "active",
-                  current_step: 1,
-                  enrolled_at: new Date().toISOString(),
-                });
-
-                await supabase
-                  .from("leads")
-                  .update({ automation_enabled: true, campaign_id: matchedCampaign.id })
-                  .eq("id", leadId);
-
-                automationEnabled = true;
-                campaignState = { campaign: matchedCampaign };
-              }
-            } else {
-              const { data: existingState } = await supabase
-                .from("lead_campaign_states")
-                .select(`
-                  id, campaign_id,
-                  campaign:campaigns (
-                    id, name, target_action, campaign_rules, tone, conversational_ai_enabled
-                  )
-                `)
-                .eq("lead_id", leadId)
-                .eq("client_id", clientId)
-                .eq("state", "active")
-                .maybeSingle();
-
-              campaignState = existingState;
-            }
+            const { data: refreshedLead } = await supabase
+              .from("leads")
+              .select("automation_enabled")
+              .eq("id", leadId)
+              .single();
+            automationEnabled = refreshedLead?.automation_enabled ?? automationEnabled;
 
             // Enforce automation opt-out: inbound logging, last_inbound_at, and the
             // update-lead-profile (W1) call above MUST still run, but stop here so the

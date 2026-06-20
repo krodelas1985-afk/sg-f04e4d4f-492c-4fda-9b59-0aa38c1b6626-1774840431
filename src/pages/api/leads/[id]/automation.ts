@@ -21,29 +21,19 @@ export default async function handler(
     return res.status(400).json({ error: 'automation_enabled must be a boolean' });
   }
 
-  // STEP 1 — Update leads.automation_enabled
+  // Agent takeover. Mark the source 'manual' so auto-enrollment respects this
+  // explicit choice (enroll_lead skips leads that are manual + automation off).
+  // Turning automation OFF fires trg_leads_automation_off_unenroll, which stops
+  // ALL of the lead's active/paused campaign states and clears campaign_id —
+  // i.e. the lead is kicked out of every campaign. Re-enabling does NOT auto
+  // re-enroll; the lead must re-qualify via a new inbound or be assigned manually.
   const { error: leadError } = await supabase
     .from('leads')
-    .update({ automation_enabled })
+    .update({ automation_enabled, automation_source: 'manual' })
     .eq('id', leadId);
 
   if (leadError) {
     return res.status(500).json({ error: leadError.message });
-  }
-
-  // STEP 2 — Update lead_campaign_states
-  // OFF → pause the active state for this lead only (never pauses the campaign)
-  // ON  → reactivate the paused state, keep current_step and next_step_at intact
-  const newState = automation_enabled ? 'active' : 'paused';
-
-  const { error: stateError } = await supabase
-    .from('lead_campaign_states')
-    .update({ state: newState })
-    .eq('lead_id', leadId)
-    .in('state', automation_enabled ? ['paused'] : ['active']);
-
-  if (stateError) {
-    console.error('Error updating lead_campaign_states:', stateError);
   }
 
   return res.status(200).json({ success: true });

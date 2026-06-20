@@ -29,75 +29,42 @@ export default async function handler(
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    // STEP 2 — Stop any existing active or paused 
-    // campaign state for this lead.
-    // Manual override always wins.
+    // A campaign was chosen — enroll via the single authority (manual always
+    // wins: rules + opt-out guard are bypassed, AI is enabled, automation_source
+    // is marked 'manual'). It also stops any other active/paused states.
+    if (campaign_id) {
+      const { data: result, error: rpcError } = await supabase.rpc('enroll_lead', {
+        p_lead_id: leadId,
+        p_is_new: false,
+        p_campaign_id: campaign_id,
+        p_force: true,
+      });
+
+      if (rpcError) {
+        console.error('enroll_lead (manual) failed:', rpcError);
+        return res.status(500).json({ error: 'Failed to enroll lead' });
+      }
+
+      return res.status(200).json({ success: true, result });
+    }
+
+    // No campaign selected — unenroll. Turning automation off fires
+    // trg_leads_automation_off_unenroll (stops all states, clears campaign_id);
+    // we also clear explicitly in case automation was already off.
+    await supabase
+      .from('leads')
+      .update({ automation_enabled: false, automation_source: 'manual', campaign_id: null })
+      .eq('id', leadId);
+
     await supabase
       .from('lead_campaign_states')
       .update({
         state: 'stopped',
-        paused_reason: 'Manual campaign override by agent',
+        paused_reason: 'Manual unenroll by agent',
         updated_at: new Date().toISOString(),
       })
       .eq('lead_id', leadId)
       .in('state', ['active', 'paused']);
-
-    // STEP 3 — Update leads.campaign_id
-    await supabase
-      .from('leads')
-      .update({ campaign_id: campaign_id })
-      .eq('id', leadId);
-
-    // STEP 4 — If new campaign selected, enroll in lead_campaign_states
-    if (campaign_id) {
-      const { data: firstStep } = await supabase
-        .from('campaign_steps')
-        .select('id, delay_hours')
-        .eq('campaign_id', campaign_id)
-        .eq('step_order', 1)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
-
-      const nextStepAt = new Date();
-      if (firstStep?.delay_hours) {
-        nextStepAt.setHours(nextStepAt.getHours() + firstStep.delay_hours);
-      }
-
-      // Check if a row already exists for this lead + campaign
-      const { data: existing } = await supabase
-        .from('lead_campaign_states')
-        .select('id')
-        .eq('lead_id', leadId)
-        .eq('campaign_id', campaign_id)
-        .single();
-
-      if (existing) {
-        // Reactivate the existing stopped row
-        await supabase
-          .from('lead_campaign_states')
-          .update({
-            state: 'active',
-            current_step: 1,
-            enrolled_at: new Date().toISOString(),
-            next_step_at: nextStepAt.toISOString(),
-            metadata: { enrolled_by: 'manual' },
-          })
-          .eq('id', existing.id);
-      } else {
-        // Insert fresh row
-        await supabase.from('lead_campaign_states').insert({
-          lead_id: leadId,
-          campaign_id: campaign_id,
-          client_id: lead.client_id,
-          state: 'active',
-          current_step: 1,
-          enrolled_at: new Date().toISOString(),
-          next_step_at: nextStepAt.toISOString(),
-          metadata: { enrolled_by: 'manual' },
-        });
-      }
-    }
 
     return res.status(200).json({ success: true });
 

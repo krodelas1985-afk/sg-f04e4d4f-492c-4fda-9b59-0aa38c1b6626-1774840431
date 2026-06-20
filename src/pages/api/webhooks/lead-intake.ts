@@ -153,6 +153,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       preferred_location: preferred_location ? [preferred_location.trim()] : null,
     });
 
+    // Route through the single enrollment authority (auto-match on
+    // enrollment_rules). No-op if no campaign's rules match this source.
+    const { error: enrollError } = await supabase.rpc("enroll_lead", {
+      p_lead_id: newLead.id,
+      p_is_new: true,
+      p_source: normalizedSource || null,
+    });
+    if (enrollError) {
+      console.error("enroll_lead failed:", enrollError);
+    }
+
     return res.status(200).json({ success: true, lead_id: newLead.id });
   } catch (error) {
     console.error("Lead intake error:", error);
