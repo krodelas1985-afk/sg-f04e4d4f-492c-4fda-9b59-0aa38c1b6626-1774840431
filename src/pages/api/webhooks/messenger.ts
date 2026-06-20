@@ -204,15 +204,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               conversationSummary = existingLead.conversation_summary ?? "";
             }
 
-            // ── 1b. FETCH LEAD QUALIFICATIONS ────────────────────────
-            const { data: leadQualification } = await supabase
-              .from("lead_qualifications")
-              .select(
-                "budget_min, budget_max, preferred_location, property_type, property_sub_type, purpose, timeframe, motivation, bedrooms, payment_scheme, preferred_financing, decision_maker, move_in_date, hesitation"
-              )
-              .eq("lead_id", leadId)
-              .maybeSingle();
-
             // ── 2. SAVE INBOUND MESSAGE ──────────────────────────────
             // Quick reply taps include an intent payload alongside the title text;
             // null for normal text messages.
@@ -332,128 +323,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               }),
             });
 
-            const { data: knowledgeBase } = await supabase
-              .from("campaign_knowledge_base")
-              .select("title, content")
-              .eq("campaign_id", campaign?.id ?? "")
-              .eq("client_id", clientId)
-              .eq("is_active", true);
-
-            const { data: clientData } = await supabase
-              .from("clients")
-              .select("company_name, business_industry, business_type")
-              .eq("id", clientId)
-              .single();
-
-            // ── 5. CALL n8n ──────────────────────────────────────────
-            const n8nWebhookUrl = process.env.N8N_INBOUND_WEBHOOK_URL;
-            if (!n8nWebhookUrl) continue;
-
-            const n8nPayload = {
-              lead_id: leadId,
-              client_id: clientId,
-              messenger_id: psid,
-              automation_enabled: automationEnabled,
-              is_new_lead: isNewLead,
-              message: messageText,
-              last_5_messages: last5,
-              conversation_summary: conversationSummary,
-              campaign: campaign
-                ? {
-                    id: campaign.id,
-                    name: campaign.name,
-                    target_action: campaign.target_action,
-                    campaign_rules: campaign.campaign_rules,
-                    tone: campaign.tone,
-                  }
-                : null,
-              client: {
-                company_name: clientData?.company_name ?? "",
-                business_industry: (clientData as any)?.business_industry ?? "",
-                business_type: (clientData as any)?.business_type ?? "",
-              },
-              knowledge_base: knowledgeBase ?? [],
-              lead_profile: {
-                budget_min: leadQualification?.budget_min ?? null,
-                budget_max: leadQualification?.budget_max ?? null,
-                preferred_location: leadQualification?.preferred_location ?? null,
-                property_type: leadQualification?.property_type ?? null,
-                property_sub_type: leadQualification?.property_sub_type ?? null,
-                purpose: leadQualification?.purpose ?? null,
-                timeframe: leadQualification?.timeframe ?? null,
-                motivation: leadQualification?.motivation ?? null,
-                bedrooms: leadQualification?.bedrooms ?? null,
-                payment_scheme: leadQualification?.payment_scheme ?? null,
-                preferred_financing: leadQualification?.preferred_financing ?? null,
-                decision_maker: leadQualification?.decision_maker ?? null,
-                move_in_date: leadQualification?.move_in_date ?? null,
-                hesitation: leadQualification?.hesitation ?? null,
-              },
-            };
-
-            const n8nResponse = await fetch(n8nWebhookUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(n8nPayload),
-            });
-
-            if (!n8nResponse.ok) {
-              console.error("n8n call failed:", await n8nResponse.text());
-              continue;
-            }
-
-            const n8nResult = await n8nResponse.json();
-
-            // ── 6. HANDLE n8n RESPONSE ───────────────────────────────
-            if (n8nResult.action === "send" && n8nResult.message) {
-              if (fbToken) {
-                await fetch(
-                  `https://graph.facebook.com/v19.0/me/messages?access_token=${fbToken}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      recipient: { id: psid },
-                      message: { text: n8nResult.message },
-                      messaging_type: "RESPONSE",
-                    }),
-                  }
-                );
-
-                await supabase.from("conversations").insert({
-                  lead_id: leadId,
-                  client_id: clientId,
-                  sender: "baymo",
-                  direction: "outbound",
-                  channel: "messenger",
-                  message_content: n8nResult.message,
-                  sent_via: "facebook_api",
-                  delivery_status: "sent",
-                });
-
-                if (n8nResult.temperature) {
-                  await supabase
-                    .from("leads")
-                    .update({ lead_temperature: n8nResult.temperature })
-                    .eq("id", leadId);
-                }
-
-                console.log(`✅ n8n reply sent to PSID: ${psid} (client: ${clientId})`);
-              }
-            } else if (n8nResult.action === "suggestion" && n8nResult.message) {
-              await supabase.from("conversations").insert({
-                lead_id: leadId,
-                client_id: clientId,
-                sender: "baymo",
-                direction: "outbound",
-                channel: "messenger",
-                message_content: n8nResult.message,
-                sent_via: "suggestion",
-                delivery_status: "pending",
-              });
-
-              console.log(`💡 AI suggestion stored for lead: ${leadId}`);
-            }
+            // The AI reply is handled entirely by the fire-and-forget W2
+            // responder above (it sends via FB Messenger and logs the reply
+            // itself). The previous awaited N8N_INBOUND_WEBHOOK_URL call here
+            // was a dead/duplicate path (stale webhook → 404) and a latent
+            // double-reply risk, so it has been removed.
           } catch (msgError) {
             console.error("Error processing message:", msgError);
           }
