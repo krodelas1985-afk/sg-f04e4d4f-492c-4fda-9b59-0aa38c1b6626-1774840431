@@ -964,12 +964,13 @@ export default function AdminCampaignDetailPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Sending Hours</Label>
+                <Label>AI Auto-Reply Hours</Label>
                 <div className="flex items-center gap-3">
                   <Input type="time" value={campaignRules.sending_hours_start} onChange={e => setCampaignRules({ ...campaignRules, sending_hours_start: e.target.value })} className="w-36" />
                   <span className="text-slate-500">to</span>
                   <Input type="time" value={campaignRules.sending_hours_end} onChange={e => setCampaignRules({ ...campaignRules, sending_hours_end: e.target.value })} className="w-36" />
                 </div>
+                <p className="text-xs text-slate-500">The AI auto-replies to leads only within these hours. Outside this window, conversations are left for the agent to handle manually.</p>
               </div>
               <div className="space-y-2">
                 <Label>Do's</Label>

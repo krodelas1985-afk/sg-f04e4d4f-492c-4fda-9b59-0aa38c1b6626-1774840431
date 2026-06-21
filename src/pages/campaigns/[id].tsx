@@ -999,7 +999,7 @@ export default function CampaignDetailPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Sending Hours</Label>
+                <Label>AI Auto-Reply Hours</Label>
                 <div className="flex items-center gap-3">
                   <Input
                     type="time"
@@ -1017,7 +1017,7 @@ export default function CampaignDetailPage() {
                     className="w-36"
                   />
                 </div>
-                <p className="text-xs text-slate-500">BayMo will only send messages within these hours.</p>
+                <p className="text-xs text-slate-500">The AI auto-replies to leads only within these hours. Outside this window, conversations are left for you to handle manually.</p>
               </div>
 
               <div className="space-y-2">
