@@ -37,6 +37,7 @@ import {
   Save,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { TemplatePicker, type PickableTemplate } from "@/components/TemplatePicker";
 
 // Option sets (mirror real lead values in the Supabase project)
 const STEP_TYPES = ["messenger", "email", "call"];
@@ -209,6 +210,7 @@ export default function SequenceDetailPage() {
   });
   const [savingStep, setSavingStep] = useState(false);
   const [stepWindowError, setStepWindowError] = useState<string | null>(null);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   // Rules
   const [rules, setRules] = useState<Rule[]>([]);
@@ -1081,7 +1083,19 @@ export default function SequenceDetailPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="step-msg">Message content</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="step-msg">Message content</Label>
+                {stepForm.step_type !== "call" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTemplatePickerOpen(true)}
+                  >
+                    Use template
+                  </Button>
+                )}
+              </div>
               <Textarea
                 id="step-msg"
                 value={stepForm.message_content}
@@ -1249,6 +1263,16 @@ export default function SequenceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Template picker (sequence steps: raw copy, no per-lead substitution) */}
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        channel={stepForm.step_type === "messenger" ? "messenger" : "email"}
+        onSelect={(template: PickableTemplate) =>
+          setStepForm({ ...stepForm, message_content: template.body })
+        }
+      />
 
       {/* Rule dialog */}
       <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>

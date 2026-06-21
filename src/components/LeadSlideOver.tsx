@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/router";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { TemplatePicker, type PickableTemplate } from "@/components/TemplatePicker";
+import { substituteTemplateVariables } from "@/lib/templateVariables";
 
 interface LeadSlideOverProps {
   leadId: string;
@@ -31,6 +33,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   
   // Activity state
   const [activity, setActivity] = useState<any[]>([]);
@@ -716,7 +719,11 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                         <Paperclip className="h-4 w-4 mr-1" />
                         Attach
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTemplatePickerOpen(true)}
+                      >
                         💬 Saved Response
                       </Button>
                       <Button 
@@ -948,6 +955,19 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
           </Tabs>
         </div>
       </SheetContent>
+
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        channel={lead?.primary_channel === "messenger" ? "messenger" : "email"}
+        onSelect={(template: PickableTemplate) => {
+          const result = substituteTemplateVariables(template.body, {
+            ...lead,
+            property_type: leadQual?.property_type,
+          });
+          setNewMessage(result);
+        }}
+      />
     </Sheet>
   );
 }
