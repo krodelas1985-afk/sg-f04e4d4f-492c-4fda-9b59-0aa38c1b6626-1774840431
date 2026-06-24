@@ -10,6 +10,7 @@
 // edge-function error is shown on screen so any failure is unambiguous.
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const SUPABASE_FN_URL =
@@ -29,8 +30,17 @@ const LANGS = [
   { value: "filipino", label: "Filipino" },
 ] as const;
 
+// The delivery channel shapes the format the AI produces (and is saved on the
+// template). Values must match the message_templates.channel CHECK constraint.
+const CHANNELS = [
+  { value: "messenger", label: "Messenger" },
+  { value: "email", label: "Email" },
+  { value: "sms", label: "SMS" },
+] as const;
+
 type Goal = (typeof GOALS)[number]["value"];
 type Lang = (typeof LANGS)[number]["value"];
+type Channel = (typeof CHANNELS)[number]["value"];
 
 type GenResult = {
   title: string;
@@ -55,6 +65,7 @@ export default function GenerateTemplatePage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [clientId, setClientId] = useState<string>("");
+  const [channel, setChannel] = useState<Channel>("messenger");
   const [goal, setGoal] = useState<Goal>("invite_viewing");
   const [topic, setTopic] = useState("");
   const [agentNotes, setAgentNotes] = useState("");
@@ -114,6 +125,7 @@ export default function GenerateTemplatePage() {
         },
         body: JSON.stringify({
           client_id: clientId,
+          channel,
           goal,
           topic: topic.trim() || undefined,
           agent_notes: agentNotes.trim() || undefined,
@@ -164,7 +176,7 @@ export default function GenerateTemplatePage() {
           client_id: clientId,
           title: editTitle.trim() || `${goal} template`,
           body: editBody,
-          channel: "messenger",
+          channel,
           category: GOAL_TO_CATEGORY[goal],
           goal,
           topic: topic.trim() || null,
@@ -190,6 +202,9 @@ export default function GenerateTemplatePage() {
 
   return (
     <div style={S.page}>
+      <Link href="/templates" style={S.backLink}>
+        ← Back to Templates
+      </Link>
       <h1 style={S.h1}>AI Template Generator</h1>
       <p style={S.sub}>
         Pick a goal, optionally add your own notes, optionally pull from the
@@ -197,6 +212,20 @@ export default function GenerateTemplatePage() {
       </p>
 
       <div style={S.card}>
+        {/* Channel — drives the format of the generated message */}
+        <label style={S.label}>Message type</label>
+        <select
+          style={S.input}
+          value={channel}
+          onChange={(e) => setChannel(e.target.value as Channel)}
+        >
+          {CHANNELS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+
         {/* Goal */}
         <label style={S.label}>Goal</label>
         <select
@@ -328,6 +357,7 @@ export default function GenerateTemplatePage() {
 
 const S: Record<string, React.CSSProperties> = {
   page: { maxWidth: 720, margin: "0 auto", padding: 24, fontFamily: "DM Sans, system-ui, sans-serif", color: "#1A2E5A" },
+  backLink: { display: "inline-block", marginBottom: 16, fontSize: 14, fontWeight: 600, color: "#1A2E5A", textDecoration: "none" },
   h1: { fontSize: 24, fontWeight: 700, marginBottom: 4 },
   sub: { fontSize: 14, color: "#555", marginBottom: 20 },
   card: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, marginBottom: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" },

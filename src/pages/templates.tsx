@@ -41,6 +41,7 @@ export default function TemplatesPage() {
   const [sortBy, setSortBy] = useState<"created_at" | "last_used_at">("created_at");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
 
   // Create/Edit Template
   const [showTemplateForm, setShowTemplateForm] = useState(false);
@@ -104,6 +105,12 @@ export default function TemplatesPage() {
       setUserRole(profile.role);
       setCurrentUserId(profile.id);
     }
+
+    // client_id is NOT NULL on message_templates with no default, so creating
+    // a template must supply the caller's own client scope. RLS scopes this to
+    // the client_admin's single client.
+    const { data: myClientId } = await supabase.rpc("get_my_client_id");
+    if (myClientId) setClientId(myClientId as string);
   };
 
   const fetchTemplates = async () => {
@@ -117,8 +124,11 @@ export default function TemplatesPage() {
           creator:profiles!message_templates_created_by_fkey(full_name, role)
         `);
 
-      // Apply filters
-      if (activeFilter !== "all") {
+      // Apply filters. "All" is the default sentinel (no filter) — note the
+      // capital A must match the Tabs value, otherwise this fetches
+      // category = "All", which matches nothing and hides every template.
+      // Tab switches are handled client-side by filterTemplates().
+      if (activeFilter !== "All") {
         if (["email", "messenger", "sms"].includes(activeFilter)) {
           query = query.eq("channel", activeFilter);
         } else {
@@ -267,13 +277,23 @@ export default function TemplatesPage() {
         });
       } else {
         // Create new
-        await supabase.from("message_templates").insert({
+        if (!clientId) {
+          toast({
+            title: "No client scope",
+            description: "Could not determine your client. Please re-login.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const { error } = await supabase.from("message_templates").insert({
+          client_id: clientId,
           title: formData.title,
           channel: formData.channel,
           category: formData.category,
           body: formData.body,
           created_by: currentUserId,
         });
+        if (error) throw error;
 
         toast({
           title: "Template saved",
