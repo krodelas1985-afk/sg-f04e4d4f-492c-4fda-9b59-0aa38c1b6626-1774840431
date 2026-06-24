@@ -43,8 +43,6 @@ type GenResult = {
   missing: string[];
 };
 
-type ClientRow = { id: string; name: string };
-
 const GOAL_TO_CATEGORY: Record<string, string> = {
   invite_viewing: "Call-to-Action",
   invite_open_house: "Call-to-Action",
@@ -56,7 +54,6 @@ const GOAL_TO_CATEGORY: Record<string, string> = {
 export default function GenerateTemplatePage() {
   const supabase = useMemo(() => createClient(), []);
 
-  const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [goal, setGoal] = useState<Goal>("invite_viewing");
   const [topic, setTopic] = useState("");
@@ -75,22 +72,17 @@ export default function GenerateTemplatePage() {
   const topicRequired = goal === "send_info";
   const notesRequired = goal === "other";
 
-  // Load clients the user can see (RLS scopes this: client_admin sees their
-  // own row, baymo_admin sees all). Auto-select when there is exactly one.
+  // This page is client_admin-only. A client_admin is scoped to exactly one
+  // client via get_my_client_id(); they do not pick a client. Resolve the
+  // caller's own client_id from the RPC and use it for generate + save.
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name");
-      if (error) {
-        setError(`Could not load clients: ${error.message}`);
+      const { data, error } = await supabase.rpc("get_my_client_id");
+      if (error || !data) {
+        setError("No client scope found for your account. This page is for client accounts.");
         return;
       }
-      const rows = (data ?? []) as ClientRow[];
-      setClients(rows);
-      if (rows.length === 1) setClientId(rows[0].id);
+      setClientId(data as string);
     })();
   }, [supabase]);
 
@@ -205,21 +197,6 @@ export default function GenerateTemplatePage() {
       </p>
 
       <div style={S.card}>
-        {/* Client */}
-        <label style={S.label}>Client</label>
-        <select
-          style={S.input}
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-        >
-          <option value="">Select a client…</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
         {/* Goal */}
         <label style={S.label}>Goal</label>
         <select

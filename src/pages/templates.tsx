@@ -454,6 +454,13 @@ export default function TemplatesPage() {
                 + New Template
               </Button>
               <Button
+                onClick={() => router.push("/templates/generate")}
+                className="bg-[#1B3A5C] hover:bg-[#152d47] text-white"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Template Generator
+              </Button>
+              <Button
                 onClick={() => setShowAIGenerator(true)}
                 className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
               >
