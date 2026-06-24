@@ -45,6 +45,14 @@ type GenResult = {
 
 type ClientRow = { id: string; name: string };
 
+const GOAL_TO_CATEGORY: Record<string, string> = {
+  invite_viewing: "Call-to-Action",
+  invite_open_house: "Call-to-Action",
+  send_info: "Introduction",
+  ask_qualifying_question: "Qualification",
+  other: "Follow-up",
+};
+
 export default function GenerateTemplatePage() {
   const supabase = useMemo(() => createClient(), []);
 
@@ -165,7 +173,8 @@ export default function GenerateTemplatePage() {
           title: editTitle.trim() || `${goal} template`,
           body: editBody,
           channel: "messenger",
-          category: goal, // category carries the goal enum
+          category: GOAL_TO_CATEGORY[goal],
+          goal,
           topic: topic.trim() || null,
           placeholders_used: result.placeholders_used ?? [],
           used_kb: result.used_kb ?? false,
