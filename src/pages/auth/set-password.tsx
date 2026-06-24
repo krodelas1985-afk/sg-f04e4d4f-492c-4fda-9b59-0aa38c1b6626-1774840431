@@ -101,7 +101,7 @@ export default function SetPassword() {
           <CardContent className="p-8">
             <div className="flex flex-col items-center space-y-4">
               <Loader2 className="h-8 w-8 animate-spin text-[#E8702A]" />
-              <p className="text-gray-600">Verifying your invitation link...</p>
+              <p className="text-gray-600">Verifying your link...</p>
             </div>
           </CardContent>
         </Card>
@@ -119,7 +119,7 @@ export default function SetPassword() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-600 text-center">
-              This invitation link is invalid or has expired. Please contact your administrator for a new invitation.
+              This link is invalid or has expired. Please request a new one or contact your administrator.
             </p>
             <Button
               onClick={() => router.push("/login")}

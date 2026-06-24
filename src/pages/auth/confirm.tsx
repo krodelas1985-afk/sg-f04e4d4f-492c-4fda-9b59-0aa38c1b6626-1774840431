@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
@@ -11,14 +11,18 @@ export default function ConfirmPage() {
   const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
+    if (!router.isReady) return;
+
     const verifyToken = async () => {
       const { token_hash, type } = router.query;
 
       if (!token_hash || !type) {
-        // Wait for query params to load
+        setError("This link is missing required information.");
+        setVerifying(false);
         return;
       }
 
+      const supabase = createClient();
       try {
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: token_hash as string,
@@ -31,12 +35,12 @@ export default function ConfirmPage() {
           return;
         }
 
-        // Success - redirect based on type
-        if (type === "invite" || type === "recovery") {
-          router.push("/auth/set-password");
+        // recovery + invite both need the user to set a password
+        if (type === "recovery" || type === "invite") {
+          router.replace("/auth/set-password");
         } else {
           // Other verification types (email confirmation, etc.)
-          router.push("/dashboard");
+          router.replace("/dashboard");
         }
       } catch (err) {
         console.error("Verification error:", err);
@@ -45,21 +49,8 @@ export default function ConfirmPage() {
       }
     };
 
-    // Only verify once we have the query params
-    if (router.isReady) {
-      verifyToken();
-    }
-
-    // Timeout after 2 seconds if still verifying
-    const timeout = setTimeout(() => {
-      if (verifying) {
-        setError("Verification timed out");
-        setVerifying(false);
-      }
-    }, 2000);
-
-    return () => clearTimeout(timeout);
-  }, [router.isReady, router.query, verifying]);
+    verifyToken();
+  }, [router.isReady, router.query]);
 
   if (verifying) {
     return (
