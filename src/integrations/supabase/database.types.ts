@@ -2628,7 +2628,6 @@ export type Database = {
           automation_enabled: boolean | null
           automation_source: string
           bamo_user_id: string | null
-          buyer_type: string | null
           campaign_id: string | null
           client_id: string
           company: string | null
@@ -2683,7 +2682,6 @@ export type Database = {
           automation_enabled?: boolean | null
           automation_source?: string
           bamo_user_id?: string | null
-          buyer_type?: string | null
           campaign_id?: string | null
           client_id: string
           company?: string | null
@@ -2738,7 +2736,6 @@ export type Database = {
           automation_enabled?: boolean | null
           automation_source?: string
           bamo_user_id?: string | null
-          buyer_type?: string | null
           campaign_id?: string | null
           client_id?: string
           company?: string | null
@@ -2814,46 +2811,52 @@ export type Database = {
       }
       message_templates: {
         Row: {
-          body: string | null
-          category: string | null
+          body: string
+          category: string
           channel: string | null
           client_id: string
-          content: string
           created_at: string | null
           created_by: string | null
+          goal: string | null
           id: string
           last_used_at: string | null
-          name: string
-          title: string | null
+          placeholders_used: Json
+          title: string
+          topic: string | null
           updated_at: string | null
+          used_kb: boolean
         }
         Insert: {
-          body?: string | null
-          category?: string | null
+          body: string
+          category: string
           channel?: string | null
           client_id: string
-          content: string
           created_at?: string | null
           created_by?: string | null
+          goal?: string | null
           id?: string
           last_used_at?: string | null
-          name: string
-          title?: string | null
+          placeholders_used?: Json
+          title: string
+          topic?: string | null
           updated_at?: string | null
+          used_kb?: boolean
         }
         Update: {
-          body?: string | null
-          category?: string | null
+          body?: string
+          category?: string
           channel?: string | null
           client_id?: string
-          content?: string
           created_at?: string | null
           created_by?: string | null
+          goal?: string | null
           id?: string
           last_used_at?: string | null
-          name?: string
-          title?: string | null
+          placeholders_used?: Json
+          title?: string
+          topic?: string | null
           updated_at?: string | null
+          used_kb?: boolean
         }
         Relationships: [
           {
@@ -3298,6 +3301,7 @@ export type Database = {
           p_assigned_user_id?: string
           p_campaign_id?: string
           p_client_id: string
+          p_lead_type?: string
           p_limit?: number
           p_offset?: number
           p_quality?: string
@@ -3315,7 +3319,6 @@ export type Database = {
           bedrooms: number
           budget_max: number
           budget_min: number
-          buyer_type: string
           campaign_id: string
           campaign_name: string
           client_id: string
@@ -3332,6 +3335,7 @@ export type Database = {
           lead_quality_updated_at: string
           lead_score: number
           lead_temperature: string
+          lead_type: string
           metadata: Json
           name: string
           next_follow_up_date: string

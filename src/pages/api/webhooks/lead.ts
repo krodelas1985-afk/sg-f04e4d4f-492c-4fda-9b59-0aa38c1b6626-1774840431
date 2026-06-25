@@ -73,7 +73,6 @@ export default async function handler(
     email: payload.email,
     phone: payload.phone,
     source: payload.source,
-    buyer_type: payload.buyer_type,
     company: payload.company,
     campaign_id: payload.campaign_id,
     status: "New",
@@ -90,7 +89,7 @@ export default async function handler(
   // Store extra fields in metadata
   const knownFields = [
     "name", "email", "phone", "source", "budget_min", "budget_max",
-    "preferred_location", "property_type", "bedrooms", "buyer_type",
+    "preferred_location", "property_type", "bedrooms",
     "company", "campaign_id", "webhook_secret"
   ];
   

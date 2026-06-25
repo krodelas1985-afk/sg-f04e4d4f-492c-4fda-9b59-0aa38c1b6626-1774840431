@@ -70,7 +70,7 @@ export interface Lead {
   lead_temperature?: LeadTemperature;
   lead_score?: number;
   tags?: string[];
-  buyer_type?: string;
+  lead_type?: string;
   last_message_at?: string;
   unread_count: number;
   next_follow_up_date?: string;

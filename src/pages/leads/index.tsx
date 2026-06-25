@@ -33,6 +33,7 @@ const STAGE_OPTIONS = [
   { value: "Cold", emoji: "❄️", color: "bg-gray-100 text-gray-800" },
   { value: "Unqualified", emoji: "", color: "bg-gray-100 text-gray-600" },
 ];
+const LEAD_TYPE_OPTIONS = ["Buyer", "Seller", "Agent", "Developer", "Affiliate", "Others"];
 const SOURCE_OPTIONS = [
   "FB Messenger",
   "Viber",
@@ -71,7 +72,7 @@ interface Lead {
   preferred_location: string | null;
   property_type: string | null;
   bedrooms: number | null;
-  buyer_type: string | null;
+  lead_type: string | null;
   last_inbound_at: string | null;
   last_contacted_at: string | null;
 }
@@ -89,6 +90,7 @@ export default function LeadsPage() {
   const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>("All");
   const [campaignFilter, setCampaignFilter] = useState<string>("All");
   const [qualityFilter, setQualityFilter] = useState<string>("All");
+  const [leadTypeFilter, setLeadTypeFilter] = useState<string>("All");
   const [scoreSort, setScoreSort] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [lastInboundSort, setLastInboundSort] = useState<string>("");
@@ -127,7 +129,7 @@ export default function LeadsPage() {
     phone: "",
     email: "",
     company: "",
-    buyer_type: "",
+    lead_type: "",
     status: "New",
     lead_temperature: "",
     source: "",
@@ -150,7 +152,7 @@ export default function LeadsPage() {
   // Reset to page 1 whenever any filter or sort changes
   useEffect(() => {
     setCurrentPage(0);
-  }, [statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, searchQuery, lastInboundSort, lastContactedSort]);
+  }, [statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, leadTypeFilter, searchQuery, lastInboundSort, lastContactedSort]);
 
   useEffect(() => {
     if (clientId) {
@@ -159,7 +161,7 @@ export default function LeadsPage() {
       fetchAgents();
       fetchCampaigns();
     }
-  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, qualityFilter, scoreSort, searchQuery, lastInboundSort, lastContactedSort, currentPage]);
+  }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, qualityFilter, leadTypeFilter, scoreSort, searchQuery, lastInboundSort, lastContactedSort, currentPage]);
   
   const { profile: userProfile } = useUserProfile();
 
@@ -192,6 +194,7 @@ export default function LeadsPage() {
         p_assigned_user_id: assignedAgentFilter === "All" ? null : assignedAgentFilter,
         p_campaign_id: campaignFilter === "All" ? null : (campaignFilter === "No Campaign" ? "00000000-0000-0000-0000-000000000000" : campaignFilter),
         p_quality: qualityFilter === "All" ? null : qualityFilter,
+        p_lead_type: leadTypeFilter === "All" ? null : leadTypeFilter,
         p_search: searchQuery || null,
         p_sort_by: scoreSort ? "lead_score" : sortBy,
         p_sort_dir: scoreSort || sortDir,
@@ -385,7 +388,7 @@ export default function LeadsPage() {
         phone: fullAddData.phone,
         email: fullAddData.email,
         company: fullAddData.company,
-        buyer_type: fullAddData.buyer_type,
+        lead_type: fullAddData.lead_type || null,
         status: fullAddData.status,
         lead_temperature: fullAddData.lead_temperature,
         source: fullAddData.source,
@@ -642,6 +645,18 @@ export default function LeadsPage() {
               </SelectContent>
             </Select>
 
+            <Select value={leadTypeFilter} onValueChange={setLeadTypeFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Lead Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Types</SelectItem>
+                {LEAD_TYPE_OPTIONS.map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={scoreSort || "default"} onValueChange={(val) => { setScoreSort(val === "default" ? "" : val); setLastInboundSort(""); setLastContactedSort(""); }}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Sort by Score" />
@@ -688,6 +703,7 @@ export default function LeadsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Agent</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent Role</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
@@ -789,6 +805,21 @@ export default function LeadsPage() {
                             <SelectItem key={source} value={source}>
                               {source}
                             </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Select
+                        value={lead.lead_type || ""}
+                        onValueChange={(value) => handleInlineEdit(lead.id, "lead_type", value)}
+                      >
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LEAD_TYPE_OPTIONS.map((t) => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1020,16 +1051,16 @@ export default function LeadsPage() {
                 <div>
                   <Label>Lead Type</Label>
                   <Select
-                    value={fullAddData.buyer_type}
-                    onValueChange={(value) => setFullAddData({ ...fullAddData, buyer_type: value })}
+                    value={fullAddData.lead_type}
+                    onValueChange={(value) => setFullAddData({ ...fullAddData, lead_type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Buyer">Buyer</SelectItem>
-                      <SelectItem value="Seller">Seller</SelectItem>
-                      <SelectItem value="Investor">Investor</SelectItem>
+                      {LEAD_TYPE_OPTIONS.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

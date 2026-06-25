@@ -508,6 +508,20 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                   </div>
                   
                   <div>
+                    <Label>Lead Type</Label>
+                    <Select value={lead?.lead_type || ""} onValueChange={(val) => handleFieldUpdate("lead_type", val)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["Buyer", "Seller", "Agent", "Developer", "Affiliate", "Others"].map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
                     <Label>Status</Label>
                     <Select value={lead?.status || ""} onValueChange={(val) => {
                       handleFieldUpdate("status", val);

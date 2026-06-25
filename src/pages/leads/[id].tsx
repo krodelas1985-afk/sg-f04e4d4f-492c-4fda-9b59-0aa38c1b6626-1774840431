@@ -762,6 +762,20 @@ export default function LeadDetailPage() {
                   )}
                 </div>
 
+                <div>
+                  <Label className="text-xs text-gray-500">Lead Type</Label>
+                  <Select value={lead.lead_type || ""} onValueChange={(val) => handleFieldUpdate("lead_type", val)}>
+                    <SelectTrigger className={`h-8 text-sm focus:ring-[#1F3C88] ${lead.lead_type ? "border-[#93b3e8] text-[#1F3C88]" : ""}`}>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Buyer","Seller","Agent","Developer","Affiliate","Others"].map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs text-gray-500">Source</Label>
