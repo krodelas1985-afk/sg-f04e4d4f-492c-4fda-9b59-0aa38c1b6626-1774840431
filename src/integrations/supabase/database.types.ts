@@ -2128,6 +2128,7 @@ export type Database = {
       }
       enrollment_rules: {
         Row: {
+          ai_outbound_min_hours: number | null
           conversation_stage_filter: string[] | null
           created_at: string | null
           enabled: boolean | null
@@ -2144,6 +2145,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_outbound_min_hours?: number | null
           conversation_stage_filter?: string[] | null
           created_at?: string | null
           enabled?: boolean | null
@@ -2160,6 +2162,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_outbound_min_hours?: number | null
           conversation_stage_filter?: string[] | null
           created_at?: string | null
           enabled?: boolean | null
@@ -2639,6 +2642,7 @@ export type Database = {
           follow_up_preference: string | null
           id: string
           industry: string | null
+          last_ai_outbound_at: string | null
           last_contacted_at: string | null
           last_inbound_at: string | null
           last_message_at: string | null
@@ -2693,6 +2697,7 @@ export type Database = {
           follow_up_preference?: string | null
           id?: string
           industry?: string | null
+          last_ai_outbound_at?: string | null
           last_contacted_at?: string | null
           last_inbound_at?: string | null
           last_message_at?: string | null
@@ -2747,6 +2752,7 @@ export type Database = {
           follow_up_preference?: string | null
           id?: string
           industry?: string | null
+          last_ai_outbound_at?: string | null
           last_contacted_at?: string | null
           last_inbound_at?: string | null
           last_message_at?: string | null

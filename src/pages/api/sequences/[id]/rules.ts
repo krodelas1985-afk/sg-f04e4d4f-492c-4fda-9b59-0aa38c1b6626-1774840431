@@ -91,6 +91,7 @@ export default async function handler(
       inactivity_days,
       last_inbound_max_hours,
       last_contacted_min_hours,
+      ai_outbound_min_hours,
       temperature_filter,
       conversation_stage_filter,
       quality_filter,
@@ -122,6 +123,10 @@ export default async function handler(
           last_contacted_min_hours === null
             ? null
             : last_contacted_min_hours,
+        ai_outbound_min_hours:
+          ai_outbound_min_hours === undefined || ai_outbound_min_hours === null
+            ? null
+            : ai_outbound_min_hours,
         temperature_filter: toArrayOrNull(temperature_filter),
         conversation_stage_filter: toArrayOrNull(conversation_stage_filter),
         quality_filter: toArrayOrNull(quality_filter),
@@ -146,6 +151,7 @@ export default async function handler(
       inactivity_days,
       last_inbound_max_hours,
       last_contacted_min_hours,
+      ai_outbound_min_hours,
       temperature_filter,
       conversation_stage_filter,
       quality_filter,
@@ -167,6 +173,8 @@ export default async function handler(
       updateData.last_inbound_max_hours = last_inbound_max_hours;
     if (last_contacted_min_hours !== undefined)
       updateData.last_contacted_min_hours = last_contacted_min_hours;
+    if (ai_outbound_min_hours !== undefined)
+      updateData.ai_outbound_min_hours = ai_outbound_min_hours;
     if (temperature_filter !== undefined)
       updateData.temperature_filter = toArrayOrNull(temperature_filter);
     if (conversation_stage_filter !== undefined)

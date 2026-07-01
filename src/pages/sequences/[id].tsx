@@ -91,6 +91,7 @@ interface Rule {
   inactivity_days: number | null;
   last_inbound_max_hours: number | null;
   last_contacted_min_hours: number | null;
+  ai_outbound_min_hours: number | null;
   temperature_filter: string[] | null;
   conversation_stage_filter: string[] | null;
   quality_filter: string[] | null;
@@ -222,6 +223,7 @@ export default function SequenceDetailPage() {
     inactivity_days: string;
     last_inbound_max_hours: string;
     last_contacted_min_hours: string;
+    ai_outbound_min_hours: string;
     temperature_filter: string[];
     conversation_stage_filter: string[];
     quality_filter: string[];
@@ -233,6 +235,7 @@ export default function SequenceDetailPage() {
     inactivity_days: "",
     last_inbound_max_hours: "",
     last_contacted_min_hours: "",
+    ai_outbound_min_hours: "",
     temperature_filter: [],
     conversation_stage_filter: [],
     quality_filter: [],
@@ -546,6 +549,7 @@ export default function SequenceDetailPage() {
       inactivity_days: "",
       last_inbound_max_hours: "",
       last_contacted_min_hours: "",
+      ai_outbound_min_hours: "",
       temperature_filter: [],
       conversation_stage_filter: [],
       quality_filter: [],
@@ -570,6 +574,10 @@ export default function SequenceDetailPage() {
         rule.last_contacted_min_hours === null
           ? ""
           : String(rule.last_contacted_min_hours),
+      ai_outbound_min_hours:
+        rule.ai_outbound_min_hours === null
+          ? ""
+          : String(rule.ai_outbound_min_hours),
       temperature_filter: rule.temperature_filter || [],
       conversation_stage_filter: rule.conversation_stage_filter || [],
       quality_filter: rule.quality_filter || [],
@@ -601,6 +609,11 @@ export default function SequenceDetailPage() {
         Number(ruleForm.last_contacted_min_hours) < 1
           ? null
           : Number(ruleForm.last_contacted_min_hours),
+      ai_outbound_min_hours:
+        ruleForm.ai_outbound_min_hours.trim() === "" ||
+        Number(ruleForm.ai_outbound_min_hours) < 1
+          ? null
+          : Number(ruleForm.ai_outbound_min_hours),
       temperature_filter: ruleForm.temperature_filter,
       conversation_stage_filter: ruleForm.conversation_stage_filter,
       quality_filter: ruleForm.quality_filter?.length ? ruleForm.quality_filter : null,
@@ -1363,6 +1376,28 @@ export default function SequenceDetailPage() {
               <p className="text-xs text-slate-500">
                 Skip leads contacted within this many hours. Prevents
                 double-tapping.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rule-ai-outbound">
+                Min hours since AI (W2) last messaged
+              </Label>
+              <Input
+                id="rule-ai-outbound"
+                type="number"
+                min={1}
+                value={ruleForm.ai_outbound_min_hours}
+                onChange={(e) =>
+                  setRuleForm({
+                    ...ruleForm,
+                    ai_outbound_min_hours: e.target.value,
+                  })
+                }
+                placeholder="e.g. 24"
+              />
+              <p className="text-xs text-slate-500">
+                Only enroll leads where W2 sent a message at least this many
+                hours ago with no reply since. Used for re-engagement sequences.
               </p>
             </div>
             <div className="space-y-2">
