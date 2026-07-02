@@ -119,6 +119,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           // ── END ECHO HANDLING ─────────────────────────────────────────
 
+          // ── AD REFERRAL CAPTURE (Click-to-Messenger ads) ──────────────
+          // Meta delivers ad attribution as a referral object in three shapes:
+          // a standalone messaging_referrals event (existing conversation),
+          // postback.referral (Get Started tap on a new conversation), or
+          // attached to the first message itself. Referral-only events carry
+          // no message text, so they must be captured HERE — the text-message
+          // guard below would otherwise drop them. Stored rows are looked up
+          // by PSID when the first message arrives (possibly a separate,
+          // later webhook call).
+          const referral =
+            event.referral ?? event.postback?.referral ?? event.message?.referral;
+          const referralAdId: string | null =
+            referral?.ad_id != null ? String(referral.ad_id) : null;
+          if (referral) {
+            console.log(
+              "MESSENGER_REFERRAL",
+              JSON.stringify({ psid: event.sender?.id, referral })
+            );
+            try {
+              const refPsid = event.sender?.id as string | undefined;
+              if (refPsid) {
+                await supabase.from("messenger_referrals").insert({
+                  client_id: clientId,
+                  psid: refPsid,
+                  ad_id: referralAdId,
+                  ref: referral.ref ?? null,
+                  source: referral.source ?? null,
+                  raw: referral,
+                });
+                if (referralAdId) {
+                  // Existing-conversation ad click: stamp the lead directly.
+                  await supabase
+                    .from("leads")
+                    .update({ fb_ad_id: referralAdId })
+                    .eq("messenger_id", refPsid)
+                    .eq("client_id", clientId);
+                }
+              }
+            } catch (refErr) {
+              console.error("Referral capture error:", refErr);
+            }
+          }
+
           if (!event.message || !event.message.text) continue;
 
           try {
@@ -130,10 +173,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── 1. LEAD LOOKUP / CREATE ──────────────────────────────
             const { data: existingLead } = await supabase
               .from("leads")
-              .select("id, automation_enabled, conversation_summary")
+              .select("id, automation_enabled, conversation_summary, fb_ad_id")
               .eq("messenger_id", psid)
               .eq("client_id", clientId)
               .single();
+
+            // Ad attribution for enrollment: referral on this event, else the
+            // value already stamped on the lead, else a referral stored for
+            // this PSID in the last 7 days (referral/postback events arrive
+            // before the first message creates the lead).
+            let fbAdId: string | null = referralAdId ?? existingLead?.fb_ad_id ?? null;
+            if (!fbAdId) {
+              const { data: recentRef } = await supabase
+                .from("messenger_referrals")
+                .select("ad_id")
+                .eq("psid", psid)
+                .eq("client_id", clientId)
+                .not("ad_id", "is", null)
+                .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              fbAdId = recentRef?.ad_id ?? null;
+            }
 
             let leadId: string;
             let isNewLead = false;
@@ -179,6 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   lead_temperature: "Cold",
                   client_id: clientId,
                   automation_enabled: false,
+                  fb_ad_id: fbAdId,
                   metadata: { name_lookup: nameLookupMeta! },
                 })
                 .select("id")
@@ -202,6 +265,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               leadId = existingLead.id;
               automationEnabled = existingLead.automation_enabled ?? true;
               conversationSummary = existingLead.conversation_summary ?? "";
+              // Backfill ad attribution recovered from a stored referral.
+              if (fbAdId && !existingLead.fb_ad_id) {
+                await supabase
+                  .from("leads")
+                  .update({ fb_ad_id: fbAdId })
+                  .eq("id", leadId);
+              }
             }
 
             // ── 2. SAVE INBOUND MESSAGE ──────────────────────────────
@@ -261,6 +331,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               p_lead_id: leadId,
               p_is_new: isNewLead,
               p_source: "messenger",
+              p_attribution: { fb_ad_id: fbAdId },
             });
 
             // Load the lead's active campaign (if any) for the n8n payload, and

@@ -101,6 +101,7 @@ export default function CampaignDetailPage() {
   const [enrollmentRules, setEnrollmentRules] = useState<any>({
     sources: [],
     fb_ad_id: "",
+    fb_ad_ids: ["", "", ""],
     webform_id: "",
     sms_number: "",
     new_leads_only: true,
@@ -155,9 +156,18 @@ export default function CampaignDetailPage() {
       setAiDecisionInstructions(data.ai_decision_instructions || "");
       setAiMessageInstructions(data.ai_message_instructions || "");
       if (data.enrollment_rules) {
+        // fb_ad_ids (up to 3) supersedes the legacy single fb_ad_id; merge
+        // a legacy value into the array so it stays visible and editable.
+        const loadedAdIds: string[] =
+          Array.isArray(data.enrollment_rules.fb_ad_ids) && data.enrollment_rules.fb_ad_ids.length
+            ? data.enrollment_rules.fb_ad_ids
+            : data.enrollment_rules.fb_ad_id
+            ? [data.enrollment_rules.fb_ad_id]
+            : [];
         setEnrollmentRules({
           sources: data.enrollment_rules.sources || [],
-          fb_ad_id: data.enrollment_rules.fb_ad_id || "",
+          fb_ad_id: "",
+          fb_ad_ids: [0, 1, 2].map(i => loadedAdIds[i] || ""),
           webform_id: data.enrollment_rules.webform_id || "",
           sms_number: data.enrollment_rules.sms_number || "",
           new_leads_only: data.enrollment_rules.new_leads_only ?? true,
@@ -354,7 +364,13 @@ export default function CampaignDetailPage() {
         target_industries: targetIndustries,
         scheduled_steps_enabled: scheduledStepsEnabled,
         conversational_ai_enabled: conversationalAiEnabled,
-        enrollment_rules: enrollmentRules,
+        enrollment_rules: {
+          ...enrollmentRules,
+          fb_ad_id: "",
+          fb_ad_ids: (enrollmentRules.fb_ad_ids || [])
+            .map((s: string) => (s || "").trim())
+            .filter(Boolean),
+        },
         campaign_rules: campaignRules,
         job_titles: jobTitles,
         ai_decision_instructions: aiDecisionInstructions || null,
@@ -877,7 +893,7 @@ export default function CampaignDetailPage() {
                 <Label>Lead Source — which channels enroll leads into this campaign</Label>
                 <div className="space-y-3">
                   {[
-                    { key: "messenger", label: "Facebook Messenger", idField: "fb_ad_id", idLabel: "FB Ad ID (optional)", idPlaceholder: "e.g. 1234567890" },
+                    { key: "messenger", label: "Facebook Messenger", idField: "fb_ad_ids", idLabel: "FB Ad IDs (optional — up to 3)", idPlaceholder: "e.g. 1234567890" },
                     { key: "webform", label: "Webform", idField: "webform_id", idLabel: "Webform ID (optional)", idPlaceholder: "e.g. contact-form-1" },
                     { key: "sms", label: "SMS", idField: "sms_number", idLabel: "SMS Number (optional)", idPlaceholder: "e.g. +639XXXXXXXXX" },
                     { key: "bamo", label: "BaMo Marketplace", idField: null, idLabel: null, idPlaceholder: null },
@@ -901,13 +917,35 @@ export default function CampaignDetailPage() {
                       {src.idField && (enrollmentRules.sources || []).includes(src.key) && (
                         <div className="ml-6 space-y-1">
                           <Label className="text-xs text-slate-500">{src.idLabel}</Label>
-                          <Input
-                            value={enrollmentRules[src.idField] || ""}
-                            onChange={e => setEnrollmentRules({ ...enrollmentRules, [src.idField!]: e.target.value })}
-                            placeholder={src.idPlaceholder || ""}
-                            disabled={!canEdit}
-                            className="max-w-xs"
-                          />
+                          {src.idField === "fb_ad_ids" ? (
+                            <>
+                              {[0, 1, 2].map(i => (
+                                <Input
+                                  key={i}
+                                  value={(enrollmentRules.fb_ad_ids || [])[i] || ""}
+                                  onChange={e => {
+                                    const ids = [...(enrollmentRules.fb_ad_ids || ["", "", ""])];
+                                    ids[i] = e.target.value;
+                                    setEnrollmentRules({ ...enrollmentRules, fb_ad_ids: ids });
+                                  }}
+                                  placeholder={src.idPlaceholder || ""}
+                                  disabled={!canEdit}
+                                  className="max-w-xs"
+                                />
+                              ))}
+                              <p className="text-xs text-slate-500">
+                                If any Ad ID is set, ONLY Messenger leads arriving from one of these ads are enrolled — leads without ad attribution are excluded. Leave all empty to enroll from any Messenger conversation.
+                              </p>
+                            </>
+                          ) : (
+                            <Input
+                              value={enrollmentRules[src.idField] || ""}
+                              onChange={e => setEnrollmentRules({ ...enrollmentRules, [src.idField!]: e.target.value })}
+                              placeholder={src.idPlaceholder || ""}
+                              disabled={!canEdit}
+                              className="max-w-xs"
+                            />
+                          )}
                         </div>
                       )}
                     </div>

@@ -2639,6 +2639,7 @@ export type Database = {
           created_at: string | null
           current_location: string | null
           email: string | null
+          fb_ad_id: string | null
           follow_up_preference: string | null
           id: string
           industry: string | null
@@ -2694,6 +2695,7 @@ export type Database = {
           created_at?: string | null
           current_location?: string | null
           email?: string | null
+          fb_ad_id?: string | null
           follow_up_preference?: string | null
           id?: string
           industry?: string | null
@@ -2749,6 +2751,7 @@ export type Database = {
           created_at?: string | null
           current_location?: string | null
           email?: string | null
+          fb_ad_id?: string | null
           follow_up_preference?: string | null
           id?: string
           industry?: string | null
@@ -2877,6 +2880,47 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messenger_referrals: {
+        Row: {
+          ad_id: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          psid: string
+          raw: Json | null
+          ref: string | null
+          source: string | null
+        }
+        Insert: {
+          ad_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          psid: string
+          raw?: Json | null
+          ref?: string | null
+          source?: string | null
+        }
+        Update: {
+          ad_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          psid?: string
+          raw?: Json | null
+          ref?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_referrals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
