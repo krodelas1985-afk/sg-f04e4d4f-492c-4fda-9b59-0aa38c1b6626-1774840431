@@ -2132,6 +2132,7 @@ export type Database = {
           conversation_stage_filter: string[] | null
           created_at: string | null
           enabled: boolean | null
+          fb_ad_id_filter: string[] | null
           id: string
           inactivity_days: number | null
           last_contacted_min_hours: number | null
@@ -2149,6 +2150,7 @@ export type Database = {
           conversation_stage_filter?: string[] | null
           created_at?: string | null
           enabled?: boolean | null
+          fb_ad_id_filter?: string[] | null
           id?: string
           inactivity_days?: number | null
           last_contacted_min_hours?: number | null
@@ -2166,6 +2168,7 @@ export type Database = {
           conversation_stage_filter?: string[] | null
           created_at?: string | null
           enabled?: boolean | null
+          fb_ad_id_filter?: string[] | null
           id?: string
           inactivity_days?: number | null
           last_contacted_min_hours?: number | null

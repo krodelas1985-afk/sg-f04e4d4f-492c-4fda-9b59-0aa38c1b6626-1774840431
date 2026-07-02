@@ -88,6 +88,7 @@ export default async function handler(
     const {
       rule_name,
       source_filter,
+      fb_ad_id_filter,
       inactivity_days,
       last_inbound_max_hours,
       last_contacted_min_hours,
@@ -109,6 +110,7 @@ export default async function handler(
         sequence_id: id,
         rule_name,
         source_filter: toArrayOrNull(source_filter),
+        fb_ad_id_filter: toArrayOrNull(fb_ad_id_filter),
         inactivity_days:
           inactivity_days === undefined || inactivity_days === null
             ? null
@@ -148,6 +150,7 @@ export default async function handler(
       id: ruleId,
       rule_name,
       source_filter,
+      fb_ad_id_filter,
       inactivity_days,
       last_inbound_max_hours,
       last_contacted_min_hours,
@@ -167,6 +170,8 @@ export default async function handler(
     if (rule_name !== undefined) updateData.rule_name = rule_name;
     if (source_filter !== undefined)
       updateData.source_filter = toArrayOrNull(source_filter);
+    if (fb_ad_id_filter !== undefined)
+      updateData.fb_ad_id_filter = toArrayOrNull(fb_ad_id_filter);
     if (inactivity_days !== undefined)
       updateData.inactivity_days = inactivity_days;
     if (last_inbound_max_hours !== undefined)

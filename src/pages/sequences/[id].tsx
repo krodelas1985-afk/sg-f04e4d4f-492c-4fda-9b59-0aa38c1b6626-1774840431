@@ -88,6 +88,7 @@ interface Rule {
   id: string;
   rule_name: string;
   source_filter: string[] | null;
+  fb_ad_id_filter: string[] | null;
   inactivity_days: number | null;
   last_inbound_max_hours: number | null;
   last_contacted_min_hours: number | null;
@@ -220,6 +221,7 @@ export default function SequenceDetailPage() {
   const [ruleForm, setRuleForm] = useState<{
     rule_name: string;
     source_filter: string[];
+    fb_ad_id_filter: string[];
     inactivity_days: string;
     last_inbound_max_hours: string;
     last_contacted_min_hours: string;
@@ -232,6 +234,7 @@ export default function SequenceDetailPage() {
   }>({
     rule_name: "",
     source_filter: [],
+    fb_ad_id_filter: ["", "", ""],
     inactivity_days: "",
     last_inbound_max_hours: "",
     last_contacted_min_hours: "",
@@ -546,6 +549,7 @@ export default function SequenceDetailPage() {
     setRuleForm({
       rule_name: "",
       source_filter: [],
+      fb_ad_id_filter: ["", "", ""],
       inactivity_days: "",
       last_inbound_max_hours: "",
       last_contacted_min_hours: "",
@@ -564,6 +568,9 @@ export default function SequenceDetailPage() {
     setRuleForm({
       rule_name: rule.rule_name,
       source_filter: rule.source_filter || [],
+      fb_ad_id_filter: [0, 1, 2].map(
+        (i) => (rule.fb_ad_id_filter || [])[i] || ""
+      ),
       inactivity_days:
         rule.inactivity_days === null ? "" : String(rule.inactivity_days),
       last_inbound_max_hours:
@@ -592,9 +599,13 @@ export default function SequenceDetailPage() {
       toast({ title: "Rule name required", variant: "destructive" });
       return;
     }
+    const cleanedAdIds = (ruleForm.fb_ad_id_filter || [])
+      .map((s) => (s || "").trim())
+      .filter(Boolean);
     const payload: any = {
       rule_name: ruleForm.rule_name.trim(),
       source_filter: ruleForm.source_filter,
+      fb_ad_id_filter: cleanedAdIds.length ? cleanedAdIds : null,
       inactivity_days:
         ruleForm.inactivity_days.trim() === ""
           ? null
@@ -695,6 +706,8 @@ export default function SequenceDetailPage() {
     const parts: string[] = [];
     if (rule.source_filter?.length)
       parts.push(`Source: ${rule.source_filter.join(", ")}`);
+    if (rule.fb_ad_id_filter?.length)
+      parts.push(`FB Ad: ${rule.fb_ad_id_filter.join(", ")}`);
     if (rule.inactivity_days != null)
       parts.push(`Inactivity ≥ ${rule.inactivity_days} days`);
     if (rule.temperature_filter?.length)
@@ -1317,6 +1330,26 @@ export default function SequenceDetailPage() {
                   setRuleForm({ ...ruleForm, source_filter: next })
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label>FB Ad IDs (optional — up to 3)</Label>
+              {[0, 1, 2].map((i) => (
+                <Input
+                  key={i}
+                  value={ruleForm.fb_ad_id_filter[i] || ""}
+                  onChange={(e) => {
+                    const ids = [...ruleForm.fb_ad_id_filter];
+                    ids[i] = e.target.value;
+                    setRuleForm({ ...ruleForm, fb_ad_id_filter: ids });
+                  }}
+                  placeholder="e.g. 1234567890"
+                />
+              ))}
+              <p className="text-xs text-muted-foreground">
+                If any Ad ID is set, ONLY leads that came from one of these ads
+                are enrolled — leads without ad attribution are excluded. Leave
+                all empty to skip this filter.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="rule-inactivity">Inactivity days (optional)</Label>
