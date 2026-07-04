@@ -365,7 +365,8 @@ export default function PrivacyPolicy() {
                 support@bahaymo.com
               </a>
             </p>
-            <p>Website: bahaymo.com</p>
+            <p className="mb-2">Website: bahaymo.com</p>
+            <p>App: app.bahaymo.com</p>
           </section>
 
           <hr className="my-10 border-gray-200" />
