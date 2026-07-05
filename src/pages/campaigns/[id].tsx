@@ -48,6 +48,8 @@ export default function CampaignDetailPage() {
   const QUALIFICATION_FIELDS = [
     { field: 'current_location', label: "Lead's Current Location", placeholder: 'e.g. Saan po kayo nakatira ngayon?' },
     { field: 'property_type', label: 'Preferred Property Type', placeholder: 'e.g. Anong type ng property po ang hinahanap ninyo?' },
+    { field: 'property_sub_type', label: 'Property Structure Type', placeholder: 'e.g. Bahay at lupa, condo, town house, o vacant lot lang?' },
+    { field: 'payment_scheme', label: 'Payment Scheme', placeholder: 'e.g. Cash, installment, o bank financing ang plano?' },
     { field: 'budget', label: 'Budget', placeholder: 'e.g. May budget range po ba kayo?' },
     { field: 'timeframe', label: 'Buying Timeline', placeholder: 'e.g. Kailan kayo balak bumili?' },
     { field: 'phone', label: 'Contact Number', placeholder: 'e.g. May contact number po ba kayo?' },
