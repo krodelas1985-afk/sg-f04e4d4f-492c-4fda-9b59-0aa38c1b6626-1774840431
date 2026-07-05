@@ -63,28 +63,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const campaignId = req.query.campaign_id as string
   if (!campaignId) return res.status(400).json({ error: 'campaign_id is required' })
 
-  // ── GET — fetch active KB row ──────────────────────────────────────────────
+  // ── GET — fetch active KB row (campaign-specific, else client-shared) ──────
   if (req.method === 'GET') {
-    let query = supabase
-      .from('campaign_knowledge_base')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    if (profile.role !== 'baymo_admin') {
-      query = query.eq('client_id', profile.client_id!)
+    const { data: campaign } = await supabase
+      .from('campaigns').select('id, client_id').eq('id', campaignId).single()
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' })
+    if (profile.role !== 'baymo_admin' && campaign.client_id !== profile.client_id) {
+      return res.status(403).json({ error: 'Forbidden' })
     }
 
-    const { data, error } = await query.maybeSingle()
+    const { data: rows, error } = await supabase
+      .from('campaign_knowledge_base')
+      .select('*')
+      .or(`campaign_id.eq.${campaignId},and(scope.eq.client,client_id.eq.${campaign.client_id})`)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+
     if (error) return res.status(500).json({ error: error.message })
-    return res.status(200).json({ kb: data })
+    // Prefer this campaign's own KB; fall back to a client-shared KB from another campaign
+    const kb = rows?.find(r => r.campaign_id === campaignId) ?? rows?.[0] ?? null
+    return res.status(200).json({ kb })
   }
 
   // ── POST — field-entry save ────────────────────────────────────────────────
   if (req.method === 'POST') {
-    const { fields, availability_status, promo_valid_until } = req.body
+    const { fields, availability_status, promo_valid_until, scope } = req.body
+    const kbScope = scope === 'client' ? 'client' : 'campaign'
 
     const { data: campaign } = await supabase
       .from('campaigns').select('id, client_id, name').eq('id', campaignId).single()
@@ -102,6 +106,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('campaign_id', campaignId)
       .eq('is_active', true)
 
+    // A client-shared KB replaces any previous client-shared KB (from any campaign)
+    if (kbScope === 'client') {
+      await supabase
+        .from('campaign_knowledge_base')
+        .update({ is_active: false })
+        .eq('client_id', campaign.client_id)
+        .eq('scope', 'client')
+        .eq('is_active', true)
+    }
+
     const { data, error } = await supabase
       .from('campaign_knowledge_base')
       .insert({
@@ -114,6 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         campaign_name: campaign.name,
         source_type: 'field',
         review_status: 'approved',
+        scope: kbScope,
         fields: kbFields,
         availability_status: availability_status || null,
         promo_valid_until: promo_valid_until || null,

@@ -44,6 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const campaignId = Array.isArray(fields.campaign_id) ? fields.campaign_id[0] : fields.campaign_id
   if (!campaignId) return res.status(400).json({ error: 'campaign_id is required' })
+  const rawScope = Array.isArray(fields.scope) ? fields.scope[0] : fields.scope
+  const kbScope = rawScope === 'client' ? 'client' : 'campaign'
 
   const fileArr = files.file
   const uploadedFile = Array.isArray(fileArr) ? fileArr[0] : fileArr
@@ -90,6 +92,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('campaign_id', campaignId)
     .eq('is_active', true)
 
+  // A client-shared KB replaces any previous client-shared KB (from any campaign)
+  if (kbScope === 'client') {
+    await supabase
+      .from('campaign_knowledge_base')
+      .update({ is_active: false })
+      .eq('client_id', campaign.client_id)
+      .eq('scope', 'client')
+      .eq('is_active', true)
+  }
+
   const { data: kb, error: insertError } = await supabase
     .from('campaign_knowledge_base')
     .insert({
@@ -101,6 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: 'knowledge',
       campaign_name: campaign.name,
       source_type: 'document',
+      scope: kbScope,
       review_status: 'pending',
       raw_document_path,
       source_text,

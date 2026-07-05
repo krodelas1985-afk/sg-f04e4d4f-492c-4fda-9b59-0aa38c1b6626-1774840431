@@ -27,6 +27,25 @@ interface KbEntry {
   promo_valid_until: string | null
   raw_document_path: string | null
   source_url: string | null
+  scope?: 'campaign' | 'client' | null
+}
+
+// Topics the AI gets asked about constantly — if a KB is missing one, the AI
+// can't answer it and will refer the lead to the agent (or worse, guess).
+const COMPLETENESS_CHECKS: { label: string; test: (c: string) => boolean }[] = [
+  { label: 'Pricing / TCP', test: c => /pricing|price|tcp|₱\s?[\d,]|php\s?[\d,]/i.test(c) },
+  { label: 'Unit sizes (floor & lot area)', test: c => /floor\s?area|lot\s?area|sq\.?\s?m\b|sqm/i.test(c) },
+  { label: 'Financing options', test: c => /financing|pag-?ibig|bank|in-?house/i.test(c) },
+  { label: 'Location details', test: c => /location|address|brgy|barangay|city of|,\s?(laguna|cavite|batangas|rizal|quezon|bulacan|pampanga|metro manila)/i.test(c) },
+  { label: 'Turnover / availability', test: c => /turnover|rfo|ready for occupancy|pre-?selling|move-?in/i.test(c) },
+  { label: 'Reservation process & fees', test: c => /reservation/i.test(c) },
+  { label: 'Viewing / tripping', test: c => /viewing|tripping|site visit/i.test(c) },
+  { label: 'Contact person', test: c => /contact|agent/i.test(c) },
+]
+
+function findKbGaps(content: string): string[] {
+  if (!content?.trim()) return COMPLETENESS_CHECKS.map(c => c.label)
+  return COMPLETENESS_CHECKS.filter(c => !c.test(content)).map(c => c.label)
 }
 
 type KbFields = {
@@ -88,6 +107,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
       ? ((initialKb!.fields as KbFields).custom ?? [])
       : []
   )
+  const [shareClientWide, setShareClientWide] = useState(initialKb?.scope === 'client')
   const [availStatus, setAvailStatus] = useState(initialKb?.availability_status ?? '')
   const [promoUntil, setPromoUntil] = useState(initialKb?.promo_valid_until ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(initialKb?.source_url ?? '')
@@ -143,7 +163,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
         const res = await fetch('/api/kb', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ campaign_id: campaignId, fields, availability_status: availStatus, promo_valid_until: promoUntil }),
+          body: JSON.stringify({ campaign_id: campaignId, fields, availability_status: availStatus, promo_valid_until: promoUntil, scope: shareClientWide ? 'client' : 'campaign' }),
         })
         if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
         const { kb: saved } = await res.json()
@@ -157,6 +177,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
         const fd = new FormData()
         fd.append('file', docFile)
         fd.append('campaign_id', campaignId)
+        fd.append('scope', shareClientWide ? 'client' : 'campaign')
         const upRes = await fetch('/api/kb/upload', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -174,7 +195,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
         const res = await fetch('/api/kb/website', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ campaign_id: campaignId, source_url: websiteUrl.trim() }),
+          body: JSON.stringify({ campaign_id: campaignId, source_url: websiteUrl.trim(), scope: shareClientWide ? 'client' : 'campaign' }),
         })
         if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
         const { kb: saved } = await res.json()
@@ -233,6 +254,9 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
     if (!kb) return null
 
     if (kb.review_status === 'approved') {
+      const gaps = findKbGaps(kb.content)
+      const hasRealNotes = !!kb.review_notes?.trim()
+        && !/all facts appear complete/i.test(kb.review_notes)
       return (
         <Card>
           <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 border-b">
@@ -251,12 +275,35 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800 uppercase">
                 {kb.source_type}
               </span>
+              {kb.scope === 'client' && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 uppercase">
+                  Shared — all campaigns
+                </span>
+              )}
               {kb.availability_status && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                   {AVAIL_OPTIONS.find(o => o.value === kb.availability_status)?.label ?? kb.availability_status}
                 </span>
               )}
             </div>
+            {kb.scope === 'client' && kb.campaign_id !== campaignId && (
+              <p className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-2">
+                This knowledge base is shared client-wide and was created in another campaign.
+                Saving a new KB here creates a version for this campaign (or replaces the shared one if you keep it shared).
+              </p>
+            )}
+            {gaps.length > 0 && (
+              <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
+                <span className="font-semibold">KB gaps — the AI cannot answer questions about:</span>{' '}
+                {gaps.join(' · ')}. Leads asking these will be told the team will confirm, and the agent gets notified.
+                Add these details so the AI can answer directly.
+              </div>
+            )}
+            {hasRealNotes && (
+              <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2 whitespace-pre-wrap">
+                <span className="font-semibold">Review notes from extraction:</span>{'\n'}{kb.review_notes}
+              </div>
+            )}
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans line-clamp-6 leading-relaxed">
               {kb.content || '(empty)'}
             </pre>
@@ -471,6 +518,20 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
                 </p>
               </div>
             )}
+
+            <label className="flex items-start gap-2 text-xs cursor-pointer select-none border rounded-md p-3 bg-muted/40">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-3.5 w-3.5 accent-primary"
+                checked={shareClientWide}
+                onChange={e => setShareClientWide(e.target.checked)}
+              />
+              <span>
+                <span className="font-semibold">Share with all campaigns of this client.</span>{' '}
+                For developers running several campaigns on the same project — one KB feeds the AI in every campaign,
+                instead of copying it per campaign. Replaces any previous shared KB for this client.
+              </span>
+            </label>
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 

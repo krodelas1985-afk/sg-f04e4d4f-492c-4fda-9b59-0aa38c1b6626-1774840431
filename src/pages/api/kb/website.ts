@@ -22,9 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('profiles').select('role, client_id').eq('id', user.id).single()
   if (!profile) return res.status(403).json({ error: 'Forbidden' })
 
-  const { campaign_id, source_url } = req.body
+  const { campaign_id, source_url, scope } = req.body
   if (!campaign_id) return res.status(400).json({ error: 'campaign_id is required' })
   if (!source_url?.trim()) return res.status(400).json({ error: 'source_url is required' })
+  const kbScope = scope === 'client' ? 'client' : 'campaign'
 
   const { data: campaign } = await supabase
     .from('campaigns').select('id, client_id, name').eq('id', campaign_id).single()
@@ -45,6 +46,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('campaign_id', campaign_id)
     .eq('is_active', true)
 
+  // A client-shared KB replaces any previous client-shared KB (from any campaign)
+  if (kbScope === 'client') {
+    await supabase
+      .from('campaign_knowledge_base')
+      .update({ is_active: false })
+      .eq('client_id', campaign.client_id)
+      .eq('scope', 'client')
+      .eq('is_active', true)
+  }
+
   const { data: kb, error: insertError } = await supabase
     .from('campaign_knowledge_base')
     .insert({
@@ -56,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: 'knowledge',
       campaign_name: campaign.name,
       source_type: 'website',
+      scope: kbScope,
       review_status: 'pending',
       source_url: source_url.trim(),
       source_text: result.text,

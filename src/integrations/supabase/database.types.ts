@@ -1185,6 +1185,7 @@ export type Database = {
           raw_document_path: string | null
           review_notes: string | null
           review_status: string
+          scope: string
           source_text: string | null
           source_type: string | null
           source_url: string | null
@@ -1209,6 +1210,7 @@ export type Database = {
           raw_document_path?: string | null
           review_notes?: string | null
           review_status?: string
+          scope?: string
           source_text?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -1233,6 +1235,7 @@ export type Database = {
           raw_document_path?: string | null
           review_notes?: string | null
           review_status?: string
+          scope?: string
           source_text?: string | null
           source_type?: string | null
           source_url?: string | null
