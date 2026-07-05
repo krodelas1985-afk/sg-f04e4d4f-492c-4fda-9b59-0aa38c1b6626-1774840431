@@ -56,7 +56,9 @@ const PIPELINE_STAGE_OPTIONS = [
   "New", "In Contact", "Qualifying", "Qualified", "Viewing", "Negotiating", "Nurture",
 ];
 const STAGE_OPTIONS = ["greeting", "nurturing", "qualifying"];
-const ENROLLMENT_STATES = ["active", "paused", "completed", "exited"];
+const ENROLLMENT_STATES = [
+  "active", "waiting_window", "paused", "completed", "exited",
+];
 
 interface Sequence {
   id: string;
@@ -64,6 +66,10 @@ interface Sequence {
   description: string | null;
   is_active: boolean;
   scheduled_steps_enabled: boolean;
+  send_window_start: string | null;
+  send_window_end: string | null;
+  reenroll_cooldown_days: number | null;
+  max_passes: number | null;
   client_id: string;
   created_at: string;
 }
@@ -103,6 +109,8 @@ interface Rule {
 interface Enrollment {
   id: string;
   state: string;
+  outcome: string | null;
+  pass_number: number | null;
   current_step: number;
   next_step_at: string | null;
   last_step_at: string | null;
@@ -126,6 +134,8 @@ function stateColor(state: string) {
   switch (state) {
     case "active":
       return "bg-[#E8702A]/10 text-[#E8702A]";
+    case "waiting_window":
+      return "bg-violet-100 text-violet-800";
     case "paused":
       return "bg-amber-100 text-amber-800";
     case "completed":
@@ -187,6 +197,10 @@ export default function SequenceDetailPage() {
   // Header editable fields
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [windowStart, setWindowStart] = useState("08:00");
+  const [windowEnd, setWindowEnd] = useState("20:00");
+  const [cooldownDays, setCooldownDays] = useState("14");
+  const [maxPasses, setMaxPasses] = useState("3");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savingHeader, setSavingHeader] = useState(false);
 
@@ -258,6 +272,14 @@ export default function SequenceDetailPage() {
     setSequence(data);
     setName(data.name || "");
     setDescription(data.description || "");
+    setWindowStart(data.send_window_start || "08:00");
+    setWindowEnd(data.send_window_end || "20:00");
+    setCooldownDays(
+      data.reenroll_cooldown_days == null
+        ? "14"
+        : String(data.reenroll_cooldown_days)
+    );
+    setMaxPasses(data.max_passes == null ? "3" : String(data.max_passes));
   }, [id]);
 
   const fetchSteps = useCallback(async () => {
@@ -332,11 +354,42 @@ export default function SequenceDetailPage() {
       toast({ title: "Name required", variant: "destructive" });
       return;
     }
+    const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (!HHMM.test(windowStart) || !HHMM.test(windowEnd)) {
+      toast({
+        title: "Invalid send window",
+        description: "Use HH:MM (24h), e.g. 08:00 and 20:00.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const cooldown = Number(cooldownDays);
+    const passes = Number(maxPasses);
+    if (!Number.isInteger(cooldown) || cooldown < 0) {
+      toast({
+        title: "Invalid cooldown",
+        description: "Re-enrollment cooldown must be 0 or more days.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isInteger(passes) || passes < 1) {
+      toast({
+        title: "Invalid max passes",
+        description: "Max passes must be at least 1.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       setSavingHeader(true);
       const updated = await patchSequence({
         name: name.trim(),
         description: description.trim() || null,
+        send_window_start: windowStart,
+        send_window_end: windowEnd,
+        reenroll_cooldown_days: cooldown,
+        max_passes: passes,
       });
       setSequence(updated);
       setSettingsOpen(false);
@@ -977,6 +1030,8 @@ export default function SequenceDetailPage() {
                     <tr>
                       <th className="px-6 py-4 font-medium">Lead Name</th>
                       <th className="px-6 py-4 font-medium">State</th>
+                      <th className="px-6 py-4 font-medium">Outcome</th>
+                      <th className="px-6 py-4 font-medium">Pass</th>
                       <th className="px-6 py-4 font-medium">Current Step</th>
                       <th className="px-6 py-4 font-medium">Next Step At</th>
                       <th className="px-6 py-4 font-medium">Last Step At</th>
@@ -986,7 +1041,7 @@ export default function SequenceDetailPage() {
                     {filteredEnrollments.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={7}
                           className="px-6 py-12 text-center text-slate-500"
                         >
                           No enrollments to show.
@@ -1004,9 +1059,13 @@ export default function SequenceDetailPage() {
                                 e.state
                               )}`}
                             >
-                              {e.state}
+                              {e.state.replace("_", " ")}
                             </span>
                           </td>
+                          <td className="px-6 py-4 text-slate-500 capitalize">
+                            {e.outcome ? e.outcome.replace(/_/g, " ") : "—"}
+                          </td>
+                          <td className="px-6 py-4">{e.pass_number ?? 1}</td>
                           <td className="px-6 py-4">{e.current_step}</td>
                           <td className="px-6 py-4">{fmtDate(e.next_step_at)}</td>
                           <td className="px-6 py-4">{fmtDate(e.last_step_at)}</td>
@@ -1052,6 +1111,56 @@ export default function SequenceDetailPage() {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-window-start">Send window start</Label>
+                <Input
+                  id="edit-window-start"
+                  value={windowStart}
+                  onChange={(e) => setWindowStart(e.target.value)}
+                  placeholder="08:00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-window-end">Send window end</Label>
+                <Input
+                  id="edit-window-end"
+                  value={windowEnd}
+                  onChange={(e) => setWindowEnd(e.target.value)}
+                  placeholder="20:00"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 -mt-2">
+              Steps only send within this window (Manila time). Due steps wait
+              for the next window opening.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-cooldown">Re-enroll cooldown (days)</Label>
+                <Input
+                  id="edit-cooldown"
+                  type="number"
+                  min={0}
+                  value={cooldownDays}
+                  onChange={(e) => setCooldownDays(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-max-passes">Max passes per lead</Label>
+                <Input
+                  id="edit-max-passes"
+                  type="number"
+                  min={1}
+                  value={maxPasses}
+                  onChange={(e) => setMaxPasses(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 -mt-2">
+              After a pass ends (lead replied or steps finished), the lead can
+              re-enroll once the cooldown lapses — up to max passes total.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>

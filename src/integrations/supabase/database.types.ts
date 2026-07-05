@@ -611,6 +611,7 @@ export type Database = {
           retry_count: number
           scheduled_at: string | null
           social_account_id: string | null
+          source: string
           status: string | null
           updated_at: string | null
         }
@@ -632,6 +633,7 @@ export type Database = {
           retry_count?: number
           scheduled_at?: string | null
           social_account_id?: string | null
+          source?: string
           status?: string | null
           updated_at?: string | null
         }
@@ -653,6 +655,7 @@ export type Database = {
           retry_count?: number
           scheduled_at?: string | null
           social_account_id?: string | null
+          source?: string
           status?: string | null
           updated_at?: string | null
         }
@@ -863,6 +866,307 @@ export type Database = {
           },
         ]
       }
+      agent_documents: {
+        Row: {
+          body: string
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          lead_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_id?: string | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_documents_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_listings: {
+        Row: {
+          bathrooms: number | null
+          bedrooms: number | null
+          city: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          floor_area: number | null
+          id: string
+          listing_type: string | null
+          location: string | null
+          lot_area: number | null
+          photo_urls: string[]
+          price: number | null
+          property_type: string | null
+          source: string
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          floor_area?: number | null
+          id?: string
+          listing_type?: string | null
+          location?: string | null
+          lot_area?: number | null
+          photo_urls?: string[]
+          price?: number | null
+          property_type?: string | null
+          source?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          floor_area?: number | null
+          id?: string
+          listing_type?: string | null
+          location?: string | null
+          lot_area?: number | null
+          photo_urls?: string[]
+          price?: number | null
+          property_type?: string | null
+          source?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agent_website_requests: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          note: string | null
+          status: string
+          type: string
+          website_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          note?: string | null
+          status?: string
+          type: string
+          website_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string | null
+          status?: string
+          type?: string
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_website_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_website_requests_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "agent_websites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_websites: {
+        Row: {
+          agent_email: string | null
+          agent_name: string | null
+          agent_phone: string | null
+          area_coverage: string | null
+          assets_drive_url: string | null
+          client_id: string
+          company: string | null
+          created_by: string
+          facts: string | null
+          hero_photo_url: string | null
+          id: string
+          linked_listing_ids: string[]
+          messenger_link: string | null
+          prc_number: string | null
+          requested_at: string
+          status: string
+          updated_at: string
+          website_url: string | null
+          whatsapp_link: string | null
+        }
+        Insert: {
+          agent_email?: string | null
+          agent_name?: string | null
+          agent_phone?: string | null
+          area_coverage?: string | null
+          assets_drive_url?: string | null
+          client_id: string
+          company?: string | null
+          created_by: string
+          facts?: string | null
+          hero_photo_url?: string | null
+          id?: string
+          linked_listing_ids?: string[]
+          messenger_link?: string | null
+          prc_number?: string | null
+          requested_at?: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+          whatsapp_link?: string | null
+        }
+        Update: {
+          agent_email?: string | null
+          agent_name?: string | null
+          agent_phone?: string | null
+          area_coverage?: string | null
+          assets_drive_url?: string | null
+          client_id?: string
+          company?: string | null
+          created_by?: string
+          facts?: string | null
+          hero_photo_url?: string | null
+          id?: string
+          linked_listing_ids?: string[]
+          messenger_link?: string | null
+          prc_number?: string | null
+          requested_at?: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+          whatsapp_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_websites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          appointment_type: string
+          client_id: string
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string | null
+          location: string | null
+          notes: string | null
+          scheduled_at: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type: string
+          client_id: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string | null
+          location?: string | null
+          notes?: string | null
+          scheduled_at: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type?: string
+          client_id?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string | null
+          location?: string | null
+          notes?: string | null
+          scheduled_at?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_knowledge_base: {
         Row: {
           approved_at: string | null
@@ -1001,6 +1305,83 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_requests: {
+        Row: {
+          ad_campaign_id: string | null
+          budget_range: string
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          creative_id: string | null
+          duration_days: number
+          goal: string
+          id: string
+          listing_id: string | null
+          notes: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          ad_campaign_id?: string | null
+          budget_range: string
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          creative_id?: string | null
+          duration_days?: number
+          goal: string
+          id?: string
+          listing_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          ad_campaign_id?: string | null
+          budget_range?: string
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          creative_id?: string | null
+          duration_days?: number
+          goal?: string
+          id?: string
+          listing_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_requests_ad_campaign_id_fkey"
+            columns: ["ad_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_requests_creative_id_fkey"
+            columns: ["creative_id"]
+            isOneToOne: false
+            referencedRelation: "ad_creatives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_requests_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "agent_listings"
             referencedColumns: ["id"]
           },
         ]
@@ -1427,6 +1808,78 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_onboarding: {
+        Row: {
+          answers: Json
+          business_type: string | null
+          client_id: string | null
+          company_name: string | null
+          created_at: string
+          current_step: number
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          profile_id: string | null
+          reviewed_at: string | null
+          source: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          business_type?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          created_at?: string
+          current_step?: number
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          profile_id?: string | null
+          reviewed_at?: string | null
+          source?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          business_type?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          created_at?: string
+          current_step?: number
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          profile_id?: string | null
+          reviewed_at?: string | null
+          source?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_onboarding_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_onboarding_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3027,6 +3480,8 @@ export type Database = {
           lead_id: string
           metadata: Json
           next_step_at: string | null
+          outcome: string | null
+          pass_number: number
           paused_by: string | null
           paused_reason: string | null
           send_lock: boolean | null
@@ -3048,6 +3503,8 @@ export type Database = {
           lead_id: string
           metadata?: Json
           next_step_at?: string | null
+          outcome?: string | null
+          pass_number?: number
           paused_by?: string | null
           paused_reason?: string | null
           send_lock?: boolean | null
@@ -3069,6 +3526,8 @@ export type Database = {
           lead_id?: string
           metadata?: Json
           next_step_at?: string | null
+          outcome?: string | null
+          pass_number?: number
           paused_by?: string | null
           paused_reason?: string | null
           send_lock?: boolean | null
@@ -3165,8 +3624,12 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          max_passes: number | null
           name: string
+          reenroll_cooldown_days: number | null
           scheduled_steps_enabled: boolean | null
+          send_window_end: string | null
+          send_window_start: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3175,8 +3638,12 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          max_passes?: number | null
           name: string
+          reenroll_cooldown_days?: number | null
           scheduled_steps_enabled?: boolean | null
+          send_window_end?: string | null
+          send_window_start?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3185,13 +3652,108 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          max_passes?: number | null
           name?: string
+          reenroll_cooldown_days?: number | null
           scheduled_steps_enabled?: boolean | null
+          send_window_end?: string | null
+          send_window_start?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "sequences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_autopost_plans: {
+        Row: {
+          cadence: Json
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          ends_at: string
+          id: string
+          starts_at: string
+          status: string
+          updated_at: string | null
+          weekly_topics: Json
+        }
+        Insert: {
+          cadence?: Json
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string | null
+          weekly_topics: Json
+        }
+        Update: {
+          cadence?: Json
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string | null
+          weekly_topics?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_autopost_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_requests: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          note: string | null
+          processed_at: string | null
+          processed_by: string | null
+          product: string
+          status: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          product?: string
+          status?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          product?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_requests_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -3278,6 +3840,66 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_requests: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          delivered_url: string | null
+          duration_seconds: number
+          format: string
+          id: string
+          listing_id: string | null
+          notes: string | null
+          status: string
+          updated_at: string | null
+          video_type: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          delivered_url?: string | null
+          duration_seconds?: number
+          format?: string
+          id?: string
+          listing_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+          video_type: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          delivered_url?: string | null
+          duration_seconds?: number
+          format?: string
+          id?: string
+          listing_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+          video_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_requests_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "agent_listings"
             referencedColumns: ["id"]
           },
         ]
@@ -3402,8 +4024,35 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_my_ad_account_status: {
+        Args: never
+        Returns: {
+          ad_account_id: string
+          ads_enabled: boolean
+          ads_plan: string
+          is_active: boolean
+        }[]
+      }
+      get_my_ads_plan: {
+        Args: never
+        Returns: {
+          ads_enabled: boolean
+          ads_plan: string
+          ads_plan_started_at: string
+          is_active: boolean
+        }[]
+      }
       get_my_client_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
+      get_my_social_pages: {
+        Args: never
+        Returns: {
+          account_name: string
+          is_active: boolean
+          platform: string
+        }[]
+      }
+      get_my_workspace_name: { Args: never; Returns: string }
       increment_creative_usage: {
         Args: { p_client_id: string; p_creative_type: string }
         Returns: undefined

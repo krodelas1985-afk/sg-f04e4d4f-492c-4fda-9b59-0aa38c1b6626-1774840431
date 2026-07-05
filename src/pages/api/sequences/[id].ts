@@ -74,7 +74,16 @@ export default async function handler(
   }
 
   if (req.method === "PATCH") {
-    const { name, description, is_active, scheduled_steps_enabled } = req.body;
+    const {
+      name,
+      description,
+      is_active,
+      scheduled_steps_enabled,
+      send_window_start,
+      send_window_end,
+      reenroll_cooldown_days,
+      max_passes,
+    } = req.body;
 
     // Verify the sequence exists and is accessible to this user
     const { data: sequence, error: fetchError } = await fetchScoped();
@@ -82,12 +91,43 @@ export default async function handler(
       return res.status(404).json({ error: "Sequence not found" });
     }
 
+    const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (is_active !== undefined) updateData.is_active = is_active;
     if (scheduled_steps_enabled !== undefined)
       updateData.scheduled_steps_enabled = scheduled_steps_enabled;
+    if (send_window_start !== undefined) {
+      if (send_window_start !== null && !HHMM.test(send_window_start)) {
+        return res.status(400).json({ error: "send_window_start must be HH:MM" });
+      }
+      updateData.send_window_start = send_window_start;
+    }
+    if (send_window_end !== undefined) {
+      if (send_window_end !== null && !HHMM.test(send_window_end)) {
+        return res.status(400).json({ error: "send_window_end must be HH:MM" });
+      }
+      updateData.send_window_end = send_window_end;
+    }
+    if (reenroll_cooldown_days !== undefined) {
+      const n = Number(reenroll_cooldown_days);
+      if (!Number.isInteger(n) || n < 0) {
+        return res
+          .status(400)
+          .json({ error: "reenroll_cooldown_days must be a non-negative integer" });
+      }
+      updateData.reenroll_cooldown_days = n;
+    }
+    if (max_passes !== undefined) {
+      const n = Number(max_passes);
+      if (!Number.isInteger(n) || n < 1) {
+        return res
+          .status(400)
+          .json({ error: "max_passes must be a positive integer" });
+      }
+      updateData.max_passes = n;
+    }
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await db
