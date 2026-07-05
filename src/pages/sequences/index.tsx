@@ -15,8 +15,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { sequenceTemplateCatalog } from "@/lib/sequenceTemplates";
+
+const TEMPLATES = sequenceTemplateCatalog();
+const BLANK_TEMPLATE = "__blank__";
 
 interface Sequence {
   id: string;
@@ -39,7 +50,28 @@ export default function SequencesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [templateKey, setTemplateKey] = useState(BLANK_TEMPLATE);
   const [creating, setCreating] = useState(false);
+
+  const openDialog = () => {
+    setNewName("");
+    setNewDescription("");
+    setTemplateKey(BLANK_TEMPLATE);
+    setDialogOpen(true);
+  };
+
+  const onTemplateChange = (key: string) => {
+    setTemplateKey(key);
+    // Prefill name/description from the template (still editable)
+    const t = TEMPLATES.find((x) => x.key === key);
+    if (t) {
+      setNewName(t.name);
+      setNewDescription(t.description);
+    } else {
+      setNewName("");
+      setNewDescription("");
+    }
+  };
 
   useEffect(() => {
     fetchSequences();
@@ -72,6 +104,7 @@ export default function SequencesPage() {
       setCreating(true);
       const body: any = { name: newName.trim() };
       if (newDescription.trim()) body.description = newDescription.trim();
+      if (templateKey !== BLANK_TEMPLATE) body.template_key = templateKey;
       // baymo_admin must supply a client_id; reuse their profile's if present
       if (profile?.role === "baymo_admin" && profile?.client_id) {
         body.client_id = profile.client_id;
@@ -90,6 +123,7 @@ export default function SequencesPage() {
       setDialogOpen(false);
       setNewName("");
       setNewDescription("");
+      setTemplateKey(BLANK_TEMPLATE);
       router.push(`/sequences/${created.id}`);
     } catch (err: any) {
       toast({
@@ -108,7 +142,7 @@ export default function SequencesPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Sequences</h1>
           <Button
-            onClick={() => setDialogOpen(true)}
+            onClick={openDialog}
             className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -178,11 +212,34 @@ export default function SequencesPage() {
           <DialogHeader>
             <DialogTitle>New Sequence</DialogTitle>
             <DialogDescription>
-              Create a follow-up sequence. You can add steps and enrollment
-              rules after it&apos;s created.
+              Start from a prebuilt BaMo playbook or a blank sequence. You can
+              edit steps and enrollment rules after it&apos;s created.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="seq-template">Start from</Label>
+              <Select value={templateKey} onValueChange={onTemplateChange}>
+                <SelectTrigger id="seq-template">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={BLANK_TEMPLATE}>Blank sequence</SelectItem>
+                  {TEMPLATES.map((t) => (
+                    <SelectItem key={t.key} value={t.key}>
+                      {t.name} ({t.step_count} steps)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {templateKey !== BLANK_TEMPLATE && (
+                <p className="text-xs text-slate-500">
+                  {TEMPLATES.find((t) => t.key === templateKey)?.description}{" "}
+                  Enrollment rules are created disabled — review the sequence,
+                  then enable them to start following up.
+                </p>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="seq-name">Name</Label>
               <Input
