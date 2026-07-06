@@ -11,7 +11,7 @@ import {
   Search, Send, Paperclip, Sparkles, MessageSquare, 
   FileText, Loader2, Download, X, AlertCircle, Mail, Phone
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, senderLabel } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -224,7 +224,7 @@ export default function Inbox() {
       .from("conversations")
       .select(`
         *,
-        sender:profiles(full_name, role)
+        sender_profile:profiles(full_name, role)
       `)
       .eq("lead_id", selectedLead.id)
       .order("created_at", { ascending: true });
@@ -461,23 +461,12 @@ export default function Inbox() {
   };
 
   const getSenderLabel = (msg: any) => {
-    if (msg.direction === "inbound") {
-      return "Lead";
+    const label = senderLabel(msg);
+    // Show the actual human's name when the message is tied to an agent profile.
+    if (label === "Agent" && msg.sender_profile?.full_name) {
+      return `${msg.sender_profile.full_name} (${msg.sender_profile.role || "Agent"})`;
     }
-
-    if (msg.sent_via === "baymo") {
-      return "BaMo";
-    }
-
-    if (msg.sent_via === "system") {
-      return "System";
-    }
-
-    if (msg.sender?.full_name) {
-      return `${msg.sender.full_name} (${msg.sender.role || "Agent"})`;
-    }
-
-    return "Agent";
+    return label;
   };
 
   const formatTimeAgo = (date: string) => {

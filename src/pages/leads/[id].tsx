@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
+import { senderLabel, senderIcon } from "@/lib/utils";
 
 export default function LeadDetailPage() {
   const router = useRouter();
@@ -985,7 +986,7 @@ export default function LeadDetailPage() {
                         <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${msg.direction === "outbound" ? "bg-[#1F3C88] text-white rounded-br-sm" : "bg-gray-100 text-[#3A3A3A] rounded-bl-sm"}`}>
                             <div className="flex gap-2 items-center mb-1">
-                              <span className="text-xs font-semibold opacity-90">{msg.sender === "system" ? "🤖 BaMo" : msg.sender === "agent" ? "👤 Agent" : "👤 Lead"}</span>
+                              <span className="text-xs font-semibold opacity-90">{`${senderIcon(senderLabel(msg))} ${senderLabel(msg)}`}</span>
                               <Badge variant="outline" className={`text-[10px] h-4 ${msg.direction === "outbound" ? "border-white/20 text-white" : "border-gray-300 text-gray-500"}`}>{msg.channel}</Badge>
                             </div>
                             <p className="text-sm leading-relaxed">{msg.message_content}</p>
@@ -1156,7 +1157,7 @@ export default function LeadDetailPage() {
                                 <div className="flex items-center gap-2">
                                   <MessageSquare className="h-4 w-4 text-gray-400" />
                                   <span>
-                                    <span className="font-medium">{item.data.direction === "outbound" ? (item.data.sender === "system" ? "BaMo" : "Agent") : "Lead"}</span> 
+                                    <span className="font-medium">{senderLabel(item.data)}</span>
                                     {" sent a "} 
                                     <span className="font-medium capitalize">{item.data.channel}</span>
                                     {" message"}

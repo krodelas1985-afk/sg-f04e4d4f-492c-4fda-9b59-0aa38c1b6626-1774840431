@@ -13,6 +13,7 @@ import { useRouter } from "next/router";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { TemplatePicker, type PickableTemplate } from "@/components/TemplatePicker";
 import { substituteTemplateVariables } from "@/lib/templateVariables";
+import { senderLabel } from "@/lib/utils";
 
 interface LeadSlideOverProps {
   leadId: string;
@@ -711,7 +712,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[80%] rounded-lg p-3 ${msg.direction === "outbound" ? "bg-[#E87722] text-white" : "bg-gray-100"}`}>
                           <div className="flex gap-2 items-center mb-1">
-                            <span className="text-xs font-semibold">{msg.sender}</span>
+                            <span className="text-xs font-semibold">{senderLabel(msg)}</span>
                             <Badge variant="outline" className="text-xs">{msg.channel}</Badge>
                           </div>
                           <p className="text-sm">{msg.message_content}</p>
@@ -874,7 +875,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       </div>
                       <div className="flex-1">
                         {item.type === "message" ? (
-                          <span>{item.data.direction === "outbound" ? "Agent sent" : "Lead sent"} {item.data.channel}</span>
+                          <span>{senderLabel(item.data)} sent {item.data.channel}</span>
                         ) : (
                           <span>Task: {item.data.title}</span>
                         )}
