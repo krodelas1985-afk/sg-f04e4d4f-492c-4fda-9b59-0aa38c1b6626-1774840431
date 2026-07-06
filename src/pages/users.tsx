@@ -29,6 +29,15 @@ export default function UsersPage() {
   const [currentUserClientId, setCurrentUserClientId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Deactivation with lead handoff
+  const [deactivateTarget, setDeactivateTarget] = useState<{
+    userId: string;
+    name: string;
+    openLeads: number;
+  } | null>(null);
+  const [reassignTo, setReassignTo] = useState<string>("keep");
+  const [deactivating, setDeactivating] = useState(false);
+
   // Fetch current user and enforce access control
   useEffect(() => {
     const checkAccess = async () => {
@@ -175,6 +184,26 @@ export default function UsersPage() {
         }
       }
 
+      // Deactivating: if the user still owns open leads, ask where they should go.
+      if (currentStatus) {
+        const { count } = await supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("assigned_user_id", userId)
+          .not("status", "in", '("Won","Lost")');
+
+        if ((count ?? 0) > 0) {
+          const target = users.find((u) => u.id === userId);
+          setReassignTo("keep");
+          setDeactivateTarget({
+            userId,
+            name: target?.full_name || target?.email || "this user",
+            openLeads: count ?? 0,
+          });
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({ is_active: !currentStatus })
@@ -196,6 +225,51 @@ export default function UsersPage() {
         description: "Failed to update user status",
         variant: "destructive",
       });
+    }
+  };
+
+  // Deactivate a user who still owns open leads, optionally handing them over.
+  const confirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    try {
+      const supabase = createClient();
+
+      if (reassignTo !== "keep") {
+        const { error: reassignError } = await supabase
+          .from("leads")
+          .update({ assigned_user_id: reassignTo })
+          .eq("assigned_user_id", deactivateTarget.userId)
+          .not("status", "in", '("Won","Lost")');
+        if (reassignError) throw reassignError;
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: false })
+        .eq("id", deactivateTarget.userId);
+      if (error) throw error;
+
+      setUsers(users.map((u) => (u.id === deactivateTarget.userId ? { ...u, is_active: false } : u)));
+
+      const newOwner = users.find((u) => u.id === reassignTo);
+      toast({
+        title: "User deactivated",
+        description:
+          reassignTo === "keep"
+            ? `${deactivateTarget.openLeads} open lead(s) remain assigned to ${deactivateTarget.name}.`
+            : `${deactivateTarget.openLeads} open lead(s) reassigned to ${newOwner?.full_name || "the selected user"}.`,
+      });
+      setDeactivateTarget(null);
+    } catch (error) {
+      console.error("Error deactivating user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to deactivate user",
+        variant: "destructive",
+      });
+    } finally {
+      setDeactivating(false);
     }
   };
 
@@ -523,6 +597,58 @@ export default function UsersPage() {
               className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
             >
               {submitting ? "Sending..." : "Send Invitation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate user — open-lead handoff */}
+      <Dialog open={!!deactivateTarget} onOpenChange={(open) => !open && setDeactivateTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate {deactivateTarget?.name}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {deactivateTarget?.name} still has{" "}
+              <span className="font-semibold">{deactivateTarget?.openLeads} open lead(s)</span>{" "}
+              assigned. They will also be removed from the auto-assignment rotation. What
+              should happen to their leads?
+            </p>
+            <div>
+              <Label>Hand leads over to</Label>
+              <Select value={reassignTo} onValueChange={setReassignTo}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="keep">Keep assigned to {deactivateTarget?.name}</SelectItem>
+                  {users
+                    .filter(
+                      (u) =>
+                        u.id !== deactivateTarget?.userId &&
+                        u.is_active &&
+                        u.role !== "baymo_admin"
+                    )
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name || u.email}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeactivateTarget(null)} disabled={deactivating}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeactivate}
+              disabled={deactivating}
+              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+            >
+              {deactivating ? "Deactivating..." : "Deactivate User"}
             </Button>
           </DialogFooter>
         </DialogContent>

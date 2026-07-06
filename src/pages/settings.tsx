@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Check, ArrowRight } from "lucide-react";
+import { LeadAssignmentSection } from "@/components/settings/LeadAssignmentSection";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -307,7 +308,10 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* SECTION 3 — MESSAGE TEMPLATES */}
+          {/* SECTION 3 — LEAD ASSIGNMENT (client_admin only; hides itself otherwise) */}
+          <LeadAssignmentSection />
+
+          {/* SECTION 4 — MESSAGE TEMPLATES */}
           <Card>
             <CardHeader>
               <CardTitle className="text-[#1B3A5C]">Message Templates</CardTitle>

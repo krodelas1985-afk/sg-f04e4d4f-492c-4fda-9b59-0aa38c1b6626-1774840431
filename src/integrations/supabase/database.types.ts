@@ -4151,6 +4151,13 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_my_assignment_settings: {
+        Args: never
+        Returns: {
+          assignment_mode: string
+          assignment_sources: string[]
+        }[]
+      }
       get_my_client_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
       get_my_social_pages: {
@@ -4193,6 +4200,10 @@ export type Database = {
           similarity: number
           token_count: number
         }[]
+      }
+      set_my_assignment_settings: {
+        Args: { p_mode: string; p_sources: string[] }
+        Returns: undefined
       }
     }
     Enums: {
