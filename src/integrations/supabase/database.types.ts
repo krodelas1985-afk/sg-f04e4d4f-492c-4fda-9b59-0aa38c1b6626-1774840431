@@ -4233,6 +4233,17 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_my_assignment_feed: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          direction: string
+          id: string
+          lead_id: string
+          lead_name: string
+          method: string
+        }[]
+      }
       get_my_assignment_settings: {
         Args: never
         Returns: {
@@ -4255,6 +4266,7 @@ export type Database = {
         Args: { p_client_id: string; p_creative_type: string }
         Returns: undefined
       }
+      lead_assigned_to_me: { Args: { p_lead_id: string }; Returns: boolean }
       match_chunks: {
         Args: {
           match_campaign_id: string
