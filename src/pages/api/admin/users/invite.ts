@@ -53,6 +53,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "You do not have permission to invite users" });
     }
 
+    // CRITICAL: validate the requested role. baymo_admin may assign any valid
+    // role; client_admin may NOT create baymo_admin users (privilege escalation).
+    const VALID_ROLES = ["baymo_admin", "client_admin", "manager", "agent", "viewer"];
+    const CLIENT_ADMIN_ASSIGNABLE = ["client_admin", "manager", "agent", "viewer"];
+    if (!VALID_ROLES.includes(role)) {
+      return res.status(400).json({ error: "Invalid role" });
+    }
+    if (currentProfile.role === "client_admin" && !CLIENT_ADMIN_ASSIGNABLE.includes(role)) {
+      return res.status(403).json({ error: "You cannot invite a user with that role" });
+    }
+
     // CRITICAL: client_admin can only create users in their own organization
     const targetClientId = currentProfile.role === "baymo_admin" 
       ? req.body.client_id || currentProfile.client_id  // baymo_admin can specify client_id
