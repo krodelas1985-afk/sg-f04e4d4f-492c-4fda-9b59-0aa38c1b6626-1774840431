@@ -2157,6 +2157,8 @@ export type Database = {
           ads_enabled: boolean | null
           ads_plan: string | null
           ads_plan_started_at: string | null
+          assignment_mode: string
+          assignment_sources: string[] | null
           bamo_api_key: string | null
           bamo_connected: boolean | null
           bamo_webhook_url: string | null
@@ -2180,6 +2182,8 @@ export type Database = {
           ads_enabled?: boolean | null
           ads_plan?: string | null
           ads_plan_started_at?: string | null
+          assignment_mode?: string
+          assignment_sources?: string[] | null
           bamo_api_key?: string | null
           bamo_connected?: boolean | null
           bamo_webhook_url?: string | null
@@ -2203,6 +2207,8 @@ export type Database = {
           ads_enabled?: boolean | null
           ads_plan?: string | null
           ads_plan_started_at?: string | null
+          assignment_mode?: string
+          assignment_sources?: string[] | null
           bamo_api_key?: string | null
           bamo_connected?: boolean | null
           bamo_webhook_url?: string | null
@@ -2735,6 +2741,106 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_assignment_events: {
+        Row: {
+          actor_id: string | null
+          client_id: string
+          created_at: string
+          from_user_id: string | null
+          id: string
+          lead_id: string
+          method: string
+          to_user_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          client_id: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          lead_id: string
+          method: string
+          to_user_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          client_id?: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          lead_id?: string
+          method?: string
+          to_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignment_events_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignment_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignment_events_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_assignment_pool: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          last_assigned_at: string | null
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_assigned_at?: string | null
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_assigned_at?: string | null
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignment_pool_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignment_pool_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
