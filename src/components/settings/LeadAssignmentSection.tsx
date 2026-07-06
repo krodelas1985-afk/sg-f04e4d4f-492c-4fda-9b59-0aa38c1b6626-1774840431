@@ -28,6 +28,20 @@ interface PoolEntry {
   last_assigned_at: string | null;
 }
 
+interface PerfScore {
+  user_id: string;
+  assigned_count: number;
+  won_count: number;
+  touches: number;
+  conversion_score: number | null;
+  hustle_score: number | null;
+  responsiveness_score: number | null;
+  composite_score: number | null;
+  weight: number | null;
+  is_grace: boolean;
+  computed_at: string;
+}
+
 // Canonical intake sources; distinct values found in the client's leads are merged in.
 const KNOWN_SOURCES = [
   "FB Messenger",
@@ -79,6 +93,8 @@ export function LeadAssignmentSection() {
 
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [pool, setPool] = useState<Record<string, PoolEntry>>({});
+  const [scores, setScores] = useState<PerfScore[]>([]);
+  const [recomputing, setRecomputing] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -122,6 +138,15 @@ export function LeadAssignmentSection() {
               .not("source", "is", null)
               .limit(1000),
           ]);
+
+        const { data: scoreRows } = await supabase
+          .from("agent_performance_scores")
+          .select(
+            "user_id, assigned_count, won_count, touches, conversion_score, hustle_score, responsiveness_score, composite_score, weight, is_grace, computed_at"
+          )
+          .eq("client_id", me.client_id)
+          .order("composite_score", { ascending: false });
+        setScores((scoreRows || []) as PerfScore[]);
 
         const client = Array.isArray(settingsRows) ? settingsRows[0] : settingsRows;
         setMode((client?.assignment_mode as AssignmentMode) || "manual");
@@ -223,6 +248,43 @@ export function LeadAssignmentSection() {
     },
     [clientId, pool, toast]
   );
+
+  const handleRecompute = async () => {
+    setRecomputing(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("recompute_my_performance_scores");
+      if (error) throw error;
+      const { data: scoreRows } = await supabase
+        .from("agent_performance_scores")
+        .select(
+          "user_id, assigned_count, won_count, touches, conversion_score, hustle_score, responsiveness_score, composite_score, weight, is_grace, computed_at"
+        )
+        .eq("client_id", clientId!)
+        .order("composite_score", { ascending: false });
+      setScores((scoreRows || []) as PerfScore[]);
+      // Weights may have changed — refresh the pool display too.
+      const { data: poolRows } = await supabase
+        .from("lead_assignment_pool")
+        .select("user_id, is_active, weight, last_assigned_at")
+        .eq("client_id", clientId!);
+      const map: Record<string, PoolEntry> = {};
+      (poolRows || []).forEach((p: any) => {
+        map[p.user_id] = p;
+      });
+      setPool(map);
+      toast({ title: "Scores updated", description: "Performance scores recalculated" });
+    } catch (err) {
+      console.error("Error recomputing scores:", err);
+      toast({
+        title: "Error",
+        description: "Failed to recalculate scores",
+        variant: "destructive",
+      });
+    } finally {
+      setRecomputing(false);
+    }
+  };
 
   const toggleSource = (source: string, checked: boolean) => {
     setSelectedSources((prev) =>
@@ -398,6 +460,91 @@ export function LeadAssignmentSection() {
                     </p>
                   )}
                 </div>
+
+                {/* Team performance leaderboard */}
+                {Object.keys(pool).length > 0 && (
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Team performance — last 90 days
+                        </Label>
+                        {scores[0]?.computed_at && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Last calculated {new Date(scores[0].computed_at).toLocaleString()}
+                            . Recalculates nightly at 2:00 AM.
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRecompute}
+                        disabled={recomputing}
+                      >
+                        {recomputing ? "Calculating..." : "Recalculate now"}
+                      </Button>
+                    </div>
+                    {scores.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        No scores yet — click Recalculate now, or wait for the nightly run.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-gray-500 border-b">
+                              <th className="py-2 pr-2">Agent</th>
+                              <th className="py-2 pr-2 text-right">Assigned</th>
+                              <th className="py-2 pr-2 text-right">Won</th>
+                              <th className="py-2 pr-2 text-right">Closing</th>
+                              <th className="py-2 pr-2 text-right">Follow-up</th>
+                              <th className="py-2 pr-2 text-right">Speed</th>
+                              <th className="py-2 pr-2 text-right">Score</th>
+                              <th className="py-2 text-right">Weight</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {scores.map((s) => {
+                              const member = team.find((m) => m.id === s.user_id);
+                              return (
+                                <tr key={s.user_id} className="border-b last:border-0">
+                                  <td className="py-2 pr-2 font-medium">
+                                    {member?.full_name || "(unknown)"}
+                                    {s.is_grace && (
+                                      <Badge variant="outline" className="ml-1 text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                                        new
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="py-2 pr-2 text-right">{s.assigned_count}</td>
+                                  <td className="py-2 pr-2 text-right">{s.won_count}</td>
+                                  <td className="py-2 pr-2 text-right">{s.conversion_score ?? "—"}</td>
+                                  <td className="py-2 pr-2 text-right">{s.hustle_score ?? "—"}</td>
+                                  <td className="py-2 pr-2 text-right">{s.responsiveness_score ?? "—"}</td>
+                                  <td className="py-2 pr-2 text-right font-semibold text-[#1F3C88]">
+                                    {s.composite_score ?? "—"}
+                                  </td>
+                                  <td className="py-2 text-right">
+                                    {s.weight != null ? `${Number(s.weight).toFixed(2)}×` : "—"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Closing = won vs assigned leads · Follow-up = notes, tasks,
+                          appointments &amp; replies per open lead (BaMo&apos;s automatic
+                          responses are never counted) · Speed = how fast a newly assigned
+                          lead gets a first human touch. Scores compare agents within your
+                          team; &quot;new&quot; members ride at the team average while they
+                          build history.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
 

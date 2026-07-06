@@ -986,6 +986,84 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_performance_scores: {
+        Row: {
+          assigned_count: number
+          client_id: string
+          composite_score: number | null
+          computed_at: string
+          conversion_score: number | null
+          conversion_smoothed: number | null
+          hustle_raw: number | null
+          hustle_score: number | null
+          id: string
+          is_grace: boolean
+          median_response_seconds: number | null
+          open_leads: number
+          responsiveness_score: number | null
+          touches: number
+          user_id: string
+          weight: number | null
+          window_days: number
+          won_count: number
+        }
+        Insert: {
+          assigned_count?: number
+          client_id: string
+          composite_score?: number | null
+          computed_at?: string
+          conversion_score?: number | null
+          conversion_smoothed?: number | null
+          hustle_raw?: number | null
+          hustle_score?: number | null
+          id?: string
+          is_grace?: boolean
+          median_response_seconds?: number | null
+          open_leads?: number
+          responsiveness_score?: number | null
+          touches?: number
+          user_id: string
+          weight?: number | null
+          window_days?: number
+          won_count?: number
+        }
+        Update: {
+          assigned_count?: number
+          client_id?: string
+          composite_score?: number | null
+          computed_at?: string
+          conversion_score?: number | null
+          conversion_smoothed?: number | null
+          hustle_raw?: number | null
+          hustle_score?: number | null
+          id?: string
+          is_grace?: boolean
+          median_response_seconds?: number | null
+          open_leads?: number
+          responsiveness_score?: number | null
+          touches?: number
+          user_id?: string
+          weight?: number | null
+          window_days?: number
+          won_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_performance_scores_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_performance_scores_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_website_requests: {
         Row: {
           client_id: string
@@ -4067,6 +4145,10 @@ export type Database = {
     }
     Functions: {
       compose_kb_content: { Args: { f: Json }; Returns: string }
+      compute_agent_performance_scores: {
+        Args: { p_client_id?: string }
+        Returns: number
+      }
       enroll_lead: {
         Args: {
           p_attribution?: Json
@@ -4201,6 +4283,7 @@ export type Database = {
           token_count: number
         }[]
       }
+      recompute_my_performance_scores: { Args: never; Returns: number }
       set_my_assignment_settings: {
         Args: { p_mode: string; p_sources: string[] }
         Returns: undefined
