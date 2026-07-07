@@ -14,6 +14,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import AiFollowUpSection from "@/components/followup/AiFollowUpSection";
 
 export default function CampaignDetailPage() {
   const router = useRouter();
@@ -881,6 +882,26 @@ export default function CampaignDetailPage() {
                   campaignId={id as string}
                   initialKb={initialKb}
                   getToken={getToken}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Phase 0: AI Follow-Up settings — baymo_admin only until the W6 engine ships. */}
+          {profile?.role === "baymo_admin" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Section 7c: AI Follow-Up</CardTitle>
+                <p className="text-sm text-slate-500">
+                  Autonomous re-engagement for stalled Messenger leads on this campaign. Internal preview —
+                  settings are saved but no messages send until the follow-up engine is live.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <AiFollowUpSection
+                  campaignId={id as string}
+                  getToken={getToken}
+                  canEdit={canEdit}
                 />
               </CardContent>
             </Card>

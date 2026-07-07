@@ -12,6 +12,7 @@ import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import AiFollowUpSection from "@/components/followup/AiFollowUpSection";
 
 interface Client {
   id: string;
@@ -880,6 +881,24 @@ export default function AdminCampaignDetailPage() {
                 campaignId={id as string}
                 initialKb={initialKb}
                 getToken={getToken}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Section 7c: AI Follow-Up (Phase 0 — settings only; W6 engine not yet live) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Section 7c: AI Follow-Up</CardTitle>
+              <p className="text-sm text-slate-500">
+                Autonomous re-engagement for stalled Messenger leads on this campaign. Internal preview —
+                settings are saved but no messages send until the follow-up engine is live.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AiFollowUpSection
+                campaignId={id as string}
+                getToken={getToken}
+                canEdit={true}
               />
             </CardContent>
           </Card>

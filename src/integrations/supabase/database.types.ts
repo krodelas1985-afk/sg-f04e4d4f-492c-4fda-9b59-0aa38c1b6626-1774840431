@@ -2731,6 +2731,70 @@ export type Database = {
           },
         ]
       }
+      follow_up_decisions: {
+        Row: {
+          client_id: string
+          context_snapshot: Json | null
+          created_at: string
+          decision: string
+          enrollment_id: string
+          goal_status: string | null
+          id: string
+          lead_id: string
+          message_sent: string | null
+          reason: string | null
+          window_open: boolean | null
+        }
+        Insert: {
+          client_id: string
+          context_snapshot?: Json | null
+          created_at?: string
+          decision: string
+          enrollment_id: string
+          goal_status?: string | null
+          id?: string
+          lead_id: string
+          message_sent?: string | null
+          reason?: string | null
+          window_open?: boolean | null
+        }
+        Update: {
+          client_id?: string
+          context_snapshot?: Json | null
+          created_at?: string
+          decision?: string
+          enrollment_id?: string
+          goal_status?: string | null
+          id?: string
+          lead_id?: string
+          message_sent?: string | null
+          reason?: string | null
+          window_open?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_decisions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_decisions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "sequence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kb_chunks: {
         Row: {
           campaign_id: string | null
@@ -3666,6 +3730,7 @@ export type Database = {
           last_step_at: string | null
           lead_id: string
           metadata: Json
+          next_action_at: string | null
           next_step_at: string | null
           outcome: string | null
           pass_number: number
@@ -3675,6 +3740,7 @@ export type Database = {
           sequence_id: string
           started_at: string | null
           state: string
+          touch_count: number
           updated_at: string
         }
         Insert: {
@@ -3689,6 +3755,7 @@ export type Database = {
           last_step_at?: string | null
           lead_id: string
           metadata?: Json
+          next_action_at?: string | null
           next_step_at?: string | null
           outcome?: string | null
           pass_number?: number
@@ -3698,6 +3765,7 @@ export type Database = {
           sequence_id: string
           started_at?: string | null
           state?: string
+          touch_count?: number
           updated_at?: string
         }
         Update: {
@@ -3712,6 +3780,7 @@ export type Database = {
           last_step_at?: string | null
           lead_id?: string
           metadata?: Json
+          next_action_at?: string | null
           next_step_at?: string | null
           outcome?: string | null
           pass_number?: number
@@ -3721,6 +3790,7 @@ export type Database = {
           sequence_id?: string
           started_at?: string | null
           state?: string
+          touch_count?: number
           updated_at?: string
         }
         Relationships: [
@@ -3806,12 +3876,15 @@ export type Database = {
       }
       sequences: {
         Row: {
+          ai_settings: Json | null
+          campaign_id: string | null
           client_id: string
           created_at: string | null
           description: string | null
           id: string
           is_active: boolean | null
           max_passes: number | null
+          mode: string
           name: string
           reenroll_cooldown_days: number | null
           scheduled_steps_enabled: boolean | null
@@ -3820,12 +3893,15 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_settings?: Json | null
+          campaign_id?: string | null
           client_id: string
           created_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           max_passes?: number | null
+          mode?: string
           name: string
           reenroll_cooldown_days?: number | null
           scheduled_steps_enabled?: boolean | null
@@ -3834,12 +3910,15 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_settings?: Json | null
+          campaign_id?: string | null
           client_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           max_passes?: number | null
+          mode?: string
           name?: string
           reenroll_cooldown_days?: number | null
           scheduled_steps_enabled?: boolean | null
@@ -3848,6 +3927,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sequences_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sequences_client_id_fkey"
             columns: ["client_id"]
@@ -4252,6 +4338,7 @@ export type Database = {
         }[]
       }
       get_my_client_id: { Args: never; Returns: string }
+      get_my_fb_page_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
       get_my_social_pages: {
         Args: never
