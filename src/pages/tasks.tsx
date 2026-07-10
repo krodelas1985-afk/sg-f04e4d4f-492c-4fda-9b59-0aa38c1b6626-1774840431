@@ -122,7 +122,7 @@ export default function TasksPage() {
 
       const tasksWithDetails = (data || []).map((task) => ({
         ...task,
-        lead_name: task.lead?.name || "Unknown Lead",
+        lead_name: task.lead?.name || (task.lead_id ? "Unknown Lead" : null),
         assigned_name: task.assigned_profile?.full_name || "Unassigned",
         is_overdue: task.status === "pending" && task.due_date < today,
       }));
@@ -325,6 +325,9 @@ export default function TasksPage() {
     if (source === "system") {
       return <Badge className="bg-[#E87722] text-white text-xs">System</Badge>;
     }
+    if (source === "baymo") {
+      return <Badge className="bg-[#E87722] text-white text-xs">BaMo</Badge>;
+    }
     return <Badge variant="outline" className="text-xs">Manual</Badge>;
   };
 
@@ -466,12 +469,16 @@ export default function TasksPage() {
                           <div className="font-medium text-[#1B3A5C]">{task.title}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleLeadClick(task.lead_id)}
-                            className="text-[#E87722] hover:underline"
-                          >
-                            {task.lead_name}
-                          </button>
+                          {task.lead_id ? (
+                            <button
+                              onClick={() => handleLeadClick(task.lead_id)}
+                              className="text-[#E87722] hover:underline"
+                            >
+                              {task.lead_name}
+                            </button>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{task.task_type}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">

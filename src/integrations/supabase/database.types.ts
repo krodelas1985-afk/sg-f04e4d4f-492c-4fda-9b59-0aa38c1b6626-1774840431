@@ -1186,6 +1186,35 @@ export type Database = {
           },
         ]
       }
+      ai_usage: {
+        Row: {
+          client_id: string
+          count: number
+          period_month: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          count?: number
+          period_month: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          count?: number
+          period_month?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_type: string
@@ -1198,6 +1227,8 @@ export type Database = {
           lead_id: string | null
           location: string | null
           notes: string | null
+          reminded_day_at: string | null
+          reminded_hour_at: string | null
           scheduled_at: string
           source: string
           status: string
@@ -1215,6 +1246,8 @@ export type Database = {
           lead_id?: string | null
           location?: string | null
           notes?: string | null
+          reminded_day_at?: string | null
+          reminded_hour_at?: string | null
           scheduled_at: string
           source?: string
           status?: string
@@ -1232,6 +1265,8 @@ export type Database = {
           lead_id?: string | null
           location?: string | null
           notes?: string | null
+          reminded_day_at?: string | null
+          reminded_hour_at?: string | null
           scheduled_at?: string
           source?: string
           status?: string
@@ -2255,6 +2290,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           phone: string | null
+          plan: string
           settings: Json | null
           webhook_secret: string | null
         }
@@ -2280,6 +2316,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           phone?: string | null
+          plan?: string
           settings?: Json | null
           webhook_secret?: string | null
         }
@@ -2305,6 +2342,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           phone?: string | null
+          plan?: string
           settings?: Json | null
           webhook_secret?: string | null
         }
@@ -2730,6 +2768,70 @@ export type Database = {
             columns: ["sequence_id"]
             isOneToOne: false
             referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follow_up_decisions: {
+        Row: {
+          client_id: string
+          context_snapshot: Json | null
+          created_at: string
+          decision: string
+          enrollment_id: string
+          goal_status: string | null
+          id: string
+          lead_id: string
+          message_sent: string | null
+          reason: string | null
+          window_open: boolean | null
+        }
+        Insert: {
+          client_id: string
+          context_snapshot?: Json | null
+          created_at?: string
+          decision: string
+          enrollment_id: string
+          goal_status?: string | null
+          id?: string
+          lead_id: string
+          message_sent?: string | null
+          reason?: string | null
+          window_open?: boolean | null
+        }
+        Update: {
+          client_id?: string
+          context_snapshot?: Json | null
+          created_at?: string
+          decision?: string
+          enrollment_id?: string
+          goal_status?: string | null
+          id?: string
+          lead_id?: string
+          message_sent?: string | null
+          reason?: string | null
+          window_open?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_decisions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_decisions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "sequence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_decisions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -3287,6 +3389,8 @@ export type Database = {
           email: string | null
           fb_ad_id: string | null
           follow_up_preference: string | null
+          followup_opted_out: boolean
+          followup_opted_out_at: string | null
           id: string
           industry: string | null
           last_ai_outbound_at: string | null
@@ -3343,6 +3447,8 @@ export type Database = {
           email?: string | null
           fb_ad_id?: string | null
           follow_up_preference?: string | null
+          followup_opted_out?: boolean
+          followup_opted_out_at?: string | null
           id?: string
           industry?: string | null
           last_ai_outbound_at?: string | null
@@ -3399,6 +3505,8 @@ export type Database = {
           email?: string | null
           fb_ad_id?: string | null
           follow_up_preference?: string | null
+          followup_opted_out?: boolean
+          followup_opted_out_at?: string | null
           id?: string
           industry?: string | null
           last_ai_outbound_at?: string | null
@@ -3571,6 +3679,125 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          ads_updates: boolean
+          appointment_reminders: boolean
+          lead_assigned: boolean
+          lead_hot: boolean
+          lead_warm: boolean
+          quiet_hours: boolean
+          tasks: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ads_updates?: boolean
+          appointment_reminders?: boolean
+          lead_assigned?: boolean
+          lead_hot?: boolean
+          lead_warm?: boolean
+          quiet_hours?: boolean
+          tasks?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ads_updates?: boolean
+          appointment_reminders?: boolean
+          lead_assigned?: boolean
+          lead_hot?: boolean
+          lead_warm?: boolean
+          quiet_hours?: boolean
+          tasks?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          client_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          pushed_at: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          pushed_at?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          pushed_at?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_limits: {
+        Row: {
+          ai_monthly: number | null
+          leads_total: number | null
+          listings_total: number | null
+          plan: string
+        }
+        Insert: {
+          ai_monthly?: number | null
+          leads_total?: number | null
+          listings_total?: number | null
+          plan: string
+        }
+        Update: {
+          ai_monthly?: number | null
+          leads_total?: number | null
+          listings_total?: number | null
+          plan?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           client_id: string | null
@@ -3656,6 +3883,41 @@ export type Database = {
           },
         ]
       }
+      push_tokens: {
+        Row: {
+          device_id: string | null
+          expo_push_token: string
+          id: string
+          platform: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          device_id?: string | null
+          expo_push_token: string
+          id?: string
+          platform?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          device_id?: string | null
+          expo_push_token?: string
+          id?: string
+          platform?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sequence_enrollments: {
         Row: {
           client_id: string
@@ -3669,6 +3931,7 @@ export type Database = {
           last_step_at: string | null
           lead_id: string
           metadata: Json
+          next_action_at: string | null
           next_step_at: string | null
           outcome: string | null
           pass_number: number
@@ -3678,6 +3941,7 @@ export type Database = {
           sequence_id: string
           started_at: string | null
           state: string
+          touch_count: number
           updated_at: string
         }
         Insert: {
@@ -3692,6 +3956,7 @@ export type Database = {
           last_step_at?: string | null
           lead_id: string
           metadata?: Json
+          next_action_at?: string | null
           next_step_at?: string | null
           outcome?: string | null
           pass_number?: number
@@ -3701,6 +3966,7 @@ export type Database = {
           sequence_id: string
           started_at?: string | null
           state?: string
+          touch_count?: number
           updated_at?: string
         }
         Update: {
@@ -3715,6 +3981,7 @@ export type Database = {
           last_step_at?: string | null
           lead_id?: string
           metadata?: Json
+          next_action_at?: string | null
           next_step_at?: string | null
           outcome?: string | null
           pass_number?: number
@@ -3724,6 +3991,7 @@ export type Database = {
           sequence_id?: string
           started_at?: string | null
           state?: string
+          touch_count?: number
           updated_at?: string
         }
         Relationships: [
@@ -3809,12 +4077,15 @@ export type Database = {
       }
       sequences: {
         Row: {
+          ai_settings: Json | null
+          campaign_id: string | null
           client_id: string
           created_at: string | null
           description: string | null
           id: string
           is_active: boolean | null
           max_passes: number | null
+          mode: string
           name: string
           reenroll_cooldown_days: number | null
           scheduled_steps_enabled: boolean | null
@@ -3823,12 +4094,15 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_settings?: Json | null
+          campaign_id?: string | null
           client_id: string
           created_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           max_passes?: number | null
+          mode?: string
           name: string
           reenroll_cooldown_days?: number | null
           scheduled_steps_enabled?: boolean | null
@@ -3837,12 +4111,15 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_settings?: Json | null
+          campaign_id?: string | null
           client_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           max_passes?: number | null
+          mode?: string
           name?: string
           reenroll_cooldown_days?: number | null
           scheduled_steps_enabled?: boolean | null
@@ -3851,6 +4128,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sequences_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sequences_client_id_fkey"
             columns: ["client_id"]
@@ -3958,9 +4242,10 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           created_by: string | null
+          deferred_until: string | null
           due_date: string | null
           id: string
-          lead_id: string
+          lead_id: string | null
           notes: string | null
           source: string | null
           status: string | null
@@ -3975,9 +4260,10 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
+          deferred_until?: string | null
           due_date?: string | null
           id?: string
-          lead_id: string
+          lead_id?: string | null
           notes?: string | null
           source?: string | null
           status?: string | null
@@ -3992,9 +4278,10 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
+          deferred_until?: string | null
           due_date?: string | null
           id?: string
-          lead_id?: string
+          lead_id?: string | null
           notes?: string | null
           source?: string | null
           status?: string | null
@@ -4147,10 +4434,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_ai_followup_decision: {
+        Args: {
+          p_action: string
+          p_context?: Json
+          p_enrollment_id: string
+          p_goal_status?: string
+          p_message?: string
+          p_next_check_hours?: number
+          p_opted_out?: boolean
+          p_reason?: string
+          p_window_open?: boolean
+        }
+        Returns: undefined
+      }
+      check_push_dispatch_secret: { Args: { p: string }; Returns: boolean }
       compose_kb_content: { Args: { f: Json }; Returns: string }
       compute_agent_performance_scores: {
         Args: { p_client_id?: string }
         Returns: number
+      }
+      consume_ai_credit: { Args: { p_client_id: string }; Returns: Json }
+      create_notification: {
+        Args: {
+          p_body: string
+          p_client_id: string
+          p_data: Json
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      enroll_ai_followup_candidates: {
+        Args: never
+        Returns: {
+          client_id: string
+          enrollment_id: string
+          lead_id: string
+          sequence_id: string
+        }[]
       }
       enroll_lead: {
         Args: {
@@ -4162,6 +4485,17 @@ export type Database = {
           p_source?: string
         }
         Returns: Json
+      }
+      fetch_due_ai_followups: {
+        Args: { p_limit?: number }
+        Returns: {
+          client_id: string
+          context: Json
+          enrollment_id: string
+          fb_page_token: string
+          lead_id: string
+          messenger_id: string
+        }[]
       }
       get_campaign_context: { Args: { p_lead_id: string }; Returns: Json }
       get_current_usage: { Args: { p_client_id: string }; Returns: Json }
@@ -4255,6 +4589,7 @@ export type Database = {
         }[]
       }
       get_my_client_id: { Args: never; Returns: string }
+      get_my_fb_page_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
       get_my_social_pages: {
         Args: never
@@ -4264,6 +4599,15 @@ export type Database = {
           platform: string
         }[]
       }
+      get_my_team_members: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+          role: string
+        }[]
+      }
+      get_my_usage: { Args: never; Returns: Json }
       get_my_workspace_name: { Args: never; Returns: string }
       increment_creative_usage: {
         Args: { p_client_id: string; p_creative_type: string }
@@ -4298,7 +4642,17 @@ export type Database = {
           token_count: number
         }[]
       }
+      reassign_task: {
+        Args: { p_task_id: string; p_user_id: string }
+        Returns: undefined
+      }
       recompute_my_performance_scores: { Args: never; Returns: number }
+      resolve_lead_recipients: {
+        Args: { p_assigned: string; p_client_id: string }
+        Returns: string[]
+      }
+      run_appointment_reminders: { Args: never; Returns: undefined }
+      run_deferred_task_sweep: { Args: never; Returns: undefined }
       set_my_assignment_settings: {
         Args: { p_mode: string; p_sources: string[] }
         Returns: undefined
