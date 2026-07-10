@@ -248,10 +248,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .single();
 
               if (createError || !newLead) {
-                console.error(
-                  `Lead insert failed (PSID ${psid}, client ${clientId}):`,
-                  createError
-                );
+                if (createError?.message?.includes("lead_limit_reached")) {
+                  // Free-plan lead cap reached. Expected, not a failure: skip this
+                  // new contact cleanly — no lead row, no auto-response. Logged as
+                  // info so it never trips error monitoring. (Upgrade nudge TBD.)
+                  console.log(
+                    `Lead cap reached for client ${clientId}; skipping new Messenger lead (PSID ${psid}).`
+                  );
+                } else {
+                  console.error(
+                    `Lead insert failed (PSID ${psid}, client ${clientId}):`,
+                    createError
+                  );
+                }
                 continue;
               }
               leadId = newLead.id;
