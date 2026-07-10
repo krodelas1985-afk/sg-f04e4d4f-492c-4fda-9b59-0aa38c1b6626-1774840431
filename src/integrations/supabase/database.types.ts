@@ -1201,6 +1201,7 @@ export type Database = {
           scheduled_at: string
           source: string
           status: string
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -1217,6 +1218,7 @@ export type Database = {
           scheduled_at: string
           source?: string
           status?: string
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -1233,6 +1235,7 @@ export type Database = {
           scheduled_at?: string
           source?: string
           status?: string
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
