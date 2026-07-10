@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { provisionUser } from "@/lib/provisionUser";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -66,10 +67,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { name, company_name, email, phone } = req.body;
+      const { name, company_name, email, phone, password } = req.body;
 
       if (!name || !email) {
         return res.status(400).json({ error: "Name and email are required" });
+      }
+
+      if (password && String(password).length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
 
       const webhook_secret = randomUUID();
@@ -92,7 +97,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: "Failed to create client" });
       }
 
-      return res.status(201).json({ client });
+      // Optionally provision a client_admin login for this workspace. If a
+      // password was supplied the client can sign in immediately; otherwise the
+      // client row exists but has no login yet (add one from its workspace).
+      let login: { email: string; created: boolean; passwordSet: boolean } | null = null;
+      if (password) {
+        try {
+          const result = await provisionUser(adminClient, {
+            email,
+            password,
+            role: "client_admin",
+            clientId: client.id,
+            fullName: name,
+          });
+          login = { email: email.trim().toLowerCase(), created: result.created, passwordSet: result.passwordSet };
+        } catch (loginError: any) {
+          // The client row is already created; report partial success so the
+          // admin knows to set up the login separately rather than re-creating.
+          console.error("Client created but login provisioning failed:", loginError);
+          return res.status(201).json({
+            client,
+            login: null,
+            warning:
+              loginError?.message ||
+              "Client created, but the login could not be set up. Add a user from the client's workspace.",
+          });
+        }
+      }
+
+      return res.status(201).json({ client, login });
     }
 
     return res.status(405).json({ error: "Method not allowed" });

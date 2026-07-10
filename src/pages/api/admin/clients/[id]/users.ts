@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient } from "@supabase/ssr";
+import { provisionUser } from "@/lib/provisionUser";
 
 export default async function handler(
   req: NextApiRequest,
@@ -83,98 +84,49 @@ export default async function handler(
       return res.status(400).json({ error: "Email and role are required" });
     }
 
-    // Check if user already exists
-    const { data: existingUser } = await serviceRoleClient
-      .from("profiles")
-      .select("id, email, client_id")
-      .eq("email", email)
-      .single();
-
-    if (existingUser) {
-      const { data: updateData, error: updateError } = await serviceRoleClient
-        .from("profiles")
-        .update({ client_id: clientId, role: role })
-        .eq("id", existingUser.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        return res.status(500).json({ error: "Failed to link user to client" });
-      }
-
-      return res.status(200).json({
-        ...updateData,
-        message: `User ${email} linked to this client successfully`,
-      });
+    const VALID_ROLES = ["client_admin", "manager", "agent", "viewer"];
+    if (!VALID_ROLES.includes(role)) {
+      return res.status(400).json({ error: "Invalid role" });
     }
 
+    if (password && String(password).length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.bahaymo.com";
+
     try {
-      let authUserId: string;
+      const result = await provisionUser(serviceRoleClient, {
+        email,
+        role,
+        clientId,
+        password,
+        fullName: full_name,
+        inviteRedirectTo: `${appUrl}/auth/set-password`,
+      });
 
-      if (password) {
-        // Create user directly with a password (no invite email)
-        const { data: createData, error: createError } =
-          await serviceRoleClient.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-              full_name: full_name || email.split("@")[0],
-              role,
-              client_id: clientId,
-            },
-          });
-
-        if (createError || !createData.user) {
-          return res.status(500).json({ error: "Failed to create user account" });
-        }
-
-        authUserId = createData.user.id;
-      } else {
-        // Send invitation email
-        const { data: inviteData, error: inviteError } =
-          await serviceRoleClient.auth.admin.inviteUserByEmail(email, {
-            data: {
-              full_name: full_name || email.split("@")[0],
-              role,
-              client_id: clientId,
-            },
-            redirectTo:
-              "https://3000-f04e4d4f-492c-4fda-9b59-0aa38c1b6626.softgen.dev/auth/set-password",
-          });
-
-        if (inviteError || !inviteData?.user?.id) {
-          return res.status(500).json({ error: "Failed to send invitation email" });
-        }
-
-        authUserId = inviteData.user.id;
-      }
-
-      // Update or create profile row
-      const { data: updateData, error: updateError } = await serviceRoleClient
+      // Return the resulting profile row (shape the UI's user list expects).
+      const { data: profileRow } = await serviceRoleClient
         .from("profiles")
-        .upsert({
-          id: authUserId,
-          client_id: clientId,
-          role,
-          full_name: full_name || email.split("@")[0],
-          email,
-        })
-        .select()
+        .select("*")
+        .eq("id", result.userId)
         .single();
 
-      if (updateError) {
-        return res.status(500).json({ error: "User created but failed to set client association." });
+      let message: string;
+      if (result.invited) {
+        message = `Invitation sent to ${email}. They will receive an email to set their password.`;
+      } else if (!result.created) {
+        message = result.passwordSet
+          ? `Existing account for ${email} was re-linked and its password was updated. They can now log in.`
+          : `User ${email} linked to this client successfully.`;
+      } else {
+        message = `Account created for ${email}. They can now log in.`;
       }
 
-      return res.status(201).json({
-        ...updateData,
-        message: password
-          ? `Account created for ${email}. They can now log in.`
-          : `Invitation sent to ${email}. They will receive an email to set their password.`,
-      });
-    } catch (error) {
-      return res.status(500).json({ error: "Failed to create user" });
+      return res.status(result.created ? 201 : 200).json({ ...profileRow, message });
+    } catch (error: any) {
+      console.error("Error provisioning user:", error);
+      return res.status(500).json({ error: error?.message || "Failed to create user" });
     }
   }
 

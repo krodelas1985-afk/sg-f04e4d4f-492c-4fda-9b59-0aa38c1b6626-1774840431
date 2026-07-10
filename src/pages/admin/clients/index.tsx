@@ -28,11 +28,13 @@ function ClientForm({ onClose, onCreated }: { onClose: () => void; onCreated: ()
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    const password = String(formData.get("password") || "").trim();
     const data = {
       name: formData.get("name"),
       company_name: formData.get("company_name"),
       email: formData.get("email"),
       phone: formData.get("phone"),
+      password: password || undefined,
     };
 
     try {
@@ -42,7 +44,13 @@ function ClientForm({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         body: JSON.stringify(data),
       });
 
-      if (!res.ok) throw new Error("Failed to create client");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || "Failed to create client");
+      if (body?.warning) {
+        // Client row created but login setup failed — surface it, don't close.
+        setError(body.warning);
+        return;
+      }
       onCreated();
     } catch (err: any) {
       setError(err.message);
@@ -74,6 +82,21 @@ function ClientForm({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
             <Input id="phone" name="phone" placeholder="+1 (555) 000-0000" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Login Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              minLength={6}
+              autoComplete="new-password"
+              placeholder="Set a password so the client can log in"
+            />
+            <p className="text-xs text-muted-foreground">
+              Sets up a <span className="font-medium">client_admin</span> login using the Primary Email above.
+              Leave blank to create the client without a login (add one later from its workspace).
+            </p>
           </div>
           <div className="flex justify-end space-x-3 pt-4 border-t mt-6">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
