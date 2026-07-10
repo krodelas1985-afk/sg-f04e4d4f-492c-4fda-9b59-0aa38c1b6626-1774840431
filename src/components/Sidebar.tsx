@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { LayoutDashboard, Users, MessageSquare, Megaphone, CheckSquare, UserCircle, Settings, Building2, LogOut, FileText, Workflow, Inbox } from "lucide-react";
+import { LayoutDashboard, Users, MessageSquare, Megaphone, CheckSquare, UserCircle, Settings, Building2, LogOut, FileText, Workflow, Inbox, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -21,6 +21,7 @@ export function Sidebar({ role }: SidebarProps) {
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/clients", label: "Clients", icon: Building2 },
   { href: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/admin/signups", label: "New Signups", icon: UserPlus },
   { href: "/admin/requests", label: "Client Requests", icon: Inbox },
   { href: "/admin/settings", label: "Settings", icon: Settings },
  ];
