@@ -1215,6 +1215,53 @@ export type Database = {
           },
         ]
       }
+      announcements: {
+        Row: {
+          body: string
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          pinned: boolean
+          scope: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          pinned?: boolean
+          scope?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          pinned?: boolean
+          scope?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_type: string

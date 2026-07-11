@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { LayoutDashboard, Users, MessageSquare, Megaphone, CheckSquare, UserCircle, Settings, Building2, LogOut, FileText, Workflow, Inbox } from "lucide-react";
+import { LayoutDashboard, Users, MessageSquare, Megaphone, CheckSquare, UserCircle, Settings, Building2, LogOut, FileText, Workflow, Inbox, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -22,6 +22,7 @@ export function Sidebar({ role }: SidebarProps) {
   { href: "/admin/clients", label: "Clients", icon: Building2 },
   { href: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/admin/requests", label: "Client Requests", icon: Inbox },
+  { href: "/announcements", label: "Announcements", icon: Bell },
   { href: "/admin/settings", label: "Settings", icon: Settings },
  ];
 
@@ -33,6 +34,7 @@ export function Sidebar({ role }: SidebarProps) {
     { href: "/sequences", label: "Sequences", icon: Workflow },
     { href: "/templates", label: "Templates", icon: FileText },
     { href: "/tasks", label: "Tasks", icon: CheckSquare },
+    { href: "/announcements", label: "Announcements", icon: Bell },
     { href: "/users", label: "Users", icon: UserCircle },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
