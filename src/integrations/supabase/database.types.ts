@@ -2662,6 +2662,41 @@ export type Database = {
           },
         ]
       }
+      daily_digests: {
+        Row: {
+          client_id: string
+          created_at: string
+          digest_date: string
+          id: string
+          metrics: Json
+          suggestions: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          digest_date: string
+          id?: string
+          metrics?: Json
+          suggestions?: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          digest_date?: string
+          id?: string
+          metrics?: Json
+          suggestions?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_digests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string | null
@@ -3368,6 +3403,41 @@ export type Database = {
             foreignKeyName: "lead_qualifications_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_temperature_events: {
+        Row: {
+          changed_at: string
+          client_id: string
+          from_temperature: string | null
+          id: string
+          lead_id: string
+          to_temperature: string
+        }
+        Insert: {
+          changed_at?: string
+          client_id: string
+          from_temperature?: string | null
+          id?: string
+          lead_id: string
+          to_temperature: string
+        }
+        Update: {
+          changed_at?: string
+          client_id?: string
+          from_temperature?: string | null
+          id?: string
+          lead_id?: string
+          to_temperature?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_temperature_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
@@ -4449,6 +4519,7 @@ export type Database = {
         Returns: undefined
       }
       check_push_dispatch_secret: { Args: { p: string }; Returns: boolean }
+      client_has_active_campaign: { Args: never; Returns: boolean }
       compose_kb_content: { Args: { f: Json }; Returns: string }
       compute_agent_performance_scores: {
         Args: { p_client_id?: string }
