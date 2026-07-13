@@ -12,6 +12,9 @@ import {
   FileText, Loader2, Download, X, AlertCircle, Mail, Phone
 } from "lucide-react";
 import { cn, senderLabel } from "@/lib/utils";
+import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
+import { TemperatureBadge, ChannelBadge } from "@/components/shared/badges";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -425,40 +428,9 @@ export default function Inbox() {
     }
   };
 
-  const getStageBadge = (stage: string) => {
-    const styles = {
-      Hot: "bg-red-100 text-red-800",
-      Warm: "bg-amber-100 text-amber-800",
-      Cold: "bg-gray-100 text-gray-800",
-      Unqualified: "bg-gray-100 text-gray-600",
-    };
-    const icons = {
-      Hot: "🔥",
-      Warm: "🟠",
-      Cold: "❄️",
-      Unqualified: "",
-    };
+  const getStageBadge = (stage: string) => <TemperatureBadge value={stage} />;
 
-    return (
-      <Badge className={cn("text-xs", styles[stage as keyof typeof styles] || "bg-gray-100")}>
-        {icons[stage as keyof typeof icons]} {stage}
-      </Badge>
-    );
-  };
-
-  const getChannelBadge = (channel: string) => {
-    const styles = {
-      email: "bg-blue-100 text-blue-800",
-      messenger: "bg-purple-100 text-purple-800",
-      manual: "bg-gray-100 text-gray-800",
-    };
-
-    return (
-      <Badge className={cn("text-xs", styles[channel as keyof typeof styles] || "bg-gray-100")}>
-        {channel}
-      </Badge>
-    );
-  };
+  const getChannelBadge = (channel: string) => <ChannelBadge channel={channel} />;
 
   const getSenderLabel = (msg: any) => {
     const label = senderLabel(msg);
@@ -498,39 +470,37 @@ export default function Inbox() {
     <DashboardLayout>
       <div className="flex h-full">
         {/* LEFT PANEL - Lead List */}
-        <div className="w-[35%] border-r border-gray-200 flex flex-col bg-white">
+        <div className="flex w-[35%] max-w-md flex-col border-r bg-card">
           {/* Header */}
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-primary mb-4">Inbox</h2>
-            
+          <div className="border-b p-4">
+            <h2 className="mb-3 text-lg font-semibold">Inbox</h2>
+
             {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search leads..."
+                placeholder="Search leads…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="bg-muted pl-10 border-transparent focus-visible:border-input focus-visible:bg-card"
               />
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-0.5 rounded-lg border bg-muted/50 p-0.5">
               {["All", "Unread", "Hot", "Warm"].map((filter) => (
-                <Button
+                <button
                   key={filter}
-                  variant={filterType === filter ? "default" : "outline"}
-                  size="sm"
                   onClick={() => setFilterType(filter)}
                   className={cn(
-                    "text-xs",
+                    "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
                     filterType === filter
-                      ? "bg-primary text-white hover:bg-primary-dark"
-                      : "text-primary border-primary/20 hover:bg-primary/5"
+                      ? "bg-card text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {filter}
-                </Button>
+                </button>
               ))}
             </div>
           </div>
@@ -538,122 +508,124 @@ export default function Inbox() {
           {/* Lead List */}
           <div className="flex-1 overflow-y-auto">
             {leads.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>No conversations yet</p>
-              </div>
+              <EmptyState
+                icon={MessageSquare}
+                title="No conversations yet"
+                description="New lead messages will show up here."
+              />
             ) : (
-              leads.map((lead) => (
-                <div
-                  key={lead.id}
-                  onClick={() => setSelectedLead(lead)}
-                  className={cn(
-                    "p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors",
-                    selectedLead?.id === lead.id && "bg-primary/5 border-l-4 border-l-brand-orange"
-                  )}
-                >
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-medium text-primary">{lead.name}</div>
-                    <div className="text-xs text-gray-500">
-                      {lead.latest_conversation?.[0]?.created_at
-                        ? formatTimeAgo(lead.latest_conversation[0].created_at)
-                        : formatTimeAgo(lead.created_at)}
+              leads.map((lead) => {
+                const unread = (lead.unread_count || 0) > 0;
+                const selected = selectedLead?.id === lead.id;
+                return (
+                  <div
+                    key={lead.id}
+                    onClick={() => setSelectedLead(lead)}
+                    className={cn(
+                      "relative flex cursor-pointer gap-3 border-b px-4 py-3 transition-colors",
+                      selected ? "bg-accent/70" : "hover:bg-muted/50"
+                    )}
+                  >
+                    {selected && (
+                      <span className="absolute inset-y-0 left-0 w-1 bg-brand-orange" />
+                    )}
+                    <InitialsAvatar name={lead.name} />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-0.5 flex items-baseline justify-between gap-2">
+                        <span
+                          className={cn(
+                            "truncate text-sm",
+                            unread ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                          )}
+                        >
+                          {lead.name || "Unnamed lead"}
+                        </span>
+                        <span className="shrink-0 font-inter text-[11px] text-muted-foreground">
+                          {lead.latest_conversation?.[0]?.created_at
+                            ? formatTimeAgo(lead.latest_conversation[0].created_at)
+                            : formatTimeAgo(lead.created_at)}
+                        </span>
+                      </div>
+                      <p
+                        className={cn(
+                          "mb-1.5 truncate text-xs",
+                          unread ? "font-medium text-foreground" : "text-muted-foreground"
+                        )}
+                      >
+                        {lead.latest_conversation?.[0]?.message_content || "No messages yet"}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        {getStageBadge(lead.lead_temperature || "Cold")}
+                        {lead.latest_conversation?.[0]?.channel &&
+                          getChannelBadge(lead.latest_conversation[0].channel)}
+                        {unread && (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-orange px-1.5 text-[11px] font-semibold text-white">
+                            {lead.unread_count}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    {getStageBadge(lead.lead_temperature || "Cold")}
-                    {lead.latest_conversation?.[0]?.channel &&
-                      getChannelBadge(lead.latest_conversation[0].channel)}
-                    {(lead.unread_count || 0) > 0 && (
-                      <Badge className="bg-brand-orange text-white text-xs">
-                        {lead.unread_count}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 truncate">
-                    {lead.latest_conversation?.[0]?.message_content || "No messages yet"}
-                  </p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
         {/* RIGHT PANEL - Conversation Thread */}
-        <div className="w-[65%] flex flex-col bg-gray-50">
+        <div className="flex flex-1 flex-col bg-slate-bg">
           {!selectedLead ? (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p>Select a conversation to start</p>
-              </div>
-            </div>
+            <EmptyState
+              icon={MessageSquare}
+              title="Select a conversation"
+              description="Pick a lead on the left to read and reply to their messages."
+              className="flex-1"
+            />
           ) : (
             <>
               {/* Header */}
-              <div className="bg-white border-b border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-primary mb-2">
-                      {selectedLead.name}
-                    </h2>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          selectedLead.lead_temperature === "Hot" && "bg-red-100 text-red-700 border-red-300",
-                          selectedLead.lead_temperature === "Warm" && "bg-orange-100 text-orange-700 border-orange-300",
-                          selectedLead.lead_temperature === "Cold" && "bg-blue-100 text-blue-700 border-blue-300",
-                          selectedLead.lead_temperature === "Unqualified" && "bg-gray-100 text-gray-700 border-gray-300"
-                        )}
-                      >
-                        {selectedLead.lead_temperature === "Hot" && "🔥"}
-                        {selectedLead.lead_temperature === "Warm" && "🟠"}
-                        {selectedLead.lead_temperature === "Cold" && "❄️"}
-                        {selectedLead.lead_temperature === "Unqualified" && "⚫"}
-                        {" "}
-                        {selectedLead.lead_temperature || "Cold"}
-                      </Badge>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          selectedLead.status === "New" && "bg-blue-100 text-blue-700 border-blue-300",
-                          selectedLead.status === "Active" && "bg-green-100 text-green-700 border-green-300",
-                          selectedLead.status === "In Contact" && "bg-yellow-100 text-yellow-700 border-yellow-300",
-                          selectedLead.status === "Inactive" && "bg-gray-100 text-gray-700 border-gray-300",
-                          selectedLead.status === "Closed" && "bg-red-100 text-red-700 border-red-300"
-                        )}
-                      >
-                        {selectedLead.status || "New"}
-                      </Badge>
-                      
-                      {/* Campaign Indicator - Inline */}
-                      {selectedLead.campaign ? (
-                        <>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
-                            ✅ Campaign: {typeof selectedLead.campaign === "object" && selectedLead.campaign.name 
-                              ? selectedLead.campaign.name 
-                              : "Active Campaign"}
+              <div className="border-b bg-card p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <InitialsAvatar name={selectedLead.name} size="lg" />
+                    <div className="min-w-0">
+                      <h2 className="mb-1.5 truncate text-lg font-semibold">
+                        {selectedLead.name || "Unnamed lead"}
+                      </h2>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <TemperatureBadge value={selectedLead.lead_temperature || "Cold"} />
+                        {selectedLead.status && (
+                          <Badge variant="outline" className="text-xs font-medium">
+                            {selectedLead.status}
                           </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowStopCampaignDialog(true)}
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            Stop Campaign
-                          </Button>
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-300 text-xs">
-                          ⚠️ No Campaign Assigned
-                        </Badge>
-                      )}
+                        )}
+
+                        {/* Campaign Indicator - Inline */}
+                        {selectedLead.campaign ? (
+                          <>
+                            <Badge variant="outline" className="border-emerald-200 bg-success/10 text-xs text-emerald-700">
+                              Campaign: {typeof selectedLead.campaign === "object" && selectedLead.campaign.name
+                                ? selectedLead.campaign.name
+                                : "Active Campaign"}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowStopCampaignDialog(true)}
+                              className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              Stop Campaign
+                            </Button>
+                          </>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            No campaign assigned
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="shrink-0 text-right font-inter text-xs text-muted-foreground">
                     {selectedLead.email && <div>{selectedLead.email}</div>}
                     {selectedLead.phone && <div>{selectedLead.phone}</div>}
                   </div>
@@ -677,10 +649,10 @@ export default function Inbox() {
                     >
                       <div
                         className={cn(
-                          "max-w-[70%] rounded-lg p-3",
+                          "max-w-[70%] rounded-2xl p-3 shadow-sm",
                           msg.direction === "inbound"
-                            ? "bg-white border border-gray-200"
-                            : "bg-primary text-white"
+                            ? "rounded-tl-sm border bg-card"
+                            : "rounded-tr-sm bg-primary text-white"
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -736,7 +708,7 @@ export default function Inbox() {
 
               {/* Reply Box */}
               {selectedLead && (
-                <div className="border-t p-4 bg-gray-50">
+                <div className="border-t bg-card p-4">
                   {aiSuggestionWarning && (
                     <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
                       {aiSuggestionWarning}
