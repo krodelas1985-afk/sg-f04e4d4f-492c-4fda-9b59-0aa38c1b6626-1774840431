@@ -5,6 +5,8 @@ import { Users, Users as LeadsIcon, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { StatCard } from "@/components/shared/StatCard";
 
 interface Stats {
   totalClients: number;
@@ -171,40 +173,31 @@ export default function AdminOverview() {
   return (
     <DashboardLayout>
       <div className="p-8 max-w-7xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-2xl font-semibold mb-2 text-foreground">Admin Overview</h1>
-          <p className="text-muted-foreground">Monitor system-wide activity and client usage.</p>
-        </div>
+        <PageHeader
+          title="Admin Overview"
+          description="Monitor system-wide activity and client usage."
+        />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clients</CardTitle>
-              <Users className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats?.totalClients || 0}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Leads</CardTitle>
-              <LeadsIcon className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats?.totalLeads || 0}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Campaigns</CardTitle>
-              <Megaphone className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats?.activeCampaigns || 0}</div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <StatCard
+            label="Total Clients"
+            value={loading ? "…" : stats?.totalClients || 0}
+            icon={Users}
+            tone="navy"
+          />
+          <StatCard
+            label="Total Leads"
+            value={loading ? "…" : stats?.totalLeads || 0}
+            icon={LeadsIcon}
+            tone="orange"
+          />
+          <StatCard
+            label="Active Campaigns"
+            value={loading ? "…" : stats?.activeCampaigns || 0}
+            icon={Megaphone}
+            tone="green"
+          />
         </div>
 
         {/* Webhook Logs Table */}
@@ -293,18 +286,18 @@ export default function AdminOverview() {
               <div className="text-center py-8 text-muted-foreground">No campaigns yet</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-border">
+                  <thead className="bg-muted/50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Channel</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Action</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Client</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Channel</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Target Action</th>
+                      <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Created Date</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="divide-y divide-border">
                     {campaigns.map((campaign) => (
                       <tr key={campaign.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">

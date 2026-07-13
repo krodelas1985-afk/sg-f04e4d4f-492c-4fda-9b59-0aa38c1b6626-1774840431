@@ -6,8 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, UserPlus, Flame, Calendar, MessageSquare, Mail, Megaphone, Inbox } from "lucide-react";
+import { Users, UserPlus, Flame, Calendar, MessageSquare, Megaphone, Inbox, ChevronRight, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { StatCard } from "@/components/shared/StatCard";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
+import { TemperatureBadge, ChannelBadge } from "@/components/shared/badges";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -145,7 +150,7 @@ export default function DashboardPage() {
       (conversations || []).forEach((conv) => {
         if (conv.lead && !uniqueLeads.has(conv.lead_id)) {
           const leadData = Array.isArray(conv.lead) ? conv.lead[0] : conv.lead;
-          
+
           uniqueLeads.set(conv.lead_id, {
             lead_id: conv.lead_id,
             lead_name: leadData?.name || "Unknown Lead",
@@ -179,150 +184,113 @@ export default function DashboardPage() {
     return date.toLocaleDateString();
   };
 
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case "Hot":
-        return "bg-red-100 text-red-700 border-red-300";
-      case "Warm":
-        return "bg-orange-100 text-orange-700 border-orange-300";
-      case "Cold":
-        return "bg-blue-100 text-blue-700 border-blue-300";
-      case "Unqualified":
-        return "bg-gray-100 text-gray-700 border-gray-300";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-300";
-    }
-  };
+  const todayLabel = new Date().toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "New":
-        return "bg-blue-100 text-blue-700 border-blue-300";
-      case "Active":
-        return "bg-green-100 text-green-700 border-green-300";
-      case "In Contact":
-        return "bg-yellow-100 text-yellow-700 border-yellow-300";
-      case "Inactive":
-        return "bg-gray-100 text-gray-700 border-gray-300";
-      case "Closed":
-        return "bg-red-100 text-red-700 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-300";
-    }
-  };
-
-  const getChannelBadge = (channel: string) => {
-    switch (channel) {
-      case "email":
-        return <Badge className="bg-primary text-white text-xs">Email</Badge>;
-      case "messenger":
-        return <Badge className="bg-brand-orange text-white text-xs">Messenger</Badge>;
-      default:
-        return <Badge variant="outline" className="text-xs">Manual</Badge>;
-    }
-  };
+  const firstName = clientName ? clientName.split(" ")[0] : "";
+  const overdueCount = followUps.filter((l) => l.is_overdue).length;
 
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-semibold">
-            {clientName ? `Hello, ${clientName}` : "Dashboard"}
-          </h1>
-          <p className="text-gray-600 mt-1">Overview of your leads and activities</p>
-        </div>
+        <PageHeader
+          title={firstName ? `Hello, ${firstName}` : "Dashboard"}
+          description={
+            <>
+              {todayLabel}
+              {overdueCount > 0 && (
+                <span className="ml-2 font-medium text-destructive">
+                  · {overdueCount} overdue follow-up{overdueCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </>
+          }
+          actions={
+            <>
+              <Button variant="outline" className="bg-card" onClick={() => router.push("/inbox")}>
+                <Inbox className="mr-2 h-4 w-4" />
+                Inbox
+              </Button>
+              <Button variant="outline" className="bg-card" onClick={() => router.push("/campaigns")}>
+                <Megaphone className="mr-2 h-4 w-4" />
+                Campaigns
+              </Button>
+              <Button
+                onClick={() => router.push("/leads?action=add")}
+                className="bg-brand-orange hover:bg-brand-orange-dark"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Lead
+              </Button>
+            </>
+          }
+        />
 
-        {/* Section 1 - Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric Cards */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
           {loading ? (
             <>
               {[1, 2, 3, 4].map((i) => (
-                <Card key={i}>
-                  <CardHeader className="pb-2">
-                    <Skeleton className="h-4 w-24" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-8 w-16" />
-                  </CardContent>
+                <Card key={i} className="p-4">
+                  <Skeleton className="mb-2 h-4 w-24" />
+                  <Skeleton className="h-8 w-16" />
                 </Card>
               ))}
             </>
           ) : (
             <>
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-primary/20"
+              <StatCard
+                label="Total Leads"
+                value={metrics.total_leads}
+                icon={Users}
+                tone="navy"
                 onClick={() => router.push("/leads")}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary" />
-                    Total Leads
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-primary">{metrics.total_leads}</p>
-                </CardContent>
-              </Card>
-
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-brand-orange/20"
-                onClick={() => router.push("/leads?filter=new_today")}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <UserPlus className="h-4 w-4 text-brand-orange" />
-                    New Today
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-brand-orange">{metrics.new_today}</p>
-                </CardContent>
-              </Card>
-
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-red-300"
+              />
+              <StatCard
+                label="New Today"
+                value={metrics.new_today}
+                icon={UserPlus}
+                tone="orange"
+                onClick={() => router.push("/leads")}
+              />
+              <StatCard
+                label="Hot Leads"
+                value={metrics.hot_leads}
+                icon={Flame}
+                tone="red"
                 onClick={() => router.push("/leads?filter=hot")}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <Flame className="h-4 w-4 text-red-600" />
-                    Hot Leads
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-red-600">{metrics.hot_leads}</p>
-                </CardContent>
-              </Card>
-
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-blue-300"
-                onClick={() => router.push("/leads?filter=followup_today")}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    Follow-ups Due Today
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{metrics.followups_today}</p>
-                </CardContent>
-              </Card>
+              />
+              <StatCard
+                label="Follow-ups Due Today"
+                value={metrics.followups_today}
+                icon={Calendar}
+                tone="blue"
+                onClick={() => router.push("/leads")}
+              />
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Section 2 - Follow-ups */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-primary flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Follow-ups
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          {/* Needs attention */}
+          <Card className="lg:col-span-3">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Calendar className="h-4 w-4 text-brand-orange" />
+                Needs your attention
+                {followUps.length > 0 && (
+                  <span className="ml-1 rounded-full bg-brand-orange/10 px-2 py-0.5 text-xs font-semibold text-brand-orange-dark">
+                    {followUps.length}
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
@@ -330,47 +298,44 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : followUps.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No follow-ups due 🎉
-                </div>
+                <EmptyState
+                  icon={CheckCircle2}
+                  title="All caught up"
+                  description="No follow-ups are due today. New ones will appear here."
+                />
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y">
                   {followUps.map((lead) => (
                     <div
                       key={lead.id}
                       onClick={() => router.push(`/leads/${lead.id}`)}
-                      className={cn(
-                        "p-3 rounded-lg border cursor-pointer hover:shadow-md transition-shadow",
-                        lead.is_overdue ? "bg-red-50 border-red-200" : "bg-white border-gray-200"
-                      )}
+                      className="group flex cursor-pointer items-center gap-3 py-2.5 transition-colors hover:bg-accent/40"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="font-medium text-primary">{lead.name}</div>
-                        {lead.is_overdue && (
-                          <Badge variant="destructive" className="text-xs">
-                            Overdue
-                          </Badge>
+                      <span
+                        className={cn(
+                          "h-9 w-1 shrink-0 rounded-full",
+                          lead.is_overdue ? "bg-destructive" : "bg-brand-orange/60"
                         )}
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className={cn("text-xs", getStageColor(lead.lead_temperature))}>
-                          {lead.lead_temperature === "Hot" && "🔥 "}
-                          {lead.lead_temperature === "Warm" && "🟠 "}
-                          {lead.lead_temperature === "Cold" && "❄️ "}
-                          {lead.lead_temperature}
-                        </Badge>
-                        <Badge variant="outline" className={cn("text-xs", getStatusColor(lead.status))}>
-                          {lead.status}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs text-gray-600">
-                          {lead.campaign?.name || "No Campaign"}
-                        </Badge>
-                      </div>
-                      {lead.last_contacted_at && (
-                        <div className="text-xs text-gray-500 mt-2">
-                          Last contacted: {formatTimeAgo(lead.last_contacted_at)}
+                      />
+                      <InitialsAvatar name={lead.name} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium">{lead.name || "Unnamed lead"}</span>
+                          {lead.is_overdue && (
+                            <Badge variant="destructive" className="h-5 px-1.5 text-[11px]">
+                              Overdue
+                            </Badge>
+                          )}
                         </div>
-                      )}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 font-inter text-[11px] text-muted-foreground">
+                          <span>{lead.campaign?.name || "No campaign"}</span>
+                          {lead.last_contacted_at && (
+                            <span>· last contacted {formatTimeAgo(lead.last_contacted_at)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <TemperatureBadge value={lead.lead_temperature} />
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                     </div>
                   ))}
                 </div>
@@ -378,15 +343,15 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Section 3 - Recent Conversations */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-primary flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
+          {/* Recent Conversations */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <MessageSquare className="h-4 w-4 text-primary" />
                 Recent Conversations
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
@@ -394,27 +359,33 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : recentConversations.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No recent conversations
-                </div>
+                <EmptyState
+                  icon={MessageSquare}
+                  title="No recent conversations"
+                  description="New lead messages will show up here."
+                />
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y">
                   {recentConversations.map((conv) => (
                     <div
                       key={conv.lead_id}
                       onClick={() => router.push(`/inbox?lead=${conv.lead_id}`)}
-                      className="p-3 rounded-lg border border-gray-200 cursor-pointer hover:shadow-md transition-shadow bg-white"
+                      className="group flex cursor-pointer items-start gap-3 py-2.5 transition-colors hover:bg-accent/40"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="font-medium text-primary">{conv.lead_name}</div>
-                        {getChannelBadge(conv.channel)}
-                      </div>
-                      <div className="text-sm text-gray-600 line-clamp-2">
-                        {conv.message_content?.substring(0, 80)}
-                        {conv.message_content?.length > 80 && "..."}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-2">
-                        {formatTimeAgo(conv.created_at)}
+                      <InitialsAvatar name={conv.lead_name} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="truncate text-sm font-medium">{conv.lead_name}</span>
+                          <span className="shrink-0 font-inter text-[11px] text-muted-foreground">
+                            {formatTimeAgo(conv.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate font-inter text-xs text-muted-foreground">
+                          {conv.message_content}
+                        </p>
+                        <div className="mt-1">
+                          <ChannelBadge channel={conv.channel} />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -423,38 +394,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Section 4 - Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-primary">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4">
-              <Button
-                onClick={() => router.push("/leads?action=add")}
-                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Lead
-              </Button>
-              <Button
-                onClick={() => router.push("/inbox")}
-                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
-              >
-                <Inbox className="h-4 w-4 mr-2" />
-                Open Inbox
-              </Button>
-              <Button
-                onClick={() => router.push("/campaigns")}
-                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
-              >
-                <Megaphone className="h-4 w-4 mr-2" />
-                View Campaigns
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );
