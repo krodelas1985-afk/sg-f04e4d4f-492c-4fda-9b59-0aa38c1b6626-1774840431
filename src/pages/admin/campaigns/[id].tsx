@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,7 @@ export default function AdminCampaignDetailPage() {
   const [sourceDetail, setSourceDetail] = useState("");
 
   const [scheduledStepsEnabled, setScheduledStepsEnabled] = useState(true);
+  const [activeTab, setActiveTab] = useState("basics");
   const [conversationalAiEnabled, setConversationalAiEnabled] = useState(false);
   const [campaignSteps, setCampaignSteps] = useState<any[]>([]);
   const [stepsSaving, setStepsSaving] = useState(false);
@@ -430,6 +432,31 @@ export default function AdminCampaignDetailPage() {
           </Button>
         </div>
 
+        {/* Editor tabs */}
+        <div className="mb-6 flex flex-wrap items-center gap-0.5 overflow-x-auto rounded-lg border bg-card p-1">
+          {[
+            { id: "basics", label: "Basics" },
+            { id: "audience", label: "Audience" },
+            { id: "ai", label: "AI Behavior" },
+            { id: "steps", label: "Message Steps" },
+            { id: "rules", label: "Rules & Triggers" },
+            { id: "settings", label: "Settings" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                activeTab === tab.id
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-6">
 
           {/* Admin Controls */}
@@ -507,8 +534,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 1 */}
-          <Card>
-            <CardHeader><CardTitle>Section 1: Basic Info</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "basics" && "hidden")}>
+            <CardHeader><CardTitle>Basic Info</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -546,8 +573,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 2 */}
-          <Card>
-            <CardHeader><CardTitle>Section 2: Goal</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "basics" && "hidden")}>
+            <CardHeader><CardTitle>Goal</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <Label>Target Action</Label>
@@ -557,8 +584,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 3 */}
-          <Card>
-            <CardHeader><CardTitle>Section 3: Target Audience</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "audience" && "hidden")}>
+            <CardHeader><CardTitle>Target Audience</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -648,9 +675,9 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 4 */}
-          <Card>
+          <Card className={cn(activeTab !== "audience" && "hidden")}>
             <CardHeader>
-              <CardTitle>Section 4: Qualification Questions</CardTitle>
+              <CardTitle>Qualification Questions</CardTitle>
               <p className="text-sm text-slate-500">Toggle each question on or off. Enabled questions will be asked by the AI. Set custom wording or leave blank to let the AI ask naturally.</p>
             </CardHeader>
             <CardContent>
@@ -689,17 +716,17 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 5 */}
-          <Card>
-            <CardHeader><CardTitle>Section 5: Tone & Persona</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "ai" && "hidden")}>
+            <CardHeader><CardTitle>Tone & Persona</CardTitle></CardHeader>
             <CardContent>
               <Textarea value={tonePersona} onChange={e => setTonePersona(e.target.value)} rows={4} placeholder="Describe the tone and persona..." />
             </CardContent>
           </Card>
 
           {/* Section 6 */}
-          <Card>
+          <Card className={cn(activeTab !== "ai" && "hidden")}>
             <CardHeader>
-              <CardTitle>Section 6: AI Instruction</CardTitle>
+              <CardTitle>AI Instruction</CardTitle>
               <p className="text-sm text-slate-500">Define the AI's role, tone, and behavior. This is the system prompt that guides how BayMo responds to leads.</p>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -714,9 +741,9 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 6a — AI Instructions */}
-          <Card className="border-violet-200 bg-violet-50/30">
+          <Card className={cn("border-violet-200 bg-violet-50/30", activeTab !== "ai" && "hidden")}>
             <CardHeader>
-              <CardTitle className="text-violet-800">Section 6a: AI Instructions (Per-Campaign)</CardTitle>
+              <CardTitle className="text-violet-800">Advanced AI Overrides</CardTitle>
               <p className="text-sm text-slate-500">
                 Override the default AI behaviour for this campaign. Leave blank to use BayMo defaults.
                 Use <code className="text-xs bg-slate-100 px-1 rounded">{`{{lead_name}}`}</code>,{" "}
@@ -750,8 +777,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 7 */}
-          <Card>
-            <CardHeader><CardTitle>Section 7: Campaign Settings</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "settings" && "hidden")}>
+            <CardHeader><CardTitle>Campaign Settings</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -775,8 +802,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 7a */}
-          <Card>
-            <CardHeader><CardTitle>Section 7a: Step Builder</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "steps" && "hidden")}>
+            <CardHeader><CardTitle>Message Steps</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <p className="text-sm text-slate-500">Define the sequence of messages BayMo will send to leads enrolled in this campaign.</p>
               {campaignSteps.length > 0 && (
@@ -868,9 +895,9 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 7b */}
-          <Card>
+          <Card className={cn(activeTab !== "ai" && "hidden")}>
             <CardHeader>
-              <CardTitle>Section 7b: Knowledge Base</CardTitle>
+              <CardTitle>Knowledge Base</CardTitle>
               <p className="text-sm text-slate-500">
                 Configure the facts BayMo uses when replying to leads in this campaign. One source at a time.
               </p>
@@ -885,8 +912,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 8a */}
-          <Card>
-            <CardHeader><CardTitle>Section 8a: Enrollment Triggers</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "rules" && "hidden")}>
+            <CardHeader><CardTitle>Enrollment Triggers</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
                 <Label>Lead Source</Label>
@@ -988,8 +1015,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 8b */}
-          <Card>
-            <CardHeader><CardTitle>Section 8b: Campaign Rules</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "rules" && "hidden")}>
+            <CardHeader><CardTitle>Campaign Rules</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label>Reply Language</Label>
@@ -1043,8 +1070,8 @@ export default function AdminCampaignDetailPage() {
           </Card>
 
           {/* Section 9 */}
-          <Card>
-            <CardHeader><CardTitle>Section 9: Automation Mode</CardTitle></CardHeader>
+          <Card className={cn(activeTab !== "settings" && "hidden")}>
+            <CardHeader><CardTitle>Automation Mode</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
