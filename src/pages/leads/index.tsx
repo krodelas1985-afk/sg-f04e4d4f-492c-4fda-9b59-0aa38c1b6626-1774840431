@@ -22,9 +22,15 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Search, Plus } from "lucide-react";
+import { Loader2, Search, Plus, SlidersHorizontal, X, ChevronRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LeadSlideOver } from "@/components/LeadSlideOver";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { StatCard } from "@/components/shared/StatCard";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
+import { TemperatureBadge, StatusBadge } from "@/components/shared/badges";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const STATUS_OPTIONS = ["New", "Active", "In Contact", "Inactive", "Closed"];
 const STAGE_OPTIONS = [
@@ -148,6 +154,15 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchClientId();
   }, []);
+
+  // Honor deep-links from the dashboard (/leads?filter=hot, /leads?action=add)
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { filter, action } = router.query;
+    if (filter === "hot") setStageFilter("Hot");
+    if (action === "add") setShowFullAdd(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   // Reset to page 1 whenever any filter or sort changes
   useEffect(() => {
@@ -456,6 +471,61 @@ export default function LeadsPage() {
     return styles[status] || "bg-gray-100 text-gray-600";
   };
   
+  // Combined sort select value (one control instead of three)
+  const sortValue = scoreSort
+    ? `score_${scoreSort}`
+    : lastInboundSort
+    ? `inbound_${lastInboundSort}`
+    : lastContactedSort
+    ? `contacted_${lastContactedSort}`
+    : "default";
+
+  const handleSortChange = (val: string) => {
+    setScoreSort("");
+    setLastInboundSort("");
+    setLastContactedSort("");
+    if (val === "default") return;
+    const [kind, dir] = val.split("_");
+    if (kind === "score") setScoreSort(dir);
+    if (kind === "inbound") setLastInboundSort(dir);
+    if (kind === "contacted") setLastContactedSort(dir);
+  };
+
+  const activeFilters: Array<{ label: string; clear: () => void }> = [];
+  if (sourceFilter !== "All") activeFilters.push({ label: `Source: ${sourceFilter}`, clear: () => setSourceFilter("All") });
+  if (assignedAgentFilter !== "All") {
+    const agentName = agents.find((a) => a.id === assignedAgentFilter)?.full_name || "Agent";
+    activeFilters.push({ label: `Agent: ${agentName}`, clear: () => setAssignedAgentFilter("All") });
+  }
+  if (campaignFilter !== "All") {
+    const campaignName = campaignFilter === "No Campaign" ? "No Campaign" : campaigns.find((c) => c.id === campaignFilter)?.name || "Campaign";
+    activeFilters.push({ label: `Campaign: ${campaignName}`, clear: () => setCampaignFilter("All") });
+  }
+  if (qualityFilter !== "All") activeFilters.push({ label: `Quality: ${qualityFilter}`, clear: () => setQualityFilter("All") });
+  if (leadTypeFilter !== "All") activeFilters.push({ label: `Type: ${leadTypeFilter}`, clear: () => setLeadTypeFilter("All") });
+  if (sortValue !== "default") {
+    const sortLabels: Record<string, string> = {
+      score_desc: "Score: High → Low", score_asc: "Score: Low → High",
+      inbound_desc: "Last Inbound: Newest", inbound_asc: "Last Inbound: Oldest",
+      contacted_desc: "Last Contacted: Newest", contacted_asc: "Last Contacted: Oldest",
+    };
+    activeFilters.push({ label: `Sort — ${sortLabels[sortValue]}`, clear: () => handleSortChange("default") });
+  }
+
+  const clearAllFilters = () => {
+    setSourceFilter("All");
+    setAssignedAgentFilter("All");
+    setCampaignFilter("All");
+    setQualityFilter("All");
+    setLeadTypeFilter("All");
+    handleSortChange("default");
+  };
+
+  const openLead = (leadId: string) => {
+    sessionStorage.setItem("bamo_lead_nav", JSON.stringify(leads.map((l) => l.id)));
+    setSelectedLeadId(leadId);
+  };
+
   if (loading && leads.length === 0) {
     return (
       <DashboardLayout>
@@ -470,291 +540,285 @@ export default function LeadsPage() {
     <DashboardLayout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Leads</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowQuickAdd(true)} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Quick Add
-            </Button>
-            <Button onClick={() => setShowFullAdd(true)} className="bg-brand-orange hover:bg-brand-orange-dark">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Lead
-            </Button>
-          </div>
-        </div>
-        
-        {/* Summary Bar */}
-        <div className="space-y-3">
-          <div className="grid grid-cols-5 gap-4">
-            {STATUS_OPTIONS.map((status) => (
-              <Card
-                key={status}
-                className={`p-4 cursor-pointer transition-all hover:shadow-md ${
-                  statusFilter === status ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => setStatusFilter(statusFilter === status ? "All" : status)}
-              >
-                <div className="text-sm text-gray-600">{status}</div>
-                <div className="text-2xl font-bold">{statusCounts[status] || 0}</div>
-              </Card>
-            ))}
-          </div>
-          
-          <div className="flex gap-4">
-            <Card className="p-3 flex-1">
-              <div className="text-sm text-gray-600">BayMo Automation</div>
-              <div className="text-xl font-semibold">{baymoCount}</div>
-            </Card>
-            <Card className="p-3 flex-1">
-              <div className="text-sm text-gray-600">Manual</div>
-              <div className="text-xl font-semibold">{manualCount}</div>
-            </Card>
-          </div>
-        </div>
-        
-        {/* Filter Row */}
-        <div className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={statusFilter === "All" ? "default" : "outline"}
-              onClick={() => setStatusFilter("All")}
-              size="sm"
-            >
-              All
-            </Button>
-            {STATUS_OPTIONS.map((status) => (
-              <Button
-                key={status}
-                variant={statusFilter === status ? "default" : "outline"}
-                onClick={() => setStatusFilter(status)}
-                size="sm"
-              >
-                {status}
+        <PageHeader
+          title="Leads"
+          description={
+            <>
+              {baymoCount} from BayMo automation · {manualCount} added manually
+            </>
+          }
+          actions={
+            <>
+              <Button onClick={() => setShowQuickAdd(true)} variant="outline" className="bg-card">
+                <Plus className="h-4 w-4 mr-2" />
+                Quick Add
               </Button>
-            ))}
-          </div>
-          
-          <div className="flex gap-4 flex-wrap items-center">
-            <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Stage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Stages</SelectItem>
-                <SelectItem value="Hot">🔥 Hot</SelectItem>
-                <SelectItem value="Warm">🟠 Warm</SelectItem>
-                <SelectItem value="Cold">❄️ Cold</SelectItem>
-                <SelectItem value="Unqualified">Unqualified</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Sources</SelectItem>
-                <SelectItem value="FB Messenger">FB Messenger</SelectItem>
-                <SelectItem value="Viber">Viber</SelectItem>
-                <SelectItem value="BaMo Marketplace">BaMo Marketplace</SelectItem>
-                <SelectItem value="Website Chat">Website Chat</SelectItem>
-                <SelectItem value="Web Form">Web Form</SelectItem>
-                <SelectItem value="Quick Form">Quick Form</SelectItem>
-                <SelectItem value="Manually Added">Manually Added</SelectItem>
-                <SelectItem value="Referral">Referral</SelectItem>
-                <SelectItem value="Phone Call">Phone Call</SelectItem>
-                <SelectItem value="Event / Open House">Event / Open House</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={assignedAgentFilter} onValueChange={setAssignedAgentFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Agent" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Agents</SelectItem>
-                {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {agent.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Campaigns</SelectItem>
-                <SelectItem value="No Campaign">No Campaign</SelectItem>
-                {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Button onClick={() => setShowFullAdd(true)} className="bg-brand-orange hover:bg-brand-orange-dark">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Lead
+              </Button>
+            </>
+          }
+        />
 
-            <Select
-              value={lastInboundSort || "default"}
-              onValueChange={(val) => {
-                setLastInboundSort(val === "default" ? "" : val);
-                setLastContactedSort("");
-                setScoreSort("");
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Last Inbound" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Last Inbound</SelectItem>
-                <SelectItem value="desc">Newest First</SelectItem>
-                <SelectItem value="asc">Oldest First</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Status summary — click to filter */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          {STATUS_OPTIONS.map((status) => (
+            <StatCard
+              key={status}
+              label={status}
+              value={statusCounts[status] || 0}
+              tone={
+                status === "New" ? "blue"
+                : status === "Active" ? "green"
+                : status === "In Contact" ? "orange"
+                : status === "Closed" ? "red"
+                : "gray"
+              }
+              active={statusFilter === status}
+              onClick={() => setStatusFilter(statusFilter === status ? "All" : status)}
+            />
+          ))}
+        </div>
+        
+        {/* Toolbar: stage smart-lists + search + filters */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-0.5 rounded-lg border bg-card p-1">
+              {["All", "Hot", "Warm", "Cold", "Unqualified"].map((stage) => (
+                <button
+                  key={stage}
+                  onClick={() => setStageFilter(stage)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    stageFilter === stage
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {stage}
+                </button>
+              ))}
+            </div>
 
-            <Select
-              value={lastContactedSort || "default"}
-              onValueChange={(val) => {
-                setLastContactedSort(val === "default" ? "" : val);
-                setLastInboundSort("");
-                setScoreSort("");
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Last Contacted" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Last Contacted</SelectItem>
-                <SelectItem value="desc">Newest First</SelectItem>
-                <SelectItem value="asc">Oldest First</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={qualityFilter} onValueChange={setQualityFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Quality" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Quality</SelectItem>
-                {["Browsing","Interested","Motivated","Qualified","Ready","Nurture"].map(q => (
-                  <SelectItem key={q} value={q}>{getQualityStyle(q).emoji} {q}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={leadTypeFilter} onValueChange={setLeadTypeFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Lead Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Types</SelectItem>
-                {LEAD_TYPE_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={scoreSort || "default"} onValueChange={(val) => { setScoreSort(val === "default" ? "" : val); setLastInboundSort(""); setLastContactedSort(""); }}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Sort by Score" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Sort by Score</SelectItem>
-                <SelectItem value="asc">Score: Low → High</SelectItem>
-                <SelectItem value="desc">Score: High → Low</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="relative flex-1 min-w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="relative min-w-56 flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search name, phone, email, company..."
+                placeholder="Search name, phone, email, company…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="bg-card pl-10"
               />
             </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2 bg-card">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters
+                  {activeFilters.length > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-orange px-1.5 text-[11px] font-semibold text-white">
+                      {activeFilters.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Source</Label>
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Sources</SelectItem>
+                      {SOURCE_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Assigned agent</Label>
+                  <Select value={assignedAgentFilter} onValueChange={setAssignedAgentFilter}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Agents</SelectItem>
+                      {(agents || []).filter(agent => agent.id && agent.full_name).map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>{agent.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Campaign</Label>
+                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Campaigns</SelectItem>
+                      <SelectItem value="No Campaign">No Campaign</SelectItem>
+                      {(campaigns || []).filter(campaign => campaign.id && campaign.name).map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Quality</Label>
+                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="All">All Quality</SelectItem>
+                        {["Browsing","Interested","Motivated","Qualified","Ready","Nurture"].map(q => (
+                          <SelectItem key={q} value={q}>{q}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Lead type</Label>
+                    <Select value={leadTypeFilter} onValueChange={setLeadTypeFilter}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="All">All Types</SelectItem>
+                        {LEAD_TYPE_OPTIONS.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Sort by</Label>
+                  <Select value={sortValue} onValueChange={handleSortChange}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Newest First</SelectItem>
+                      <SelectItem value="inbound_desc">Last Inbound: Newest</SelectItem>
+                      <SelectItem value="inbound_asc">Last Inbound: Oldest</SelectItem>
+                      <SelectItem value="contacted_desc">Last Contacted: Newest</SelectItem>
+                      <SelectItem value="contacted_asc">Last Contacted: Oldest</SelectItem>
+                      <SelectItem value="score_desc">Score: High → Low</SelectItem>
+                      <SelectItem value="score_asc">Score: Low → High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {activeFilters.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters} className="w-full text-muted-foreground">
+                    Clear all filters
+                  </Button>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
+
+          {/* Active filter chips */}
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {activeFilters.map((f) => (
+                <button
+                  key={f.label}
+                  onClick={f.clear}
+                  className="inline-flex items-center gap-1 rounded-full border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+                >
+                  {f.label}
+                  <X className="h-3 w-3" />
+                </button>
+              ))}
+              <button onClick={clearAllFilters} className="px-1.5 text-xs text-muted-foreground underline-offset-2 hover:underline">
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
         
         {/* Leads Table */}
         {error ? (
-          <div className="text-center py-12 text-red-600">{error}</div>
+          <div className="text-center py-12 text-destructive">{error}</div>
         ) : leads.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No leads found</p>
-            <Button onClick={() => setShowFullAdd(true)} className="bg-brand-orange hover:bg-brand-orange-dark">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Lead
-            </Button>
+          <div className="rounded-xl border bg-card shadow-sm">
+            <EmptyState
+              icon={Users}
+              title="No leads found"
+              description="Try adjusting your filters, or add a lead to get started."
+              action={
+                <Button onClick={() => setShowFullAdd(true)} className="bg-brand-orange hover:bg-brand-orange-dark">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Lead
+                </Button>
+              }
+            />
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Agent</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Message</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Task</th>
+          <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+            <table className="min-w-full divide-y divide-border">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lead</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Stage</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Source</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Agent</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Campaign</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Last Message</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Next Task</th>
+                  <th className="w-10 px-2 py-3" />
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {leads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          sessionStorage.setItem("bamo_lead_nav", JSON.stringify(leads.map(l => l.id)));
-                          setSelectedLeadId(lead.id);
-                        }}
-                        className="text-primary hover:text-brand-orange hover:underline font-medium"
+                  <tr key={lead.id} className="group transition-colors hover:bg-accent/40">
+                    <td className="max-w-[240px] px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <InitialsAvatar name={lead.name} />
+                        <div className="min-w-0">
+                          <button
+                            onClick={() => openLead(lead.id)}
+                            className="block max-w-full truncate text-sm font-medium text-primary hover:underline"
+                          >
+                            {lead.name || "Unnamed lead"}
+                          </button>
+                          <span className="block truncate font-inter text-xs text-muted-foreground">
+                            {[lead.phone, lead.email, lead.company].filter(Boolean).join(" · ") || "No contact info"}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5">
+                      <Select
+                        value={lead.lead_temperature || ""}
+                        onValueChange={(value) => handleInlineEdit(lead.id, "lead_temperature", value)}
                       >
-                        {lead.name}
-                      </button>
+                        <SelectTrigger className="h-8 w-auto gap-1 border-transparent bg-transparent px-1 shadow-none hover:border-input">
+                          <TemperatureBadge value={lead.lead_temperature} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STAGE_OPTIONS.map((stage) => (
+                            <SelectItem key={stage.value} value={stage.value}>
+                              {stage.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {(lead.lead_quality || lead.lead_score > 0) && (
+                        <div className="mt-0.5 pl-1 font-inter text-[11px] text-muted-foreground">
+                          {lead.lead_quality || ""}
+                          {lead.lead_quality && lead.lead_score > 0 && " · "}
+                          {lead.lead_score > 0 && `Score ${lead.lead_score}`}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <InlineEditableText 
-                        value={lead.phone || ""} 
-                        onSave={(val) => handleTextEdit(lead.id, "phone", val, lead.phone)} 
-                        placeholder="—"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <InlineEditableText 
-                        value={lead.email || ""} 
-                        onSave={(val) => handleTextEdit(lead.id, "email", val, lead.email)} 
-                        placeholder="—"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <InlineEditableText 
-                        value={lead.company || ""} 
-                        onSave={(val) => handleTextEdit(lead.id, "company", val, lead.company)} 
-                        placeholder="—"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-2.5">
                       <Select
                         value={lead.status}
                         onValueChange={(value) => handleInlineEdit(lead.id, "status", value)}
                       >
-                        <SelectTrigger className="w-32 h-8">
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusStyle(lead.status)}`}>
-                            {lead.status}
-                          </span>
+                        <SelectTrigger className="h-8 w-auto gap-1 border-transparent bg-transparent px-1 shadow-none hover:border-input">
+                          <StatusBadge value={lead.status} />
                         </SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map((status) => (
@@ -765,40 +829,13 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Select
-                        value={lead.lead_temperature || ""}
-                        onValueChange={(value) => handleInlineEdit(lead.id, "lead_temperature", value)}
-                      >
-                        <SelectTrigger className="w-32 h-8">
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStageStyle(lead.lead_temperature).color}`}>
-                            {getStageStyle(lead.lead_temperature).emoji} {lead.lead_temperature || "—"}
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STAGE_OPTIONS.map((stage) => (
-                            <SelectItem key={stage.value} value={stage.value}>
-                              {stage.emoji} {stage.value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex flex-col gap-1 mt-1">
-                        <span className={`px-2 py-0.5 text-xs rounded-full ${getQualityStyle(lead.lead_quality).color}`}>
-                          {getQualityStyle(lead.lead_quality).emoji} {lead.lead_quality || "—"}
-                        </span>
-                        {lead.lead_score > 0 && (
-                          <span className="text-xs text-gray-400 font-mono">Score: {lead.lead_score}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-2.5">
                       <Select
                         value={lead.source || ""}
                         onValueChange={(value) => handleInlineEdit(lead.id, "source", value)}
                       >
-                        <SelectTrigger className="w-40 h-8">
-                          <SelectValue />
+                        <SelectTrigger className="h-8 w-auto max-w-[150px] gap-1 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:border-input">
+                          <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
                           {SOURCE_OPTIONS.map((source) => (
@@ -809,27 +846,12 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Select
-                        value={lead.lead_type || ""}
-                        onValueChange={(value) => handleInlineEdit(lead.id, "lead_type", value)}
-                      >
-                        <SelectTrigger className="w-32 h-8">
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LEAD_TYPE_OPTIONS.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-2.5">
                       <Select
                         value={lead.assigned_user_id || "none"}
                         onValueChange={(value) => handleInlineEdit(lead.id, "assigned_user_id", value === "none" ? null : value)}
                       >
-                        <SelectTrigger className="w-40 h-8">
+                        <SelectTrigger className="h-8 w-auto max-w-[150px] gap-1 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:border-input">
                           <SelectValue placeholder="Unassigned" />
                         </SelectTrigger>
                         <SelectContent>
@@ -842,13 +864,12 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.agent_role || "—"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-2.5">
                       <Select
                         value={lead.campaign_id || "none"}
                         onValueChange={(value) => handleCampaignEdit(lead.id, value === "none" ? null : value)}
                       >
-                        <SelectTrigger className="h-8 w-full text-xs border-gray-200">
+                        <SelectTrigger className="h-8 w-auto max-w-[150px] gap-1 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:border-input">
                           <SelectValue placeholder="No Campaign" />
                         </SelectTrigger>
                         <SelectContent>
@@ -861,11 +882,20 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {lead.last_message || "No messages"}
+                    <td className="max-w-[200px] truncate px-4 py-2.5 font-inter text-xs text-muted-foreground">
+                      {lead.last_message || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {lead.next_task_title || "No pending tasks"}
+                    <td className="max-w-[180px] truncate px-4 py-2.5 font-inter text-xs text-muted-foreground">
+                      {lead.next_task_title || "—"}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <button
+                        onClick={() => openLead(lead.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+                        title="Open lead"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -873,8 +903,8 @@ export default function LeadsPage() {
             </table>
 
             {/* Pagination bar */}
-            <div className="flex items-center justify-between px-6 py-3 border-t bg-gray-50/50">
-              <span className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t bg-muted/30 px-4 py-2.5">
+              <span className="font-inter text-xs text-muted-foreground">
                 Page {currentPage + 1}{hasNextPage ? "" : ` · ${leads.length} lead${leads.length !== 1 ? "s" : ""}`}
               </span>
               <div className="flex gap-2">
@@ -883,7 +913,7 @@ export default function LeadsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(p => p - 1)}
                   disabled={currentPage === 0}
-                  className="text-primary border-primary hover:bg-primary/10 disabled:opacity-40"
+                  className="bg-card disabled:opacity-40"
                 >
                   ← Previous
                 </Button>
@@ -892,7 +922,7 @@ export default function LeadsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(p => p + 1)}
                   disabled={!hasNextPage}
-                  className="text-primary border-primary hover:bg-primary/10 disabled:opacity-40"
+                  className="bg-card disabled:opacity-40"
                 >
                   Next →
                 </Button>
