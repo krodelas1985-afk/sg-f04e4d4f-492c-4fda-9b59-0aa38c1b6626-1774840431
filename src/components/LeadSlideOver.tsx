@@ -364,7 +364,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
           <div className="border-b bg-white p-6 space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-[#1B3A5C]">{lead?.name}</h2>
+                <h2 className="text-2xl font-bold text-primary">{lead?.name}</h2>
                 <div className="flex gap-2 mt-2">
                   <Badge className={getStageStyle(lead?.lead_temperature || "")}>
                     {lead?.lead_temperature === "Hot" && "🔥"} {lead?.lead_temperature}
@@ -429,7 +429,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
             
             <Button 
               onClick={() => router.push(`/leads/${leadId}`)} 
-              className="w-full bg-[#E87722] hover:bg-[#d66a1e]"
+              className="w-full bg-brand-orange hover:bg-brand-orange-dark"
             >
               Open Full Profile →
             </Button>
@@ -438,20 +438,20 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="w-full justify-start border-b rounded-none h-12 bg-gray-50">
-              <TabsTrigger value="info" className="data-[state=active]:border-b-2 data-[state=active]:border-[#E87722]">Info</TabsTrigger>
-              <TabsTrigger value="messages" className="data-[state=active]:border-b-2 data-[state=active]:border-[#E87722]">
+              <TabsTrigger value="info" className="data-[state=active]:border-b-2 data-[state=active]:border-brand-orange">Info</TabsTrigger>
+              <TabsTrigger value="messages" className="data-[state=active]:border-b-2 data-[state=active]:border-brand-orange">
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Messages
               </TabsTrigger>
-              <TabsTrigger value="activity" className="data-[state=active]:border-b-2 data-[state=active]:border-[#E87722]">
+              <TabsTrigger value="activity" className="data-[state=active]:border-b-2 data-[state=active]:border-brand-orange">
                 <Activity className="h-4 w-4 mr-2" />
                 Activity
               </TabsTrigger>
-              <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-[#E87722]">
+              <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-brand-orange">
                 <CheckSquare className="h-4 w-4 mr-2" />
                 Tasks
               </TabsTrigger>
-              <TabsTrigger value="properties" className="data-[state=active]:border-b-2 data-[state=active]:border-[#E87722]">
+              <TabsTrigger value="properties" className="data-[state=active]:border-b-2 data-[state=active]:border-brand-orange">
                 <Home className="h-4 w-4 mr-2" />
                 Properties
               </TabsTrigger>
@@ -710,7 +710,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {messages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[80%] rounded-lg p-3 ${msg.direction === "outbound" ? "bg-[#E87722] text-white" : "bg-gray-100"}`}>
+                        <div className={`max-w-[80%] rounded-lg p-3 ${msg.direction === "outbound" ? "bg-brand-orange text-white" : "bg-gray-100"}`}>
                           <div className="flex gap-2 items-center mb-1">
                             <span className="text-xs font-semibold">{senderLabel(msg)}</span>
                             <Badge variant="outline" className="text-xs">{msg.channel}</Badge>
@@ -751,7 +751,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                         {aiSuggesting ? "Generating..." : "AI Suggest"}
                       </Button>
                       <Button 
-                        className="ml-auto bg-[#E87722] hover:bg-[#d66a1e]" 
+                        className="ml-auto bg-brand-orange hover:bg-brand-orange-dark" 
                         onClick={handleSendMessage}
                         disabled={sending || !newMessage.trim()}
                       >
@@ -767,7 +767,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                 {lead?.metadata && typeof lead?.metadata?.source === 'string' && lead?.metadata?.source?.trim() !== '' && (
                   <div className="rounded-xl border border-orange-100 bg-[#FFF3E8] overflow-hidden mb-6">
                     {/* Header */}
-                    <div className="bg-[#1B3A5C] px-4 py-3 flex items-center justify-between">
+                    <div className="bg-primary px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">
                           {lead?.metadata?.source?.includes('Sinag') ? '☀️' : '📋'}
@@ -810,7 +810,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                               return (
                                 <div key={key} className="text-sm">
                                   <div className="text-gray-500 mb-1">{label}</div>
-                                  <div className={`font-medium ${shouldHighlight ? 'text-[#E87722]' : 'text-gray-900'}`}>
+                                  <div className={`font-medium ${shouldHighlight ? 'text-brand-orange' : 'text-gray-900'}`}>
                                     {String(displayValue)}
                                   </div>
                                 </div>
@@ -888,8 +888,8 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
               <TabsContent value="tasks" className="p-6 space-y-6">
                 <div>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-[#1B3A5C]">PENDING ({pending.length})</h3>
-                    <Button size="sm" className="bg-[#E87722] hover:bg-[#d66a1e]" onClick={() => setShowTaskForm(!showTaskForm)}>
+                    <h3 className="font-semibold text-primary">PENDING ({pending.length})</h3>
+                    <Button size="sm" className="bg-brand-orange hover:bg-brand-orange-dark" onClick={() => setShowTaskForm(!showTaskForm)}>
                       + Create Task
                     </Button>
                   </div>
@@ -911,7 +911,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       <Input type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} />
                       <Textarea placeholder="Notes" value={newTask.notes} onChange={(e) => setNewTask({ ...newTask, notes: e.target.value })} />
                       <div className="flex gap-2">
-                        <Button onClick={handleCreateTask} className="bg-[#E87722] hover:bg-[#d66a1e]">Save</Button>
+                        <Button onClick={handleCreateTask} className="bg-brand-orange hover:bg-brand-orange-dark">Save</Button>
                         <Button variant="outline" onClick={() => setShowTaskForm(false)}>Cancel</Button>
                       </div>
                     </div>
@@ -924,7 +924,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                           <p className="font-medium">{task.title}</p>
                           <p className="text-sm text-gray-500">Due: {new Date(task.due_date).toLocaleDateString()}</p>
                         </div>
-                        <Button size="sm" onClick={() => handleCompleteTask(task.id)} className="bg-[#E87722] hover:bg-[#d66a1e]">
+                        <Button size="sm" onClick={() => handleCompleteTask(task.id)} className="bg-brand-orange hover:bg-brand-orange-dark">
                           Complete
                         </Button>
                       </div>
@@ -933,7 +933,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                 </div>
                 
                 <div>
-                  <h3 className="font-semibold text-[#1B3A5C] mb-4">UPCOMING ({upcoming.length})</h3>
+                  <h3 className="font-semibold text-primary mb-4">UPCOMING ({upcoming.length})</h3>
                   <div className="space-y-2">
                     {upcoming.map(task => (
                       <div key={task.id} className="p-3 border rounded-lg">
@@ -959,7 +959,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
 
               <TabsContent value="properties" className="p-6">
                 <div className="text-center py-12">
-                  <h3 className="text-xl font-semibold text-[#1B3A5C] mb-2">Suggested Property Matches</h3>
+                  <h3 className="text-xl font-semibold text-primary mb-2">Suggested Property Matches</h3>
                   <p className="text-gray-500 mb-4">Property matching coming in Phase 1B</p>
                   <Button disabled className="bg-gray-200 cursor-not-allowed">
                     + Match Property Manually

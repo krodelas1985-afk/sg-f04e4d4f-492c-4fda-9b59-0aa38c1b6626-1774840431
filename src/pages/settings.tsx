@@ -203,7 +203,7 @@ export default function SettingsPage() {
       <div className="p-6 max-w-4xl">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-[#1B3A5C]">Settings</h1>
+          <h1 className="text-3xl font-bold text-primary">Settings</h1>
           <p className="text-gray-600 mt-1">Manage your account and workspace settings</p>
         </div>
 
@@ -211,7 +211,7 @@ export default function SettingsPage() {
           {/* SECTION 1 — WEBHOOK */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C]">Webhook</CardTitle>
+              <CardTitle className="text-primary">Webhook</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
@@ -271,7 +271,7 @@ export default function SettingsPage() {
           {/* SECTION 2 — INTEGRATIONS */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C]">Integrations</CardTitle>
+              <CardTitle className="text-primary">Integrations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between py-2 border-b">
@@ -314,7 +314,7 @@ export default function SettingsPage() {
           {/* SECTION 4 — MESSAGE TEMPLATES */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C]">Message Templates</CardTitle>
+              <CardTitle className="text-primary">Message Templates</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600">
@@ -322,7 +322,7 @@ export default function SettingsPage() {
               </p>
               <Button
                 onClick={() => router.push("/templates")}
-                className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
               >
                 Go to Templates
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -336,7 +336,7 @@ export default function SettingsPage() {
           {/* SECTION 4 — EMAIL SETTINGS */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C]">Email Settings</CardTitle>
+              <CardTitle className="text-primary">Email Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                   <Button
                     onClick={handleSaveEmailSettings}
                     disabled={saving}
-                    className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                    className="bg-brand-orange hover:bg-brand-orange-dark text-white"
                   >
                     {saving ? "Saving..." : "Save Email Settings"}
                   </Button>
@@ -397,7 +397,7 @@ export default function SettingsPage() {
           {/* SECTION 5 — PROFILE */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C]">Profile</CardTitle>
+              <CardTitle className="text-primary">Profile</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
@@ -444,7 +444,7 @@ export default function SettingsPage() {
                   <Button
                     onClick={handleSaveProfile}
                     disabled={saving}
-                    className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                    className="bg-brand-orange hover:bg-brand-orange-dark text-white"
                   >
                     {saving ? "Saving..." : "Save Profile"}
                   </Button>

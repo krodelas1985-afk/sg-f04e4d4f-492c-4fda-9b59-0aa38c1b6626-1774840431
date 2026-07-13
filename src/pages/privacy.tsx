@@ -15,9 +15,9 @@ export default function PrivacyPolicy() {
       </Head>
 
       <div className="min-h-screen bg-white">
-        <header className="bg-[#1A2E5A] text-white">
+        <header className="bg-primary text-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <p className="text-sm uppercase tracking-widest text-[#E8660A] font-semibold mb-2">
+            <p className="text-sm uppercase tracking-widest text-brand-orange font-semibold mb-2">
               BaMo &middot; Bahaymo
             </p>
             <h1 className="text-4xl sm:text-5xl font-bold">Privacy Policy</h1>
@@ -46,7 +46,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">1. Who We Are</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">1. Who We Are</h2>
             <p className="mb-4">
               REPH Innovations Corp is a corporation organized under the laws of the Republic of
               the Philippines and registered with the Securities and Exchange Commission as an
@@ -61,7 +61,7 @@ export default function PrivacyPolicy() {
               You can reach our Data Protection Officer at{" "}
               <a
                 href="mailto:support@bahaymo.com"
-                className="text-[#1A2E5A] underline hover:text-[#E8660A]"
+                className="text-primary underline hover:text-brand-orange"
               >
                 support@bahaymo.com
               </a>
@@ -70,16 +70,16 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">2. Information We Collect</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">2. Information We Collect</h2>
 
-            <h3 className="text-lg font-semibold text-[#1A2E5A] mt-4 mb-2">Contact information</h3>
+            <h3 className="text-lg font-semibold text-primary mt-4 mb-2">Contact information</h3>
             <p className="mb-4">
               Name, mobile or landline phone number, email address, Facebook or Instagram
               profile identifier or display name, and any other contact handle you choose to
               share when you inquire about a property or respond to one of our messages.
             </p>
 
-            <h3 className="text-lg font-semibold text-[#1A2E5A] mt-4 mb-2">
+            <h3 className="text-lg font-semibold text-primary mt-4 mb-2">
               Conversation content
             </h3>
             <p className="mb-4">
@@ -89,7 +89,7 @@ export default function PrivacyPolicy() {
               channel metadata, and delivery status.
             </p>
 
-            <h3 className="text-lg font-semibold text-[#1A2E5A] mt-4 mb-2">
+            <h3 className="text-lg font-semibold text-primary mt-4 mb-2">
               Property interest data
             </h3>
             <p className="mb-4">
@@ -99,7 +99,7 @@ export default function PrivacyPolicy() {
               signals you share during a conversation.
             </p>
 
-            <h3 className="text-lg font-semibold text-[#1A2E5A] mt-4 mb-2">
+            <h3 className="text-lg font-semibold text-primary mt-4 mb-2">
               Derived lead scores and qualification data
             </h3>
             <p className="mb-4">
@@ -111,7 +111,7 @@ export default function PrivacyPolicy() {
               you have engaged with.
             </p>
 
-            <h3 className="text-lg font-semibold text-[#1A2E5A] mt-4 mb-2">
+            <h3 className="text-lg font-semibold text-primary mt-4 mb-2">
               Technical and usage data
             </h3>
             <p>
@@ -121,7 +121,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">3. How We Collect It</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">3. How We Collect It</h2>
             <p className="mb-4">
               We collect information when you message a BaMo client's page or account on
               Facebook Messenger or Instagram Direct; when you fill out a web form, landing
@@ -139,7 +139,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">
+            <h2 className="text-2xl font-bold text-primary mb-3">
               4. Automated Processing and AI
             </h2>
             <p className="mb-4">
@@ -177,7 +177,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">5. How We Use Your Data</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">5. How We Use Your Data</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>To respond to your property inquiry and connect you with a relevant agent, broker, or developer.</li>
               <li>To send follow-up messages, appointment reminders, listing recommendations, and other communications related to the inquiry you initiated.</li>
@@ -188,7 +188,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">
+            <h2 className="text-2xl font-bold text-primary mb-3">
               6. Sharing With Third Parties
             </h2>
             <p className="mb-4">
@@ -245,7 +245,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">
+            <h2 className="text-2xl font-bold text-primary mb-3">
               7. International Data Transfers
             </h2>
             <p>
@@ -262,7 +262,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">8. Data Retention</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">8. Data Retention</h2>
             <p className="mb-4">
               We retain your personal information only for as long as necessary to fulfil the
               purposes described in this Policy, including the period during which the
@@ -278,7 +278,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3" id="data-deletion">
+            <h2 className="text-2xl font-bold text-primary mb-3" id="data-deletion">
               9. Your Rights and How to Exercise Them
             </h2>
             <p className="mb-4">
@@ -295,7 +295,7 @@ export default function PrivacyPolicy() {
               be deleted from BaMo — send an email to{" "}
               <a
                 href="mailto:support@bahaymo.com"
-                className="text-[#1A2E5A] underline hover:text-[#E8660A]"
+                className="text-primary underline hover:text-brand-orange"
               >
                 support@bahaymo.com
               </a>{" "}
@@ -318,7 +318,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">10. Children's Privacy</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">10. Children's Privacy</h2>
             <p>
               BaMo is not directed to children under the age of 18, and we do not knowingly
               collect personal information from minors. If you believe a minor has provided us
@@ -328,7 +328,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">11. Security</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">11. Security</h2>
             <p>
               We implement reasonable and appropriate organizational, physical, and technical
               security measures to protect personal information against accidental or unlawful
@@ -340,7 +340,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">12. Changes to This Policy</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">12. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time to reflect changes in our
               practices, our services, or the law. When we make material changes, we will
@@ -352,7 +352,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="mb-2">
-            <h2 className="text-2xl font-bold text-[#1A2E5A] mb-3">13. Contact Us</h2>
+            <h2 className="text-2xl font-bold text-primary mb-3">13. Contact Us</h2>
             <p className="mb-2">
               REPH Innovations Corp &middot; BaMo / Bahaymo
             </p>
@@ -360,7 +360,7 @@ export default function PrivacyPolicy() {
               Email:{" "}
               <a
                 href="mailto:support@bahaymo.com"
-                className="text-[#1A2E5A] underline hover:text-[#E8660A]"
+                className="text-primary underline hover:text-brand-orange"
               >
                 support@bahaymo.com
               </a>

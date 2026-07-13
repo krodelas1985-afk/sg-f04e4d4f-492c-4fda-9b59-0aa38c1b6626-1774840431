@@ -328,9 +328,9 @@ export default function TemplatesPage() {
   const getChannelColor = (channel: string) => {
     switch (channel) {
       case "email":
-        return "bg-[#1B3A5C] text-white";
+        return "bg-primary text-white";
       case "messenger":
-        return "bg-[#E87722] text-white";
+        return "bg-brand-orange text-white";
       case "sms":
         return "bg-gray-500 text-white";
       default:
@@ -344,7 +344,7 @@ export default function TemplatesPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-[#1B3A5C]" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </DashboardLayout>
     );
@@ -357,7 +357,7 @@ export default function TemplatesPage() {
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-[#1B3A5C]">Message Templates</h1>
+              <h1 className="text-3xl font-bold text-primary">Message Templates</h1>
               <p className="text-gray-600 mt-1">
                 Manage reusable message templates for Email, Messenger, and SMS
               </p>
@@ -366,13 +366,13 @@ export default function TemplatesPage() {
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleCreateNew}
-                className="bg-[#1B3A5C] hover:bg-[#152d47] text-white"
+                className="bg-primary hover:bg-primary-dark text-white"
               >
                 + New Template
               </Button>
               <Button
                 onClick={() => router.push("/templates/generate")}
-                className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 AI Template Generator
@@ -432,7 +432,7 @@ export default function TemplatesPage() {
               <Card key={template.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="space-y-3">
                   <div>
-                    <h3 className="font-semibold text-[#1B3A5C] mb-2">{template.title}</h3>
+                    <h3 className="font-semibold text-primary mb-2">{template.title}</h3>
                     <div className="flex items-center gap-2 mb-2">
                       <Badge className={cn("text-xs capitalize", getChannelColor(template.channel))}>
                         {template.channel}
@@ -474,7 +474,7 @@ export default function TemplatesPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(template)}
-                          className="text-[#1B3A5C] hover:text-[#152d47]"
+                          className="text-primary hover:text-primary-dark"
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
@@ -617,7 +617,7 @@ export default function TemplatesPage() {
             <Button
               onClick={handleSaveTemplate}
               disabled={saving}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               {saving ? (
                 <>

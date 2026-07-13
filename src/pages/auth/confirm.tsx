@@ -54,9 +54,9 @@ export default function ConfirmPage() {
 
   if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0F1F3A]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
         <Card className="w-full max-w-md p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E8702A] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange mx-auto mb-4"></div>
           <p className="text-gray-600">Verifying your link...</p>
         </Card>
       </div>
@@ -65,13 +65,13 @@ export default function ConfirmPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0F1F3A] p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark p-4">
         <Card className="w-full max-w-md p-8">
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-[#1B2F4E] mb-2">
+            <h1 className="text-2xl font-bold text-primary mb-2">
               Link Invalid or Expired
             </h1>
             <p className="text-gray-600">
@@ -82,7 +82,7 @@ export default function ConfirmPage() {
 
           <Button
             onClick={() => router.push("/login")}
-            className="w-full bg-[#E8702A] hover:bg-[#D15F1F] text-white"
+            className="w-full bg-brand-orange hover:bg-brand-orange-dark text-white"
           >
             Go to Login
           </Button>

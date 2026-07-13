@@ -301,7 +301,7 @@ export function LeadAssignmentSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-[#1B3A5C]">Lead Assignment</CardTitle>
+        <CardTitle className="text-primary">Lead Assignment</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {loading ? (
@@ -327,7 +327,7 @@ export function LeadAssignmentSection() {
                       className={cn(
                         "flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors",
                         mode === opt.value
-                          ? "border-[#1F3C88] bg-[#EEF3FF]"
+                          ? "border-primary bg-[#EEF3FF]"
                           : "border-gray-200 hover:bg-gray-50"
                       )}
                     >
@@ -335,7 +335,7 @@ export function LeadAssignmentSection() {
                       <Icon
                         className={cn(
                           "h-5 w-5 mt-0.5",
-                          mode === opt.value ? "text-[#1F3C88]" : "text-gray-400"
+                          mode === opt.value ? "text-primary" : "text-gray-400"
                         )}
                       />
                       <div>
@@ -522,7 +522,7 @@ export function LeadAssignmentSection() {
                                   <td className="py-2 pr-2 text-right">{s.conversion_score ?? "—"}</td>
                                   <td className="py-2 pr-2 text-right">{s.hustle_score ?? "—"}</td>
                                   <td className="py-2 pr-2 text-right">{s.responsiveness_score ?? "—"}</td>
-                                  <td className="py-2 pr-2 text-right font-semibold text-[#1F3C88]">
+                                  <td className="py-2 pr-2 text-right font-semibold text-primary">
                                     {s.composite_score ?? "—"}
                                   </td>
                                   <td className="py-2 text-right">
@@ -551,7 +551,7 @@ export function LeadAssignmentSection() {
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               {saving ? "Saving..." : "Save Assignment Settings"}
             </Button>

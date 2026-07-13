@@ -143,7 +143,7 @@ export default function SequencesPage() {
           <h1 className="text-2xl font-bold">Sequences</h1>
           <Button
             onClick={openDialog}
-            className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+            className="bg-brand-orange hover:bg-brand-orange/90 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Sequence
@@ -183,7 +183,7 @@ export default function SequencesPage() {
                       </td>
                       <td className="px-6 py-4">
                         {s.is_active ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#E8702A]/10 text-[#E8702A]">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-brand-orange/10 text-brand-orange">
                             <Check className="w-3 h-3 mr-1" />
                             Active
                           </span>
@@ -266,7 +266,7 @@ export default function SequencesPage() {
             <Button
               onClick={handleCreate}
               disabled={creating}
-              className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+              className="bg-brand-orange hover:bg-brand-orange/90 text-white"
             >
               {creating ? "Creating..." : "Create Sequence"}
             </Button>

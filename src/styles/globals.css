@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Work+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,83 +6,103 @@
 
 @layer base {
   :root {
-    /* Brand Colors - Orange Primary */
-    --primary: 16 85% 54%; /* #E8702A */
+    /* ============================================
+       BaMo Brand Standard — single source of truth
+       Navy #1F3C88 · Orange #E67E22 · Poppins/Inter
+       ============================================ */
+
+    /* Primary — Brand Navy */
+    --primary: 223 63% 33%;            /* #1F3C88 */
     --primary-foreground: 0 0% 100%;
+    --primary-light: 223 56% 41%;      /* #2E4EA1 hover */
+    --primary-dark: 224 66% 25%;       /* #162D6B pressed */
 
-    /* Sidebar - Dark Navy */
-    --sidebar-bg: 214 43% 20%; /* #1B2F4E */
-    --sidebar-text: 0 0% 95%;
-    --sidebar-active: 16 85% 54%; /* Orange for active items */
+    /* Accent — Brand Orange (CTAs, highlights, active states) */
+    --brand-orange: 28 80% 52%;        /* #E67E22 */
+    --brand-orange-light: 28 87% 63%;  /* #F39C4E */
+    --brand-orange-dark: 28 79% 42%;   /* #BF6516 pressed */
 
-    /* Backgrounds */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    
-    /* UI Elements */
+    /* Status */
+    --success: 145 63% 49%;            /* #2ECC71 */
+    --destructive: 6 78% 57%;          /* #E74C3C */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Sidebar — deep brand navy */
+    --sidebar-bg: 224 60% 22%;         /* deep navy, one step darker than #162D6B */
+    --sidebar-text: 220 30% 92%;
+    --sidebar-active: 28 80% 52%;      /* orange accent for active items */
+
+    /* Canvas & surfaces — warm off-white, white cards */
+    --background: 40 25% 98%;          /* warm canvas (#FBFAF7) */
+    --foreground: 0 0% 23%;            /* #3A3A3A headings/dark text */
+    --slate-bg: 40 20% 97%;            /* page canvas behind cards */
+
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 0 0% 23%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    
-    /* Secondary & Muted */
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    
-    /* Accent */
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    
-    /* Destructive */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    
-    /* Borders & Inputs */
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 16 85% 54%; /* Orange ring */
-    
-    /* Chart Colors */
-    --chart-1: 16 85% 54%;
-    --chart-2: 214 43% 20%;
-    --chart-3: 210 40% 96.1%;
-    --chart-4: 215.4 16.3% 46.9%;
-    --chart-5: 222 47% 11%;
-    
-    /* Custom Slate Background */
-    --slate-bg: 214 32% 97%;
-    
+    --popover-foreground: 0 0% 23%;
+
+    /* Secondary & muted */
+    --secondary: 220 25% 96%;
+    --secondary-foreground: 223 63% 33%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 0 0% 36%;      /* #5B5B5B body text */
+
+    /* Accent (hover surfaces) — warm cream */
+    --accent: 33 100% 96%;             /* #FFF7ED */
+    --accent-foreground: 224 66% 25%;
+
+    /* Borders & inputs */
+    --border: 220 13% 91%;             /* #E5E7EB */
+    --input: 220 13% 88%;
+    --ring: 223 63% 33%;               /* navy focus ring */
+
+    /* Charts */
+    --chart-1: 223 63% 33%;            /* navy */
+    --chart-2: 28 80% 52%;             /* orange */
+    --chart-3: 145 63% 49%;            /* green */
+    --chart-4: 223 56% 61%;            /* light navy */
+    --chart-5: 28 87% 63%;             /* light orange */
+
     /* Radius */
-    --radius: 0.5rem;
+    --radius: 0.625rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 16 85% 54%;
+    --background: 224 40% 8%;
+    --foreground: 220 20% 96%;
+    --card: 224 36% 11%;
+    --card-foreground: 220 20% 96%;
+    --popover: 224 36% 11%;
+    --popover-foreground: 220 20% 96%;
+    --primary: 223 60% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 16 85% 54%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --primary-light: 223 56% 63%;
+    --primary-dark: 223 63% 45%;
+    --brand-orange: 28 80% 55%;
+    --brand-orange-light: 28 87% 65%;
+    --brand-orange-dark: 28 79% 45%;
+    --success: 145 55% 45%;
+    --secondary: 224 30% 16%;
+    --secondary-foreground: 220 20% 96%;
+    --muted: 224 30% 16%;
+    --muted-foreground: 220 12% 70%;
+    --accent: 224 30% 16%;
+    --accent-foreground: 220 20% 96%;
+    --destructive: 6 65% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 224 30% 18%;
+    --input: 224 30% 18%;
+    --ring: 223 60% 55%;
+    --slate-bg: 224 40% 8%;
+    --sidebar-bg: 224 45% 13%;
+    --sidebar-text: 220 25% 88%;
+    --sidebar-active: 28 80% 55%;
+    --chart-1: 223 60% 55%;
+    --chart-2: 28 80% 55%;
+    --chart-3: 145 55% 45%;
+    --chart-4: 223 56% 70%;
+    --chart-5: 28 87% 65%;
   }
 }
 
@@ -92,8 +112,9 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
+    @apply font-sans text-foreground;
   }
 }

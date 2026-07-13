@@ -10,8 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Work Sans", "system-ui", "sans-serif"],
-        serif: ["Plus Jakarta Sans", "Georgia", "serif"],
+        sans: ["Poppins", "system-ui", "sans-serif"],
+        serif: ["Poppins", "system-ui", "sans-serif"],
+        inter: ["Inter", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -22,6 +23,16 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "hsl(var(--primary-light))",
+          dark: "hsl(var(--primary-dark))",
+        },
+        "brand-orange": {
+          DEFAULT: "hsl(var(--brand-orange))",
+          light: "hsl(var(--brand-orange-light))",
+          dark: "hsl(var(--brand-orange-dark))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",

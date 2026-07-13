@@ -280,7 +280,7 @@ export default function AdminOverview() {
               <CardTitle>Campaigns</CardTitle>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-[#E87722] text-white rounded-md hover:bg-[#d66a1a] transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-brand-orange text-white rounded-md hover:bg-brand-orange-dark transition-colors text-sm font-medium"
               >
                 + Create Campaign
               </button>
@@ -355,7 +355,7 @@ export default function AdminOverview() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b">
-                <h2 className="text-2xl font-bold text-[#1B3A5C]">Create Campaign</h2>
+                <h2 className="text-2xl font-bold text-primary">Create Campaign</h2>
               </div>
               
               <form onSubmit={handleCreateCampaign} className="p-6 space-y-6">
@@ -373,7 +373,7 @@ export default function AdminOverview() {
                     required
                     value={formData.client_id}
                     onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select a client</option>
                     {clients.map((client) => (
@@ -393,7 +393,7 @@ export default function AdminOverview() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Enter campaign name"
                   />
                 </div>
@@ -404,7 +404,7 @@ export default function AdminOverview() {
                     <select
                       value={formData.channel}
                       onChange={(e) => setFormData({ ...formData, channel: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="messenger">messenger</option>
                       <option value="email">email</option>
@@ -418,7 +418,7 @@ export default function AdminOverview() {
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="draft">draft</option>
                       <option value="active">active</option>
@@ -433,7 +433,7 @@ export default function AdminOverview() {
                     value={formData.target_action}
                     onChange={(e) => setFormData({ ...formData, target_action: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="What should the lead do? e.g. Schedule a property viewing"
                   />
                 </div>
@@ -444,7 +444,7 @@ export default function AdminOverview() {
                     type="text"
                     value={formData.tone}
                     onChange={(e) => setFormData({ ...formData, tone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="e.g. Friendly, Professional"
                   />
                 </div>
@@ -455,7 +455,7 @@ export default function AdminOverview() {
                     value={formData.additional_instructions}
                     onChange={(e) => setFormData({ ...formData, additional_instructions: e.target.value })}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Rules, things to avoid, special scenarios"
                   />
                 </div>
@@ -483,7 +483,7 @@ export default function AdminOverview() {
                   <button
                     type="submit"
                     disabled={creating || !formData.name || !formData.client_id}
-                    className="px-4 py-2 bg-[#E87722] text-white rounded-md hover:bg-[#d66a1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-brand-orange text-white rounded-md hover:bg-brand-orange-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {creating ? "Creating..." : "Create Campaign"}
                   </button>

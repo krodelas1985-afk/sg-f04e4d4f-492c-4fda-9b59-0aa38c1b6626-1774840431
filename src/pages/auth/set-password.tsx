@@ -96,11 +96,11 @@ export default function SetPassword() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0D1829]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
         <Card className="w-full max-w-md">
           <CardContent className="p-8">
             <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-[#E8702A]" />
+              <Loader2 className="h-8 w-8 animate-spin text-brand-orange" />
               <p className="text-gray-600">Verifying your link...</p>
             </div>
           </CardContent>
@@ -112,7 +112,7 @@ export default function SetPassword() {
   // Invalid/expired link state
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0D1829]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-center text-xl">Invalid or Expired Link</CardTitle>
@@ -123,7 +123,7 @@ export default function SetPassword() {
             </p>
             <Button
               onClick={() => router.push("/login")}
-              className="w-full bg-[#E8702A] hover:bg-[#d66424]"
+              className="w-full bg-brand-orange hover:bg-brand-orange-dark"
             >
               Go to Login
             </Button>
@@ -135,11 +135,11 @@ export default function SetPassword() {
 
   // Valid session - show password form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1B2F4E] to-[#0D1829]">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <div className="text-3xl font-bold text-[#E8702A]">BayMo</div>
+            <div className="text-3xl font-bold text-brand-orange">BayMo</div>
           </div>
           <CardTitle className="text-center text-xl">Welcome to BayMo — Set Your Password</CardTitle>
         </CardHeader>
@@ -180,7 +180,7 @@ export default function SetPassword() {
 
             <Button
               type="submit"
-              className="w-full bg-[#E8702A] hover:bg-[#d66424]"
+              className="w-full bg-brand-orange hover:bg-brand-orange-dark"
               disabled={submitting}
             >
               {submitting ? (

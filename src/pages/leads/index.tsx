@@ -460,7 +460,7 @@ export default function LeadsPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-[#1D9E75]" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </DashboardLayout>
     );
@@ -468,7 +468,7 @@ export default function LeadsPage() {
   
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Leads</h1>
@@ -477,7 +477,7 @@ export default function LeadsPage() {
               <Plus className="h-4 w-4 mr-2" />
               Quick Add
             </Button>
-            <Button onClick={() => setShowFullAdd(true)} className="bg-[#1D9E75] hover:bg-[#178263]">
+            <Button onClick={() => setShowFullAdd(true)} className="bg-brand-orange hover:bg-brand-orange-dark">
               <Plus className="h-4 w-4 mr-2" />
               Add Lead
             </Button>
@@ -491,7 +491,7 @@ export default function LeadsPage() {
               <Card
                 key={status}
                 className={`p-4 cursor-pointer transition-all hover:shadow-md ${
-                  statusFilter === status ? "ring-2 ring-[#1D9E75]" : ""
+                  statusFilter === status ? "ring-2 ring-primary" : ""
                 }`}
                 onClick={() => setStatusFilter(statusFilter === status ? "All" : status)}
               >
@@ -686,7 +686,7 @@ export default function LeadsPage() {
         ) : leads.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">No leads found</p>
-            <Button onClick={() => setShowFullAdd(true)} className="bg-[#1D9E75] hover:bg-[#178263]">
+            <Button onClick={() => setShowFullAdd(true)} className="bg-brand-orange hover:bg-brand-orange-dark">
               <Plus className="h-4 w-4 mr-2" />
               Add Lead
             </Button>
@@ -720,7 +720,7 @@ export default function LeadsPage() {
                           sessionStorage.setItem("bamo_lead_nav", JSON.stringify(leads.map(l => l.id)));
                           setSelectedLeadId(lead.id);
                         }}
-                        className="text-[#1B3A5C] hover:text-[#E87722] hover:underline font-medium"
+                        className="text-primary hover:text-brand-orange hover:underline font-medium"
                       >
                         {lead.name}
                       </button>
@@ -883,7 +883,7 @@ export default function LeadsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(p => p - 1)}
                   disabled={currentPage === 0}
-                  className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10 disabled:opacity-40"
+                  className="text-primary border-primary hover:bg-primary/10 disabled:opacity-40"
                 >
                   ← Previous
                 </Button>
@@ -892,7 +892,7 @@ export default function LeadsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(p => p + 1)}
                   disabled={!hasNextPage}
-                  className="text-[#1B3A5C] border-[#1B3A5C] hover:bg-[#1B3A5C]/10 disabled:opacity-40"
+                  className="text-primary border-primary hover:bg-primary/10 disabled:opacity-40"
                 >
                   Next →
                 </Button>
@@ -991,7 +991,7 @@ export default function LeadsPage() {
             <Button
               onClick={handleQuickAdd}
               disabled={!quickAddData.name || !quickAddData.phone}
-              className="bg-[#1D9E75] hover:bg-[#178263]"
+              className="bg-brand-orange hover:bg-brand-orange-dark"
             >
               Save & Open Profile
             </Button>
@@ -1231,7 +1231,7 @@ export default function LeadsPage() {
             <Button
               onClick={handleFullAdd}
               disabled={!fullAddData.name || !fullAddData.phone}
-              className="bg-[#1D9E75] hover:bg-[#178263]"
+              className="bg-brand-orange hover:bg-brand-orange-dark"
             >
               Save & Open Profile
             </Button>

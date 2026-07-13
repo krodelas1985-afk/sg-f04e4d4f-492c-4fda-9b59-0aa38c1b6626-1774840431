@@ -312,7 +312,7 @@ export default function GenerateTemplatePage() {
         <div style={S.card}>
           <div style={S.metaRow}>
             <span style={S.badge}>{useKb ? "KB" : "No KB"}</span>
-            <span style={{ ...S.badge, background: result.used_kb ? "#1A2E5A" : "#888" }}>
+            <span style={{ ...S.badge, background: result.used_kb ? "#1F3C88" : "#888" }}>
               used_kb: {String(result.used_kb)}
             </span>
             {result.placeholders_used?.map((p) => (
@@ -342,7 +342,7 @@ export default function GenerateTemplatePage() {
           />
 
           <button
-            style={{ ...S.btn, background: "#E8660A", opacity: saving ? 0.5 : 1 }}
+            style={{ ...S.btn, background: "#E67E22", opacity: saving ? 0.5 : 1 }}
             disabled={saving}
             onClick={handleSave}
           >
@@ -356,19 +356,19 @@ export default function GenerateTemplatePage() {
 }
 
 const S: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 720, margin: "0 auto", padding: 24, fontFamily: "DM Sans, system-ui, sans-serif", color: "#1A2E5A" },
-  backLink: { display: "inline-block", marginBottom: 16, fontSize: 14, fontWeight: 600, color: "#1A2E5A", textDecoration: "none" },
+  page: { maxWidth: 720, margin: "0 auto", padding: 24, fontFamily: "Poppins, system-ui, sans-serif", color: "#1F3C88" },
+  backLink: { display: "inline-block", marginBottom: 16, fontSize: 14, fontWeight: 600, color: "#1F3C88", textDecoration: "none" },
   h1: { fontSize: 24, fontWeight: 700, marginBottom: 4 },
   sub: { fontSize: 14, color: "#555", marginBottom: 20 },
   card: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, marginBottom: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" },
   label: { display: "block", fontSize: 13, fontWeight: 600, margin: "12px 0 6px" },
   input: { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" },
   checkRow: { display: "flex", gap: 8, alignItems: "flex-start", margin: "16px 0", fontSize: 13, color: "#444" },
-  btn: { marginTop: 16, width: "100%", padding: "12px", background: "#1A2E5A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer" },
+  btn: { marginTop: 16, width: "100%", padding: "12px", background: "#1F3C88", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer" },
   error: { background: "#fef2f2", border: "1px solid #fca5a5", color: "#991b1b", padding: 14, borderRadius: 8, fontSize: 12, whiteSpace: "pre-wrap", overflowX: "auto" },
   metaRow: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 },
-  badge: { fontSize: 11, fontWeight: 600, color: "#fff", background: "#1A2E5A", padding: "3px 8px", borderRadius: 999 },
-  tokenBadge: { fontSize: 11, fontFamily: "monospace", color: "#1A2E5A", background: "#eef2ff", padding: "3px 8px", borderRadius: 999 },
+  badge: { fontSize: 11, fontWeight: 600, color: "#fff", background: "#1F3C88", padding: "3px 8px", borderRadius: 999 },
+  tokenBadge: { fontSize: 11, fontFamily: "monospace", color: "#1F3C88", background: "#eef2ff", padding: "3px 8px", borderRadius: 999 },
   missing: { background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 12 },
   saved: { marginTop: 10, color: "#166534", fontSize: 13, fontWeight: 600 },
 };

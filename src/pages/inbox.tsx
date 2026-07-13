@@ -488,7 +488,7 @@ export default function Inbox() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-[#E87722]" />
+          <Loader2 className="h-8 w-8 animate-spin text-brand-orange" />
         </div>
       </DashboardLayout>
     );
@@ -501,7 +501,7 @@ export default function Inbox() {
         <div className="w-[35%] border-r border-gray-200 flex flex-col bg-white">
           {/* Header */}
           <div className="p-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-[#1B3A5C] mb-4">Inbox</h2>
+            <h2 className="text-xl font-bold text-primary mb-4">Inbox</h2>
             
             {/* Search */}
             <div className="relative mb-4">
@@ -525,8 +525,8 @@ export default function Inbox() {
                   className={cn(
                     "text-xs",
                     filterType === filter
-                      ? "bg-[#1B3A5C] text-white hover:bg-[#152d47]"
-                      : "text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                      ? "bg-primary text-white hover:bg-primary-dark"
+                      : "text-primary border-primary/20 hover:bg-primary/5"
                   )}
                 >
                   {filter}
@@ -549,11 +549,11 @@ export default function Inbox() {
                   onClick={() => setSelectedLead(lead)}
                   className={cn(
                     "p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors",
-                    selectedLead?.id === lead.id && "bg-[#1B3A5C]/5 border-l-4 border-l-[#E87722]"
+                    selectedLead?.id === lead.id && "bg-primary/5 border-l-4 border-l-brand-orange"
                   )}
                 >
                   <div className="flex items-start justify-between mb-1">
-                    <div className="font-medium text-[#1B3A5C]">{lead.name}</div>
+                    <div className="font-medium text-primary">{lead.name}</div>
                     <div className="text-xs text-gray-500">
                       {lead.latest_conversation?.[0]?.created_at
                         ? formatTimeAgo(lead.latest_conversation[0].created_at)
@@ -565,7 +565,7 @@ export default function Inbox() {
                     {lead.latest_conversation?.[0]?.channel &&
                       getChannelBadge(lead.latest_conversation[0].channel)}
                     {(lead.unread_count || 0) > 0 && (
-                      <Badge className="bg-[#E87722] text-white text-xs">
+                      <Badge className="bg-brand-orange text-white text-xs">
                         {lead.unread_count}
                       </Badge>
                     )}
@@ -594,7 +594,7 @@ export default function Inbox() {
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-[#1B3A5C] mb-2">
+                    <h2 className="text-xl font-bold text-primary mb-2">
                       {selectedLead.name}
                     </h2>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -680,7 +680,7 @@ export default function Inbox() {
                           "max-w-[70%] rounded-lg p-3",
                           msg.direction === "inbound"
                             ? "bg-white border border-gray-200"
-                            : "bg-[#1B3A5C] text-white"
+                            : "bg-primary text-white"
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -689,7 +689,7 @@ export default function Inbox() {
                           </span>
                           {getChannelBadge(msg.channel)}
                           {msg.sent_via === "baymo" && (
-                            <Badge className="bg-[#E87722] text-white text-xs">
+                            <Badge className="bg-brand-orange text-white text-xs">
                               AI suggestion
                             </Badge>
                           )}
@@ -798,7 +798,7 @@ export default function Inbox() {
                       variant="outline"
                       size="sm"
                       onClick={() => document.getElementById("file-upload")?.click()}
-                      className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                      className="text-primary border-primary/20 hover:bg-primary/5"
                     >
                       <Paperclip className="h-4 w-4 mr-2" />
                       Attach
@@ -814,7 +814,7 @@ export default function Inbox() {
                       variant="outline"
                       size="sm"
                       onClick={() => setShowTemplateDialog(true)}
-                      className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                      className="text-primary border-primary/20 hover:bg-primary/5"
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Insert Template
@@ -824,7 +824,7 @@ export default function Inbox() {
                       size="sm"
                       onClick={handleAISuggest}
                       disabled={generating}
-                      className="text-[#1B3A5C] border-[#1B3A5C]/20 hover:bg-[#1B3A5C]/5"
+                      className="text-primary border-primary/20 hover:bg-primary/5"
                     >
                       {generating ? (
                         <>
@@ -889,7 +889,7 @@ export default function Inbox() {
                     <Button
                       onClick={handleSendMessage}
                       disabled={(!replyMessage.trim() && !attachment) || sending}
-                      className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                      className="bg-brand-orange hover:bg-brand-orange-dark text-white"
                     >
                       {sending ? (
                         <>

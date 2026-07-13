@@ -379,9 +379,9 @@ export default function UsersPage() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "client_admin":
-        return "bg-[#1B3A5C] text-white";
+        return "bg-primary text-white";
       case "manager":
-        return "bg-[#E87722] text-white";
+        return "bg-brand-orange text-white";
       case "agent":
         return "bg-teal-600 text-white";
       case "viewer":
@@ -409,13 +409,13 @@ export default function UsersPage() {
         {/* Page Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-[#1B3A5C]">Users</h1>
+            <h1 className="text-3xl font-bold text-primary">Users</h1>
             <p className="text-gray-600 mt-1">Manage your team members and their roles</p>
           </div>
           {currentUserRole === "client_admin" && (
             <Button
               onClick={() => setShowAddUser(true)}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Add User
@@ -463,7 +463,7 @@ export default function UsersPage() {
                     {users.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-[#1B3A5C]">
+                          <div className="font-medium text-primary">
                             {user.full_name || "N/A"}
                           </div>
                         </td>
@@ -594,7 +594,7 @@ export default function UsersPage() {
             <Button
               onClick={handleAddUser}
               disabled={submitting}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               {submitting ? "Sending..." : "Send Invitation"}
             </Button>
@@ -646,7 +646,7 @@ export default function UsersPage() {
             <Button
               onClick={confirmDeactivate}
               disabled={deactivating}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               {deactivating ? "Deactivating..." : "Deactivate User"}
             </Button>

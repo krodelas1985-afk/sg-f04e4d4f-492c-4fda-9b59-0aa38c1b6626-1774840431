@@ -305,7 +305,7 @@ export default function AdminClientWorkspacePage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-[#1B3A5C]">
+              <h1 className="text-3xl font-bold text-primary">
                 {data.client.company_name} — Workspace
               </h1>
               <p className="text-gray-500 mt-1">{data.client.name}</p>
@@ -359,7 +359,7 @@ export default function AdminClientWorkspacePage() {
                     <div className={`p-3 ${stat.bg} rounded-lg`}>{stat.icon}</div>
                     <div>
                       <p className="text-sm text-gray-500">{stat.label}</p>
-                      <p className="text-2xl font-bold text-[#1B3A5C]">{stat.value}</p>
+                      <p className="text-2xl font-bold text-primary">{stat.value}</p>
                     </div>
                   </div>
                 </Card>
@@ -427,7 +427,7 @@ export default function AdminClientWorkspacePage() {
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       {["Name", "Status", "Stage", "Source", "Campaign", "Created Date"].map(h => (
-                        <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-[#1B3A5C] uppercase tracking-wider">{h}</th>
+                        <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -503,7 +503,7 @@ export default function AdminClientWorkspacePage() {
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       {["Name", "Status", "Channel", "Active", "Target Action", "Created Date"].map(h => (
-                        <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-[#1B3A5C] uppercase tracking-wider">{h}</th>
+                        <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -586,7 +586,7 @@ export default function AdminClientWorkspacePage() {
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       {["Lead Name", "Temperature", "Channel", "Direction", "Message Preview", "Date"].map(h => (
-                        <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-[#1B3A5C] uppercase tracking-wider">{h}</th>
+                        <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -632,7 +632,7 @@ export default function AdminClientWorkspacePage() {
               {/* Integration Tokens */}
               <Card className="p-6 border shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-base font-semibold text-[#1B3A5C]">Integration Tokens</h3>
+                  <h3 className="text-base font-semibold text-primary">Integration Tokens</h3>
                   <p className="text-sm text-gray-500">API keys and tokens for this client's integrations.</p>
                 </div>
 
@@ -682,7 +682,7 @@ export default function AdminClientWorkspacePage() {
               {/* Webhook Secret */}
               <Card className="p-6 border shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-base font-semibold text-[#1B3A5C]">Webhook Secret</h3>
+                  <h3 className="text-base font-semibold text-primary">Webhook Secret</h3>
                   <p className="text-sm text-gray-500">Used to authenticate incoming lead webhooks for this client.</p>
                 </div>
 
@@ -723,7 +723,7 @@ export default function AdminClientWorkspacePage() {
               {/* Users */}
               <Card className="p-6 border shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-base font-semibold text-[#1B3A5C]">Users</h3>
+                  <h3 className="text-base font-semibold text-primary">Users</h3>
                   <p className="text-sm text-gray-500">Team members assigned to this client. New users are given the client_admin role.</p>
                 </div>
 

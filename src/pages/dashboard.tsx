@@ -214,9 +214,9 @@ export default function DashboardPage() {
   const getChannelBadge = (channel: string) => {
     switch (channel) {
       case "email":
-        return <Badge className="bg-[#1B3A5C] text-white text-xs">Email</Badge>;
+        return <Badge className="bg-primary text-white text-xs">Email</Badge>;
       case "messenger":
-        return <Badge className="bg-[#E87722] text-white text-xs">Messenger</Badge>;
+        return <Badge className="bg-brand-orange text-white text-xs">Messenger</Badge>;
       default:
         return <Badge variant="outline" className="text-xs">Manual</Badge>;
     }
@@ -227,7 +227,7 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-3xl font-bold text-[#1B3A5C]">
+          <h1 className="text-3xl font-bold text-primary">
             {clientName ? `Hello, ${clientName}` : "Dashboard"}
           </h1>
           <p className="text-gray-600 mt-1">Overview of your leads and activities</p>
@@ -251,32 +251,32 @@ export default function DashboardPage() {
           ) : (
             <>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-[#1B3A5C]/20"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-primary/20"
                 onClick={() => router.push("/leads")}
               >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <Users className="h-4 w-4 text-[#1B3A5C]" />
+                    <Users className="h-4 w-4 text-primary" />
                     Total Leads
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-[#1B3A5C]">{metrics.total_leads}</p>
+                  <p className="text-3xl font-bold text-primary">{metrics.total_leads}</p>
                 </CardContent>
               </Card>
 
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-[#E87722]/20"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-brand-orange/20"
                 onClick={() => router.push("/leads?filter=new_today")}
               >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <UserPlus className="h-4 w-4 text-[#E87722]" />
+                    <UserPlus className="h-4 w-4 text-brand-orange" />
                     New Today
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-[#E87722]">{metrics.new_today}</p>
+                  <p className="text-3xl font-bold text-brand-orange">{metrics.new_today}</p>
                 </CardContent>
               </Card>
 
@@ -317,7 +317,7 @@ export default function DashboardPage() {
           {/* Section 2 - Follow-ups */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C] flex items-center gap-2">
+              <CardTitle className="text-primary flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Follow-ups
               </CardTitle>
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                       )}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="font-medium text-[#1B3A5C]">{lead.name}</div>
+                        <div className="font-medium text-primary">{lead.name}</div>
                         {lead.is_overdue && (
                           <Badge variant="destructive" className="text-xs">
                             Overdue
@@ -381,7 +381,7 @@ export default function DashboardPage() {
           {/* Section 3 - Recent Conversations */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#1B3A5C] flex items-center gap-2">
+              <CardTitle className="text-primary flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
                 Recent Conversations
               </CardTitle>
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                       className="p-3 rounded-lg border border-gray-200 cursor-pointer hover:shadow-md transition-shadow bg-white"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="font-medium text-[#1B3A5C]">{conv.lead_name}</div>
+                        <div className="font-medium text-primary">{conv.lead_name}</div>
                         {getChannelBadge(conv.channel)}
                       </div>
                       <div className="text-sm text-gray-600 line-clamp-2">
@@ -427,27 +427,27 @@ export default function DashboardPage() {
         {/* Section 4 - Quick Actions */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-[#1B3A5C]">Quick Actions</CardTitle>
+            <CardTitle className="text-primary">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4">
               <Button
                 onClick={() => router.push("/leads?action=add")}
-                className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add Lead
               </Button>
               <Button
                 onClick={() => router.push("/inbox")}
-                className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
               >
                 <Inbox className="h-4 w-4 mr-2" />
                 Open Inbox
               </Button>
               <Button
                 onClick={() => router.push("/campaigns")}
-                className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+                className="bg-brand-orange hover:bg-brand-orange-dark text-white"
               >
                 <Megaphone className="h-4 w-4 mr-2" />
                 View Campaigns

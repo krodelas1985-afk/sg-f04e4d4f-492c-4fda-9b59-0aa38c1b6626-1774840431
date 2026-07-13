@@ -34,9 +34,9 @@ interface TemplatePickerProps {
 function channelColor(channel: string) {
   switch (channel) {
     case "email":
-      return "bg-[#1B3A5C] text-white";
+      return "bg-primary text-white";
     case "messenger":
-      return "bg-[#E87722] text-white";
+      return "bg-brand-orange text-white";
     case "sms":
       return "bg-gray-500 text-white";
     default:
@@ -125,7 +125,7 @@ export function TemplatePicker({
         <div className="max-h-[400px] overflow-y-auto -mx-1 px-1">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-gray-500">
-              <Loader2 className="h-6 w-6 animate-spin text-[#1B3A5C]" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
@@ -141,10 +141,10 @@ export function TemplatePicker({
                   key={template.id}
                   type="button"
                   onClick={() => handleSelect(template)}
-                  className="w-full text-left border rounded-lg p-3 hover:border-[#E87722] hover:bg-orange-50/40 transition-colors"
+                  className="w-full text-left border rounded-lg p-3 hover:border-brand-orange hover:bg-orange-50/40 transition-colors"
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-[#1B3A5C]">
+                    <span className="font-semibold text-primary">
                       {template.title}
                     </span>
                     <Badge

@@ -120,7 +120,7 @@ interface Enrollment {
 function stepTypeColor(type: string) {
   switch (type) {
     case "messenger":
-      return "bg-[#E8702A]/10 text-[#E8702A]";
+      return "bg-brand-orange/10 text-brand-orange";
     case "email":
       return "bg-blue-100 text-blue-800";
     case "call":
@@ -133,7 +133,7 @@ function stepTypeColor(type: string) {
 function stateColor(state: string) {
   switch (state) {
     case "active":
-      return "bg-[#E8702A]/10 text-[#E8702A]";
+      return "bg-brand-orange/10 text-brand-orange";
     case "waiting_window":
       return "bg-violet-100 text-violet-800";
     case "paused":
@@ -938,7 +938,7 @@ export default function SequenceDetailPage() {
                 <div className="p-4 border-t">
                   <Button
                     onClick={openNewStep}
-                    className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+                    className="bg-brand-orange hover:bg-brand-orange/90 text-white"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Step
@@ -996,7 +996,7 @@ export default function SequenceDetailPage() {
                 <div className="p-4 border-t">
                   <Button
                     onClick={openNewRule}
-                    className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+                    className="bg-brand-orange hover:bg-brand-orange/90 text-white"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Rule
@@ -1169,7 +1169,7 @@ export default function SequenceDetailPage() {
             <Button
               onClick={saveHeader}
               disabled={savingHeader}
-              className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+              className="bg-brand-orange hover:bg-brand-orange/90 text-white"
             >
               <Save className="w-4 h-4 mr-2" />
               {savingHeader ? "Saving..." : "Save"}
@@ -1391,7 +1391,7 @@ export default function SequenceDetailPage() {
             <Button
               onClick={saveStep}
               disabled={savingStep || !!stepWindowError}
-              className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+              className="bg-brand-orange hover:bg-brand-orange/90 text-white"
             >
               {savingStep ? "Saving..." : editingStep ? "Save" : "Add Step"}
             </Button>
@@ -1612,7 +1612,7 @@ export default function SequenceDetailPage() {
             <Button
               onClick={saveRule}
               disabled={savingRule}
-              className="bg-[#E8702A] hover:bg-[#E8702A]/90 text-white"
+              className="bg-brand-orange hover:bg-brand-orange/90 text-white"
             >
               {savingRule ? "Saving..." : editingRule ? "Save" : "Add Rule"}
             </Button>

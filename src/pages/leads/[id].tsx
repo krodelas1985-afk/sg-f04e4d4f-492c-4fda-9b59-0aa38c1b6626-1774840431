@@ -376,7 +376,7 @@ export default function LeadDetailPage() {
 
   const temperatureStyle: Record<string, string> = {
     Hot:  "bg-[#FEF2F2] text-[#991B1B] border border-[#FCA5A5]",
-    Warm: "bg-[#FDF2E6] text-[#BF6516] border border-[#F3C098]",
+    Warm: "bg-[#FDF2E6] text-brand-orange-dark border border-[#F3C098]",
     Cold: "bg-[#EFF6FF] text-[#1E40AF] border border-[#93C5FD]",
     New:  "bg-[#F1EFE8] text-[#5F5E5A] border border-[#D3D1C7]",
   };
@@ -385,11 +385,11 @@ export default function LeadDetailPage() {
 
   const statusStyle: Record<string, string> = {
     New:           "bg-[#F1EFE8] text-[#5F5E5A]",
-    "In Contact":  "bg-[#EEF3FF] text-[#1F3C88]",
-    Qualifying:    "bg-[#EEF3FF] text-[#1F3C88]",
+    "In Contact":  "bg-[#EEF3FF] text-primary",
+    Qualifying:    "bg-[#EEF3FF] text-primary",
     Qualified:     "bg-[#ECFDF5] text-[#065F46]",
-    Viewing:       "bg-[#FDF2E6] text-[#BF6516]",
-    Negotiating:   "bg-[#FDF2E6] text-[#BF6516]",
+    Viewing:       "bg-[#FDF2E6] text-brand-orange-dark",
+    Negotiating:   "bg-[#FDF2E6] text-brand-orange-dark",
     Nurture:       "bg-[#F5F3FF] text-[#5B21B6]",
     Won:           "bg-[#ECFDF5] text-[#065F46]",
     Lost:          "bg-[#FEF2F2] text-[#991B1B]",
@@ -399,8 +399,8 @@ export default function LeadDetailPage() {
 
   const qualityStyle: Record<string, { color: string; emoji: string }> = {
     Browsing:   { color: "bg-[#F1EFE8] text-[#5F5E5A] border border-[#D3D1C7]",  emoji: "🔍" },
-    Interested: { color: "bg-[#EEF3FF] text-[#1F3C88] border border-[#93b3e8]",  emoji: "👀" },
-    Motivated:  { color: "bg-[#FDF2E6] text-[#BF6516] border border-[#F3C098]",  emoji: "💪" },
+    Interested: { color: "bg-[#EEF3FF] text-primary border border-[#93b3e8]",  emoji: "👀" },
+    Motivated:  { color: "bg-[#FDF2E6] text-brand-orange-dark border border-[#F3C098]",  emoji: "💪" },
     Qualified:  { color: "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]",  emoji: "✅" },
     Ready:      { color: "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]",  emoji: "⭐" },
     Nurture:    { color: "bg-[#F5F3FF] text-[#5B21B6] border border-[#DDD6FE]",  emoji: "🌱" },
@@ -412,7 +412,7 @@ export default function LeadDetailPage() {
     return (
       <DashboardLayout>
         <div className="flex h-64 items-center justify-center">
-          <div className="text-[#1F3C88]">Loading profile...</div>
+          <div className="text-primary">Loading profile...</div>
         </div>
       </DashboardLayout>
     );
@@ -444,7 +444,7 @@ export default function LeadDetailPage() {
       <div className="max-w-7xl mx-auto pb-12">
         <div className="flex items-center justify-between mb-4">
           <Link href="/leads">
-            <Button variant="ghost" className="-ml-4 text-[#1F3C88] hover:text-[#E67E22]">
+            <Button variant="ghost" className="-ml-4 text-primary hover:text-brand-orange">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Leads
             </Button>
@@ -454,7 +454,7 @@ export default function LeadDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-[#1F3C88] border-[#1F3C88] hover:bg-[#1F3C88]/10 disabled:opacity-40"
+              className="text-primary border-primary hover:bg-primary/10 disabled:opacity-40"
               onClick={() => goToLead(prevLeadId)}
               disabled={!prevLeadId}
             >
@@ -469,7 +469,7 @@ export default function LeadDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-[#1F3C88] border-[#1F3C88] hover:bg-[#1F3C88]/10 disabled:opacity-40"
+              className="text-primary border-primary hover:bg-primary/10 disabled:opacity-40"
               onClick={() => goToLead(nextLeadId)}
               disabled={!nextLeadId}
             >
@@ -519,7 +519,7 @@ export default function LeadDetailPage() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                className="border border-[#1F3C88] text-[#1F3C88] hover:bg-[#EEF3FF] bg-transparent"
+                className="border border-primary text-primary hover:bg-[#EEF3FF] bg-transparent"
                 onClick={() => handleAutomationToggle(automationMode !== "baymo")}
               >
                 <Bot className="w-4 h-4 mr-2" />
@@ -530,7 +530,7 @@ export default function LeadDetailPage() {
                 value={lead.assigned_user_id || "none"} 
                 onValueChange={(val) => handleFieldUpdate("assigned_user_id", val === "none" ? null : val)}
               >
-                <SelectTrigger className="w-[160px] text-[#5B5B5B] border-[#E2E2E2] hover:border-[#1F3C88]">
+                <SelectTrigger className="w-[160px] text-[#5B5B5B] border-[#E2E2E2] hover:border-primary">
                   <UserPlus className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Assign Agent" />
                 </SelectTrigger>
@@ -558,7 +558,7 @@ export default function LeadDetailPage() {
                 </Tooltip>
               </TooltipProvider>
 
-              <Button className="bg-[#E67E22] hover:bg-[#BF6516] text-white">
+              <Button className="bg-brand-orange hover:bg-brand-orange-dark text-white">
                 <StickyNote className="w-4 h-4 mr-2" />
                 Add Note
               </Button>
@@ -568,20 +568,20 @@ export default function LeadDetailPage() {
           <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Lead Score</p>
-              <p className={`text-lg font-medium ${lead.lead_score ? "text-[#1F3C88]" : "text-[#D1D5DB]"}`}>{lead.lead_score || "—"}</p>
+              <p className={`text-lg font-medium ${lead.lead_score ? "text-primary" : "text-[#D1D5DB]"}`}>{lead.lead_score || "—"}</p>
               {lead.lead_quality_reason && (
                 <p className="text-xs text-gray-400 italic mt-1">{lead.lead_quality_reason}</p>
               )}
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Last Contact</p>
-              <p className={`text-lg font-medium ${lead.last_contacted_at ? "text-[#1F3C88]" : "text-[#D1D5DB]"}`}>
+              <p className={`text-lg font-medium ${lead.last_contacted_at ? "text-primary" : "text-[#D1D5DB]"}`}>
                 {lead.last_contacted_at ? new Date(lead.last_contacted_at).toLocaleDateString() : "—"}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Next Action</p>
-              <p className={`text-lg font-medium ${lead.next_follow_up_date ? "text-[#1F3C88]" : "text-[#D1D5DB]"}`}>
+              <p className={`text-lg font-medium ${lead.next_follow_up_date ? "text-primary" : "text-[#D1D5DB]"}`}>
                 {lead.next_follow_up_date ? new Date(lead.next_follow_up_date).toLocaleDateString() : "—"}
               </p>
             </div>
@@ -591,7 +591,7 @@ export default function LeadDetailPage() {
                 value={lead.campaign_id || "none"}
                 onValueChange={(val) => handleCampaignUpdate(val === "none" ? null : val)}
               >
-                <SelectTrigger className="h-8 text-sm border border-[#F3C098] shadow-none font-medium text-[#BF6516] bg-[#F8EBD6] rounded px-2 focus:ring-0">
+                <SelectTrigger className="h-8 text-sm border border-[#F3C098] shadow-none font-medium text-brand-orange-dark bg-[#F8EBD6] rounded px-2 focus:ring-0">
                   <SelectValue placeholder="No Campaign" />
                 </SelectTrigger>
                 <SelectContent>
@@ -611,8 +611,8 @@ export default function LeadDetailPage() {
             
             {/* BayMo Insights */}
             <div className="bg-white rounded-lg border shadow-sm p-5">
-              <h3 className="text-lg font-semibold text-[#1F3C88] mb-4 flex items-center">
-                <Sparkles className="w-5 h-5 mr-2 text-[#E67E22]" />
+              <h3 className="text-lg font-semibold text-primary mb-4 flex items-center">
+                <Sparkles className="w-5 h-5 mr-2 text-brand-orange" />
                 BayMo Insights
               </h3>
               
@@ -630,14 +630,14 @@ export default function LeadDetailPage() {
                 
                 <div className="bg-[#FFFDF8] p-4 rounded-md border border-[#EBE1CF] flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-[#1F3C88]">Automation Mode</p>
+                    <p className="font-medium text-primary">Automation Mode</p>
                     <p className="text-sm text-gray-500">Let BaMo handle initial responses</p>
                   </div>
                   <div className="flex bg-white rounded-lg border p-1">
                     <Switch
                       checked={automationMode === "baymo"}
                       onCheckedChange={handleAutomationToggle}
-                      className="data-[state=checked]:bg-[#1F3C88]"
+                      className="data-[state=checked]:bg-primary"
                     />
                   </div>
                 </div>
@@ -646,7 +646,7 @@ export default function LeadDetailPage() {
 
             {/* Editable Lead Info */}
             <div className="bg-white rounded-lg border shadow-sm p-5">
-              <h3 className="text-lg font-semibold text-[#1F3C88] mb-4">Lead Information</h3>
+              <h3 className="text-lg font-semibold text-primary mb-4">Lead Information</h3>
               
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -656,7 +656,7 @@ export default function LeadDetailPage() {
                       value={lead.name || ""}
                       onChange={(e) => setLead({ ...lead, name: e.target.value })}
                       onBlur={() => handleFieldUpdate("name", lead.name)}
-                      className={`h-8 text-sm focus-visible:ring-[#1F3C88] ${lead.name ? "border-[#93b3e8] bg-[#F5F8FF] text-[#1F3C88]" : ""}`}
+                      className={`h-8 text-sm focus-visible:ring-primary ${lead.name ? "border-[#93b3e8] bg-[#F5F8FF] text-primary" : ""}`}
                     />
                   </div>
                   <div>
@@ -665,7 +665,7 @@ export default function LeadDetailPage() {
                       value={lead.company || ""}
                       onChange={(e) => setLead({ ...lead, company: e.target.value })}
                       onBlur={() => handleFieldUpdate("company", lead.company)}
-                      className={`h-8 text-sm focus-visible:ring-[#1F3C88] ${lead.company ? "border-[#93b3e8] bg-[#F5F8FF] text-[#1F3C88]" : ""}`}
+                      className={`h-8 text-sm focus-visible:ring-primary ${lead.company ? "border-[#93b3e8] bg-[#F5F8FF] text-primary" : ""}`}
                     />
                   </div>
                 </div>
@@ -677,7 +677,7 @@ export default function LeadDetailPage() {
                       value={lead.phone || ""}
                       onChange={(e) => setLead({ ...lead, phone: e.target.value })}
                       onBlur={() => handleFieldUpdate("phone", lead.phone)}
-                      className={`h-8 text-sm focus-visible:ring-[#1F3C88] ${lead.phone ? "border-[#93b3e8] bg-[#F5F8FF] text-[#1F3C88]" : ""}`}
+                      className={`h-8 text-sm focus-visible:ring-primary ${lead.phone ? "border-[#93b3e8] bg-[#F5F8FF] text-primary" : ""}`}
                     />
                   </div>
                   <div>
@@ -686,7 +686,7 @@ export default function LeadDetailPage() {
                       value={lead.email || ""}
                       onChange={(e) => setLead({ ...lead, email: e.target.value })}
                       onBlur={() => handleFieldUpdate("email", lead.email)}
-                      className={`h-8 text-sm focus-visible:ring-[#1F3C88] ${lead.email ? "border-[#93b3e8] bg-[#F5F8FF] text-[#1F3C88]" : ""}`}
+                      className={`h-8 text-sm focus-visible:ring-primary ${lead.email ? "border-[#93b3e8] bg-[#F5F8FF] text-primary" : ""}`}
                     />
                   </div>
                 </div>
@@ -698,7 +698,7 @@ export default function LeadDetailPage() {
                       handleFieldUpdate("status", val);
                       handleFieldUpdate("status_source", "manual");
                     }}>
-                      <SelectTrigger className={`h-8 text-sm focus:ring-[#1F3C88] ${lead.status ? "border-[#93b3e8] text-[#1F3C88]" : ""}`}>
+                      <SelectTrigger className={`h-8 text-sm focus:ring-primary ${lead.status ? "border-[#93b3e8] text-primary" : ""}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -720,7 +720,7 @@ export default function LeadDetailPage() {
                       handleFieldUpdate("lead_temperature", val);
                       handleFieldUpdate("temperature_source", "manual");
                     }}>
-                      <SelectTrigger className={`h-8 text-sm focus:ring-[#E67E22] ${lead.lead_temperature ? "border-[#F3C098] text-[#BF6516]" : ""}`}>
+                      <SelectTrigger className={`h-8 text-sm focus:ring-brand-orange ${lead.lead_temperature ? "border-[#F3C098] text-brand-orange-dark" : ""}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -742,7 +742,7 @@ export default function LeadDetailPage() {
                       handleFieldUpdate("lead_quality_source", "manual");
                     }}
                   >
-                    <SelectTrigger className="h-8 text-sm focus:ring-[#E67E22] bg-[#F1EFE8]">
+                    <SelectTrigger className="h-8 text-sm focus:ring-brand-orange bg-[#F1EFE8]">
                       <SelectValue placeholder="Set quality" />
                     </SelectTrigger>
                     <SelectContent>
@@ -766,7 +766,7 @@ export default function LeadDetailPage() {
                 <div>
                   <Label className="text-xs text-gray-500">Lead Type</Label>
                   <Select value={lead.lead_type || ""} onValueChange={(val) => handleFieldUpdate("lead_type", val)}>
-                    <SelectTrigger className={`h-8 text-sm focus:ring-[#1F3C88] ${lead.lead_type ? "border-[#93b3e8] text-[#1F3C88]" : ""}`}>
+                    <SelectTrigger className={`h-8 text-sm focus:ring-primary ${lead.lead_type ? "border-[#93b3e8] text-primary" : ""}`}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -781,7 +781,7 @@ export default function LeadDetailPage() {
                   <div>
                     <Label className="text-xs text-gray-500">Source</Label>
                     <Select value={lead.source || ""} onValueChange={(val) => handleFieldUpdate("source", val)}>
-                      <SelectTrigger className="h-8 text-sm focus:ring-[#1F3C88]">
+                      <SelectTrigger className="h-8 text-sm focus:ring-primary">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -800,7 +800,7 @@ export default function LeadDetailPage() {
                   <div>
                     <Label className="text-xs text-gray-500">Primary Channel</Label>
                     <Select value={lead.primary_channel || "none"} onValueChange={(val) => handleFieldUpdate("primary_channel", val === "none" ? null : val)}>
-                      <SelectTrigger className="h-8 text-sm focus:ring-[#1F3C88]">
+                      <SelectTrigger className="h-8 text-sm focus:ring-primary">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -815,7 +815,7 @@ export default function LeadDetailPage() {
 
                 <div className="pt-4 border-t">
                   <div className="bg-[#FFFDF8] border border-[#EBE1CF] rounded-xl p-5">
-                  <h4 className="text-sm font-semibold text-[#1F3C88] mb-3">Preferences</h4>
+                  <h4 className="text-sm font-semibold text-primary mb-3">Preferences</h4>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
@@ -825,7 +825,7 @@ export default function LeadDetailPage() {
                         value={leadQual?.budget_min || ""}
                         onChange={(e) => setLeadQual({ ...(leadQual || {}), budget_min: parseInt(e.target.value) || null })}
                         onBlur={() => handleQualificationUpdate("budget_min", leadQual?.budget_min)}
-                        className="h-8 text-sm focus-visible:ring-[#1F3C88]"
+                        className="h-8 text-sm focus-visible:ring-primary"
                       />
                     </div>
                     <div>
@@ -835,7 +835,7 @@ export default function LeadDetailPage() {
                         value={leadQual?.budget_max || ""}
                         onChange={(e) => setLeadQual({ ...(leadQual || {}), budget_max: parseInt(e.target.value) || null })}
                         onBlur={() => handleQualificationUpdate("budget_max", leadQual?.budget_max)}
-                        className="h-8 text-sm focus-visible:ring-[#1F3C88]"
+                        className="h-8 text-sm focus-visible:ring-primary"
                       />
                     </div>
                   </div>
@@ -847,7 +847,7 @@ export default function LeadDetailPage() {
                         value={leadQual?.preferred_location?.[0] || ""}
                         onChange={(e) => setLeadQual({ ...(leadQual || {}), preferred_location: e.target.value ? [e.target.value] : null })}
                         onBlur={() => handleQualificationUpdate("preferred_location", leadQual?.preferred_location)}
-                        className="h-8 text-sm focus-visible:ring-[#1F3C88]"
+                        className="h-8 text-sm focus-visible:ring-primary"
                       />
                     </div>
 
@@ -858,7 +858,7 @@ export default function LeadDetailPage() {
                           value={leadQual?.property_type || ""}
                           onChange={(e) => setLeadQual({ ...(leadQual || {}), property_type: e.target.value })}
                           onBlur={() => handleQualificationUpdate("property_type", leadQual?.property_type)}
-                          className="h-8 text-sm focus-visible:ring-[#1F3C88]"
+                          className="h-8 text-sm focus-visible:ring-primary"
                         />
                       </div>
                       <div>
@@ -868,7 +868,7 @@ export default function LeadDetailPage() {
                           value={leadQual?.bedrooms || ""}
                           onChange={(e) => setLeadQual({ ...(leadQual || {}), bedrooms: parseInt(e.target.value) || null })}
                           onBlur={() => handleQualificationUpdate("bedrooms", leadQual?.bedrooms)}
-                          className="h-8 text-sm focus-visible:ring-[#1F3C88]"
+                          className="h-8 text-sm focus-visible:ring-primary"
                         />
                       </div>
                     </div>
@@ -879,7 +879,7 @@ export default function LeadDetailPage() {
                         value={lead.timeframe || ""}
                         onValueChange={(val) => handleFieldUpdate("timeframe", val)}
                       >
-                        <SelectTrigger className="h-8 text-sm focus:ring-[#1F3C88]">
+                        <SelectTrigger className="h-8 text-sm focus:ring-primary">
                           <SelectValue placeholder="Select timeframe" />
                         </SelectTrigger>
                         <SelectContent>
@@ -899,7 +899,7 @@ export default function LeadDetailPage() {
                         value={lead.motivation || ""}
                         onValueChange={(val) => handleFieldUpdate("motivation", val)}
                       >
-                        <SelectTrigger className="h-8 text-sm focus:ring-[#1F3C88]">
+                        <SelectTrigger className="h-8 text-sm focus:ring-primary">
                           <SelectValue placeholder="Select motivation" />
                         </SelectTrigger>
                         <SelectContent>
@@ -921,7 +921,7 @@ export default function LeadDetailPage() {
                   <Label className="text-xs text-gray-500 mb-2 block">Tags</Label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(lead.tags || []).map((tag: string, idx: number) => (
-                      <Badge key={idx} variant="secondary" className="flex items-center gap-1 bg-[#EEF3FF] text-[#1F3C88] border border-[#93b3e8]">
+                      <Badge key={idx} variant="secondary" className="flex items-center gap-1 bg-[#EEF3FF] text-primary border border-[#93b3e8]">
                         {tag}
                         <X 
                           className="w-3 h-3 cursor-pointer hover:text-red-500" 
@@ -935,7 +935,7 @@ export default function LeadDetailPage() {
                   </div>
                   <Input 
                     placeholder="Press Enter to add tag..."
-                    className="h-8 text-sm border border-[#E67E22] bg-[#FFFDF8] focus-visible:ring-[#E67E22]"
+                    className="h-8 text-sm border border-brand-orange bg-[#FFFDF8] focus-visible:ring-brand-orange"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && e.currentTarget.value) {
                         const val = e.currentTarget.value.trim();
@@ -956,16 +956,16 @@ export default function LeadDetailPage() {
             <div className="bg-white rounded-lg border shadow-sm h-full flex flex-col min-h-[600px]">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <TabsList className="w-full justify-start border-b rounded-none h-14 bg-gray-50/50 px-4">
-                  <TabsTrigger value="messages" className="data-[state=active]:border-b-2 data-[state=active]:border-[#1F3C88] data-[state=active]:text-[#1F3C88] rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
+                  <TabsTrigger value="messages" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
                     <MessageSquare className="h-4 w-4 mr-2" /> Messages
                   </TabsTrigger>
-                  <TabsTrigger value="activity" className="data-[state=active]:border-b-2 data-[state=active]:border-[#1F3C88] data-[state=active]:text-[#1F3C88] rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
+                  <TabsTrigger value="activity" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
                     <Activity className="h-4 w-4 mr-2" /> Activity
                   </TabsTrigger>
-                  <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-[#1F3C88] data-[state=active]:text-[#1F3C88] rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
+                  <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
                     <CheckSquare className="h-4 w-4 mr-2" /> Tasks
                   </TabsTrigger>
-                  <TabsTrigger value="properties" className="data-[state=active]:border-b-2 data-[state=active]:border-[#1F3C88] data-[state=active]:text-[#1F3C88] rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
+                  <TabsTrigger value="properties" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-4 bg-transparent data-[state=active]:bg-transparent shadow-none">
                     <Home className="h-4 w-4 mr-2" /> Properties
                   </TabsTrigger>
                 </TabsList>
@@ -973,7 +973,7 @@ export default function LeadDetailPage() {
                 {/* Messages Tab */}
                 <TabsContent value="messages" className="flex-1 flex flex-col p-0 m-0">
                   <div className="px-6 py-3 border-b bg-gray-50/50">
-                    <p className="text-sm font-medium text-[#1B3A5C]">
+                    <p className="text-sm font-medium text-primary">
                       Channel: <span className="font-normal text-gray-600 capitalize">{lead.primary_channel || "Email"}</span>
                     </p>
                   </div>
@@ -984,7 +984,7 @@ export default function LeadDetailPage() {
                     ) : (
                       messages.map((msg) => (
                         <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                          <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${msg.direction === "outbound" ? "bg-[#1F3C88] text-white rounded-br-sm" : "bg-gray-100 text-[#3A3A3A] rounded-bl-sm"}`}>
+                          <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${msg.direction === "outbound" ? "bg-primary text-white rounded-br-sm" : "bg-gray-100 text-[#3A3A3A] rounded-bl-sm"}`}>
                             <div className="flex gap-2 items-center mb-1">
                               <span className="text-xs font-semibold opacity-90">{`${senderIcon(senderLabel(msg))} ${senderLabel(msg)}`}</span>
                               <Badge variant="outline" className={`text-[10px] h-4 ${msg.direction === "outbound" ? "border-white/20 text-white" : "border-gray-300 text-gray-500"}`}>{msg.channel}</Badge>
@@ -1005,7 +1005,7 @@ export default function LeadDetailPage() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       rows={3}
-                      className="resize-none focus-visible:ring-[#E87722] mb-3"
+                      className="resize-none focus-visible:ring-brand-orange mb-3"
                     />
                     <div className="flex justify-between items-center">
                       <div className="flex gap-2">
@@ -1015,7 +1015,7 @@ export default function LeadDetailPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="text-[#E87722] border-[#E87722]/30 bg-[#E87722]/5 hover:bg-[#E87722]/10 hover:text-[#E87722]"
+                          className="text-brand-orange border-brand-orange/30 bg-brand-orange/5 hover:bg-brand-orange/10 hover:text-brand-orange"
                           onClick={handleAISuggest}
                           disabled={aiSuggesting}
                         >
@@ -1028,7 +1028,7 @@ export default function LeadDetailPage() {
                         </Button>
                       </div>
                       <Button 
-                        className="bg-[#E67E22] hover:bg-[#BF6516] text-white px-6"
+                        className="bg-brand-orange hover:bg-brand-orange-dark text-white px-6"
                         onClick={handleSendMessage}
                         disabled={sending || !newMessage.trim()}
                       >
@@ -1044,7 +1044,7 @@ export default function LeadDetailPage() {
                   {lead?.metadata?.estimate && (
                     <div className="rounded-xl border border-orange-100 bg-[#FFF3E8] overflow-hidden mb-6">
                       {/* Header */}
-                      <div className="bg-[#1F3C88] px-4 py-3 flex items-center justify-between">
+                      <div className="bg-primary px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">
                             {lead?.metadata?.source?.includes('Sinag') ? '☀️' : '📋'}
@@ -1086,7 +1086,7 @@ export default function LeadDetailPage() {
                               return (
                                 <div key={key} className="text-sm">
                                   <div className="text-gray-500 mb-1">{label}</div>
-                                  <div className={`font-medium ${shouldHighlight ? 'text-[#E87722]' : 'text-gray-900'}`}>
+                                  <div className={`font-medium ${shouldHighlight ? 'text-brand-orange' : 'text-gray-900'}`}>
                                     {String(displayValue)}
                                   </div>
                                 </div>
@@ -1147,7 +1147,7 @@ export default function LeadDetailPage() {
                     ) : (
                       activity.map((item, idx) => (
                         <div key={idx} className="relative pl-6">
-                          <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-[#1F3C88] ring-4 ring-white" />
+                          <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary ring-4 ring-white" />
                           <div className="flex flex-col">
                             <span className="text-xs font-semibold text-gray-500 mb-1">
                               {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -1183,11 +1183,11 @@ export default function LeadDetailPage() {
                     {/* Pending Section */}
                     <div>
                       <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                        <h3 className="font-semibold text-[#1F3C88] flex items-center gap-2">
+                        <h3 className="font-semibold text-primary flex items-center gap-2">
                           <span className="bg-red-100 text-red-700 py-0.5 px-2 rounded-full text-xs">{pending.length}</span>
                           PENDING
                         </h3>
-                        <Button size="sm" className="bg-[#E67E22] hover:bg-[#BF6516]" onClick={() => setShowTaskForm(!showTaskForm)}>
+                        <Button size="sm" className="bg-brand-orange hover:bg-brand-orange-dark" onClick={() => setShowTaskForm(!showTaskForm)}>
                           + Create Task
                         </Button>
                       </div>
@@ -1222,7 +1222,7 @@ export default function LeadDetailPage() {
                           </div>
                           <div className="flex gap-2 justify-end pt-2">
                             <Button variant="outline" size="sm" onClick={() => setShowTaskForm(false)}>Cancel</Button>
-                            <Button size="sm" onClick={handleCreateTask} className="bg-[#1F3C88] hover:bg-[#162D6B] text-white">Save Task</Button>
+                            <Button size="sm" onClick={handleCreateTask} className="bg-primary hover:bg-primary-dark text-white">Save Task</Button>
                           </div>
                         </div>
                       )}
@@ -1244,7 +1244,7 @@ export default function LeadDetailPage() {
                                 {task.notes && <p className="text-sm text-gray-600 mt-2">{task.notes}</p>}
                               </div>
                               <div className="flex flex-col gap-2">
-                                <Button size="sm" onClick={() => handleCompleteTask(task.id)} className="bg-[#1D9E75] hover:bg-[#178263] h-8 text-xs">
+                                <Button size="sm" onClick={() => handleCompleteTask(task.id)} className="bg-brand-orange hover:bg-brand-orange-dark h-8 text-xs">
                                   <CheckSquare className="w-3 h-3 mr-1" /> Complete
                                 </Button>
                                 <Button size="sm" variant="outline" className="h-8 text-xs text-gray-600">Reschedule</Button>
@@ -1312,7 +1312,7 @@ export default function LeadDetailPage() {
                 <TabsContent value="properties" className="p-6 m-0">
                   <div className="h-full flex flex-col items-center justify-center text-center py-20 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
                     <Home className="w-12 h-12 text-gray-300 mb-4" />
-                    <h3 className="text-xl font-semibold text-[#1F3C88] mb-2">Suggested Property Matches</h3>
+                    <h3 className="text-xl font-semibold text-primary mb-2">Suggested Property Matches</h3>
                     <p className="text-gray-500 mb-6 max-w-sm">
                       Our intelligent property matching algorithm is coming in Phase 1B. It will automatically suggest listings based on lead preferences.
                     </p>

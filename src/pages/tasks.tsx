@@ -320,13 +320,13 @@ export default function TasksPage() {
 
   const getSourceBadge = (source: string) => {
     if (source === "campaign") {
-      return <Badge className="bg-[#1B3A5C] text-white text-xs">Campaign</Badge>;
+      return <Badge className="bg-primary text-white text-xs">Campaign</Badge>;
     }
     if (source === "system") {
-      return <Badge className="bg-[#E87722] text-white text-xs">System</Badge>;
+      return <Badge className="bg-brand-orange text-white text-xs">System</Badge>;
     }
     if (source === "baymo") {
-      return <Badge className="bg-[#E87722] text-white text-xs">BaMo</Badge>;
+      return <Badge className="bg-brand-orange text-white text-xs">BaMo</Badge>;
     }
     return <Badge variant="outline" className="text-xs">Manual</Badge>;
   };
@@ -356,12 +356,12 @@ export default function TasksPage() {
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-[#1B3A5C]">Tasks</h1>
+              <h1 className="text-3xl font-bold text-primary">Tasks</h1>
               <p className="text-gray-600 mt-1">Manage and track your tasks</p>
             </div>
             <Button
               onClick={() => setShowAddTask(true)}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               + Add Task
             </Button>
@@ -466,13 +466,13 @@ export default function TasksPage() {
                         )}
                       >
                         <td className="px-6 py-4">
-                          <div className="font-medium text-[#1B3A5C]">{task.title}</div>
+                          <div className="font-medium text-primary">{task.title}</div>
                         </td>
                         <td className="px-6 py-4">
                           {task.lead_id ? (
                             <button
                               onClick={() => handleLeadClick(task.lead_id)}
-                              className="text-[#E87722] hover:underline"
+                              className="text-brand-orange hover:underline"
                             >
                               {task.lead_name}
                             </button>
@@ -509,7 +509,7 @@ export default function TasksPage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="text-[#1B3A5C] hover:text-[#152d47] hover:bg-[#1B3A5C]/5"
+                                      className="text-primary hover:text-primary-dark hover:bg-primary/5"
                                     >
                                       <CalendarIcon className="h-4 w-4" />
                                     </Button>
@@ -647,7 +647,7 @@ export default function TasksPage() {
             <Button
               onClick={handleAddTask}
               disabled={saving || !formData.title || !formData.lead_id || !formData.task_type || !formData.due_date}
-              className="bg-[#E87722] hover:bg-[#d66a1e] text-white"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white"
             >
               {saving ? (
                 <>

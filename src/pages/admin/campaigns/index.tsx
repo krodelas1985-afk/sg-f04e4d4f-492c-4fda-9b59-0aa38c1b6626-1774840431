@@ -134,7 +134,7 @@ export default function AdminCampaignsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-[#E8702A]/10 text-[#E8702A]";
+      case "active": return "bg-brand-orange/10 text-brand-orange";
       case "paused": return "bg-amber-100 text-amber-800";
       case "completed": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
@@ -251,7 +251,7 @@ export default function AdminCampaignsPage() {
                   {filteredCampaigns.map((c) => (
                     <tr key={c.id} className="border-b hover:bg-slate-50">
                       <td
-                        className="px-6 py-4 font-medium text-slate-900 cursor-pointer hover:text-[#E8702A]"
+                        className="px-6 py-4 font-medium text-slate-900 cursor-pointer hover:text-brand-orange"
                         onClick={() => router.push(`/admin/campaigns/${c.id}`)}
                       >
                         {c.name}
