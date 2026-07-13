@@ -140,7 +140,7 @@ export default function SequencesPage() {
     <DashboardLayout>
       <div className="p-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Sequences</h1>
+          <h1 className="text-2xl font-semibold">Sequences</h1>
           <Button
             onClick={openDialog}
             className="bg-brand-orange hover:bg-brand-orange/90 text-white"

@@ -471,7 +471,7 @@ export default function LeadsPage() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Leads</h1>
+          <h1 className="text-2xl font-semibold">Leads</h1>
           <div className="flex gap-2">
             <Button onClick={() => setShowQuickAdd(true)} variant="outline">
               <Plus className="h-4 w-4 mr-2" />

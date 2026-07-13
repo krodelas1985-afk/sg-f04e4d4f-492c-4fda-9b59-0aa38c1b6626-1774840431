@@ -809,7 +809,7 @@ export default function SequenceDetailPage() {
         <div className="flex justify-between items-start mb-6">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">{sequence.name}</h1>
+              <h1 className="text-2xl font-semibold">{sequence.name}</h1>
               <Button
                 variant="outline"
                 size="sm"

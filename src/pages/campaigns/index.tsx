@@ -56,7 +56,7 @@ export default function CampaignsPage() {
     <DashboardLayout>
       <div className="p-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Campaigns</h1>
+          <h1 className="text-2xl font-semibold">Campaigns</h1>
         </div>
 
         {loading ? (

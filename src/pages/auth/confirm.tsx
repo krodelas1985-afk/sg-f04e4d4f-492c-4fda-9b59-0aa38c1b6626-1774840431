@@ -71,7 +71,7 @@ export default function ConfirmPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-primary mb-2">
+            <h1 className="text-2xl font-semibold mb-2">
               Link Invalid or Expired
             </h1>
             <p className="text-gray-600">

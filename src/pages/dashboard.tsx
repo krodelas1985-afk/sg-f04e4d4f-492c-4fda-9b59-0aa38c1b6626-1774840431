@@ -227,7 +227,7 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-3xl font-bold text-primary">
+          <h1 className="text-2xl font-semibold">
             {clientName ? `Hello, ${clientName}` : "Dashboard"}
           </h1>
           <p className="text-gray-600 mt-1">Overview of your leads and activities</p>

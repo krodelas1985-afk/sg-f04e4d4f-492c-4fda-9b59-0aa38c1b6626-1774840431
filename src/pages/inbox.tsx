@@ -496,7 +496,7 @@ export default function Inbox() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-full">
         {/* LEFT PANEL - Lead List */}
         <div className="w-[35%] border-r border-gray-200 flex flex-col bg-white">
           {/* Header */}

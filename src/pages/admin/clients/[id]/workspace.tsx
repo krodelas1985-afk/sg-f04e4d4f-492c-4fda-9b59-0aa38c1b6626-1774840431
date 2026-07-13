@@ -305,7 +305,7 @@ export default function AdminClientWorkspacePage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-primary">
+              <h1 className="text-2xl font-semibold">
                 {data.client.company_name} — Workspace
               </h1>
               <p className="text-gray-500 mt-1">{data.client.name}</p>

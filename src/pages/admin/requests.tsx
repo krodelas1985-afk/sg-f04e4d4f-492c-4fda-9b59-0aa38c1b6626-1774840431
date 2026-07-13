@@ -169,7 +169,7 @@ export default function AdminRequestsPage() {
     <DashboardLayout>
       <div className="p-8 max-w-5xl mx-auto space-y-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2 text-foreground">Client Requests</h1>
+          <h1 className="text-2xl font-semibold mb-2 text-foreground">Client Requests</h1>
           <p className="text-muted-foreground">
             Requests submitted from the BaMo RE Assistant mobile app — subscriptions, videos, and ad campaigns.
           </p>

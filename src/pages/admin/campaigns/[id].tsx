@@ -424,7 +424,7 @@ export default function AdminCampaignDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => router.push("/admin/campaigns")}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-2xl font-bold flex-1">{campaign.name}</h1>
+          <h1 className="text-2xl font-semibold flex-1">{campaign.name}</h1>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Campaign"}
           </Button>

@@ -357,7 +357,7 @@ export default function TemplatesPage() {
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-primary">Message Templates</h1>
+              <h1 className="text-2xl font-semibold">Message Templates</h1>
               <p className="text-gray-600 mt-1">
                 Manage reusable message templates for Email, Messenger, and SMS
               </p>

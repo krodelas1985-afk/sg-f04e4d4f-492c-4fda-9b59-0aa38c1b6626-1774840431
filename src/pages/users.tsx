@@ -409,7 +409,7 @@ export default function UsersPage() {
         {/* Page Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Users</h1>
+            <h1 className="text-2xl font-semibold">Users</h1>
             <p className="text-gray-600 mt-1">Manage your team members and their roles</p>
           </div>
           {currentUserRole === "client_admin" && (

@@ -203,7 +203,7 @@ export default function SettingsPage() {
       <div className="p-6 max-w-4xl">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-primary">Settings</h1>
+          <h1 className="text-2xl font-semibold">Settings</h1>
           <p className="text-gray-600 mt-1">Manage your account and workspace settings</p>
         </div>
 

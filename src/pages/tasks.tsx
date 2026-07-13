@@ -356,7 +356,7 @@ export default function TasksPage() {
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-primary">Tasks</h1>
+              <h1 className="text-2xl font-semibold">Tasks</h1>
               <p className="text-gray-600 mt-1">Manage and track your tasks</p>
             </div>
             <Button

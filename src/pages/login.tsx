@@ -68,7 +68,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-3">
           <div className="flex flex-col items-center space-y-1">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-semibold text-foreground">
               BayMo
             </h1>
             <p className="text-lg font-semibold text-primary">

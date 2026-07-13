@@ -484,7 +484,7 @@ export default function LeadDetailPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-[#3A3A3A]">{lead.name}</h1>
+                <h1 className="text-2xl font-semibold text-[#3A3A3A]">{lead.name}</h1>
                 <Badge className={getStageStyle(lead.lead_temperature || "")}>
                   {lead.lead_temperature === "Hot" && "🔥 "} {lead.lead_temperature || "Unqualified"}
                 </Badge>

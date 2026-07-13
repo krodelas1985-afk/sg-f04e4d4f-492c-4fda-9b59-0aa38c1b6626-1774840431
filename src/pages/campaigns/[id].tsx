@@ -436,7 +436,7 @@ export default function CampaignDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => router.push("/campaigns")}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-2xl font-bold flex-1">{campaign.name}</h1>
+          <h1 className="text-2xl font-semibold flex-1">{campaign.name}</h1>
           {campaign.is_locked && (
             <div className="flex items-center text-slate-500 bg-slate-100 px-3 py-1 rounded-md text-sm">
               <Lock className="w-4 h-4 mr-2" />

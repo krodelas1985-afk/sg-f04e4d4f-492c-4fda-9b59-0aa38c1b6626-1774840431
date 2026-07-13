@@ -104,7 +104,7 @@ export default function AdminSettingsPage() {
     <DashboardLayout>
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Admin Settings</h1>
+          <h1 className="text-2xl font-semibold mb-2">Admin Settings</h1>
           <p className="text-muted-foreground">Platform configuration and API key management</p>
         </div>
 
