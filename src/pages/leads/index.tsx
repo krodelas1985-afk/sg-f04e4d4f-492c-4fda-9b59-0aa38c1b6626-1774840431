@@ -169,13 +169,23 @@ export default function LeadsPage() {
     setCurrentPage(0);
   }, [statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, leadTypeFilter, searchQuery, lastInboundSort, lastContactedSort]);
 
+  // Reference data + status summary are filter-independent — load once per client,
+  // not on every filter change or search keystroke.
   useEffect(() => {
-    if (clientId) {
-      fetchLeads();
-      fetchStatusCounts();
-      fetchAgents();
-      fetchCampaigns();
-    }
+    if (!clientId) return;
+    fetchAgents();
+    fetchCampaigns();
+    fetchStatusCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Leads list re-runs on filter/sort/page changes, debounced so typing in the
+  // search box (and rapid filter clicks) fire one request, not one per keystroke.
+  useEffect(() => {
+    if (!clientId) return;
+    const t = setTimeout(() => fetchLeads(), 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, statusFilter, stageFilter, sourceFilter, assignedAgentFilter, campaignFilter, qualityFilter, leadTypeFilter, scoreSort, searchQuery, lastInboundSort, lastContactedSort, currentPage]);
   
   const { profile: userProfile } = useUserProfile();
