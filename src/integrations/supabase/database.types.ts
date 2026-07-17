@@ -1346,9 +1346,12 @@ export type Database = {
           promo_valid_until: string | null
           proposed_content: string | null
           raw_document_path: string | null
+          raw_document_paths: Json | null
+          replaces_kb_id: string | null
           review_notes: string | null
           review_status: string
           scope: string
+          source_label: string | null
           source_text: string | null
           source_type: string | null
           source_url: string | null
@@ -1371,9 +1374,12 @@ export type Database = {
           promo_valid_until?: string | null
           proposed_content?: string | null
           raw_document_path?: string | null
+          raw_document_paths?: Json | null
+          replaces_kb_id?: string | null
           review_notes?: string | null
           review_status?: string
           scope?: string
+          source_label?: string | null
           source_text?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -1396,9 +1402,12 @@ export type Database = {
           promo_valid_until?: string | null
           proposed_content?: string | null
           raw_document_path?: string | null
+          raw_document_paths?: Json | null
+          replaces_kb_id?: string | null
           review_notes?: string | null
           review_status?: string
           scope?: string
+          source_label?: string | null
           source_text?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -1419,6 +1428,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_knowledge_base_replaces_kb_id_fkey"
+            columns: ["replaces_kb_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_knowledge_base"
             referencedColumns: ["id"]
           },
         ]
@@ -3517,6 +3533,10 @@ export type Database = {
           last_outbound_at: string | null
           last_question_asked: string | null
           last_question_attempts: number | null
+          lead_grade: string | null
+          lead_grade_breakdown: Json | null
+          lead_grade_score: number | null
+          lead_grade_updated_at: string | null
           lead_quality: string | null
           lead_quality_reason: string | null
           lead_quality_source: string
@@ -3575,6 +3595,10 @@ export type Database = {
           last_outbound_at?: string | null
           last_question_asked?: string | null
           last_question_attempts?: number | null
+          lead_grade?: string | null
+          lead_grade_breakdown?: Json | null
+          lead_grade_score?: number | null
+          lead_grade_updated_at?: string | null
           lead_quality?: string | null
           lead_quality_reason?: string | null
           lead_quality_source?: string
@@ -3633,6 +3657,10 @@ export type Database = {
           last_outbound_at?: string | null
           last_question_asked?: string | null
           last_question_attempts?: number | null
+          lead_grade?: string | null
+          lead_grade_breakdown?: Json | null
+          lead_grade_score?: number | null
+          lead_grade_updated_at?: string | null
           lead_quality?: string | null
           lead_quality_reason?: string | null
           lead_quality_source?: string
@@ -4732,6 +4760,7 @@ export type Database = {
         Returns: undefined
       }
       lead_assigned_to_me: { Args: { p_lead_id: string }; Returns: boolean }
+      lead_grade_has_answer: { Args: { v: string }; Returns: boolean }
       match_chunks: {
         Args: {
           match_campaign_id: string
@@ -4764,6 +4793,7 @@ export type Database = {
         Args: { p_task_id: string; p_user_id: string }
         Returns: undefined
       }
+      recompute_lead_grade: { Args: { p_lead_id?: string }; Returns: number }
       recompute_my_performance_scores: { Args: never; Returns: number }
       resolve_lead_recipients: {
         Args: { p_assigned: string; p_client_id: string }

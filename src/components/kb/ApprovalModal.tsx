@@ -7,20 +7,26 @@ import { Input } from '@/components/ui/input'
 interface KbEntry {
   id: string
   campaign_id: string
+  content?: string
   proposed_content: string | null
   review_notes: string | null
 }
 
 interface Props {
   kb: KbEntry
+  /** 'review' = approve a pending extraction (default); 'edit' = update an already-approved KB */
+  mode?: 'review' | 'edit'
   onApprove: (content: string) => Promise<void>
   onAiEdit: (currentContent: string, request: string) => Promise<{ proposed_content: string; review_notes: string }>
   onClose: () => void
 }
 
-export default function ApprovalModal({ kb, onApprove, onAiEdit, onClose }: Props) {
-  const [editedContent, setEditedContent] = useState(kb.proposed_content ?? '')
-  const [reviewNotes, setReviewNotes] = useState(kb.review_notes ?? '')
+export default function ApprovalModal({ kb, mode = 'review', onApprove, onAiEdit, onClose }: Props) {
+  const isEdit = mode === 'edit'
+  const [editedContent, setEditedContent] = useState(
+    isEdit ? (kb.content ?? '') : (kb.proposed_content ?? '')
+  )
+  const [reviewNotes, setReviewNotes] = useState(isEdit ? '' : (kb.review_notes ?? ''))
   const [aiRequest, setAiRequest] = useState('')
   const [aiEditing, setAiEditing] = useState(false)
   const [approving, setApproving] = useState(false)
@@ -64,9 +70,11 @@ export default function ApprovalModal({ kb, onApprove, onAiEdit, onClose }: Prop
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <div className="text-sm font-semibold">Review AI Extraction</div>
+            <div className="text-sm font-semibold">{isEdit ? 'Edit Knowledge Base' : 'Review AI Extraction'}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Verify all facts before approving. Check MISSING / CONFLICTS below.
+              {isEdit
+                ? 'Change anything directly, or ask AI to make the change for you.'
+                : 'Verify all facts before approving. Check MISSING / CONFLICTS below.'}
             </div>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
@@ -134,7 +142,9 @@ export default function ApprovalModal({ kb, onApprove, onAiEdit, onClose }: Prop
             disabled={approving || !editedContent.trim()}
           >
             <CheckCircle size={14} className="mr-1" />
-            {approving ? 'Approving...' : 'Approve & Use'}
+            {approving
+              ? (isEdit ? 'Saving...' : 'Approving...')
+              : (isEdit ? 'Save Changes' : 'Approve & Use')}
           </Button>
         </div>
       </div>

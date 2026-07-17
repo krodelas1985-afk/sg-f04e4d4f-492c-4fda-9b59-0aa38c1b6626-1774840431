@@ -60,6 +60,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('profiles').select('role, client_id').eq('id', user.id).single()
   if (!profile) return res.status(403).json({ error: 'Forbidden' })
 
+  // ── PUT — edit an approved KB entry (creates a new approved version) ───────
+  if (req.method === 'PUT') {
+    const { kb_id, content } = req.body
+    if (!kb_id) return res.status(400).json({ error: 'kb_id is required' })
+    if (!content?.trim()) return res.status(400).json({ error: 'content is required' })
+
+    const { data: kbRow } = await supabase
+      .from('campaign_knowledge_base').select('*').eq('id', kb_id).single()
+    if (!kbRow) return res.status(404).json({ error: 'KB entry not found' })
+    if (profile.role !== 'baymo_admin' && kbRow.client_id !== profile.client_id) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+    if (kbRow.review_status !== 'approved') {
+      return res.status(400).json({ error: 'Only approved KB entries can be edited' })
+    }
+
+    await supabase
+      .from('campaign_knowledge_base')
+      .update({ is_active: false })
+      .eq('id', kb_id)
+
+    const { data, error } = await supabase
+      .from('campaign_knowledge_base')
+      .insert({
+        campaign_id: kbRow.campaign_id,
+        client_id: kbRow.client_id,
+        title: kbRow.title,
+        content: content.trim(),
+        is_active: true,
+        type: kbRow.type,
+        campaign_name: kbRow.campaign_name,
+        source_type: kbRow.source_type,
+        scope: kbRow.scope,
+        fields: kbRow.fields,
+        availability_status: kbRow.availability_status,
+        promo_valid_until: kbRow.promo_valid_until,
+        raw_document_path: kbRow.raw_document_path,
+        raw_document_paths: kbRow.raw_document_paths,
+        source_url: kbRow.source_url,
+        source_label: kbRow.source_label,
+        source_text: kbRow.source_text,
+        review_status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+      })
+      .select()
+      .single()
+
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ kb: data })
+  }
+
   const campaignId = req.query.campaign_id as string
   if (!campaignId) return res.status(400).json({ error: 'campaign_id is required' })
 

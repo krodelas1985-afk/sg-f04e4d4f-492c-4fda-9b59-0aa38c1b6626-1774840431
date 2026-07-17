@@ -117,6 +117,8 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [showApproval, setShowApproval] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Poll when pending + no proposed_content yet
@@ -248,6 +250,48 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
     } catch { /* ignore */ }
   }
 
+  // Edit an approved KB → PUT saves a new approved version
+  async function handleEditSave(content: string) {
+    if (!kb) return
+    const token = await getToken()
+    const res = await fetch('/api/kb', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ kb_id: kb.id, content }),
+    })
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
+    const { kb: updated } = await res.json()
+    setKb(updated)
+    setShowEdit(false)
+  }
+
+  // Re-fetch a website source → new pending extraction; old KB stays live until approval
+  async function handleWebsiteRefresh() {
+    if (!kb?.source_url) return
+    setError('')
+    setRefreshing(true)
+    try {
+      const token = await getToken()
+      const res = await fetch('/api/kb/website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          source_url: kb.source_url,
+          scope: kb.scope ?? 'campaign',
+          replace_kb_id: kb.id,
+        }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Refresh failed') }
+      const { kb: fresh } = await res.json()
+      setKb(fresh)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refresh failed')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   // ── Status panel ────────────────────────────────────────────────────────────
 
   function StatusPanel() {
@@ -264,13 +308,34 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
               <CheckCircle2 size={15} />
               Knowledge Base Active
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setShowForm(f => !f)}>
-              {showForm
-                ? <><ChevronUp size={12} className="mr-1" />Hide form</>
-                : <><ChevronDown size={12} className="mr-1" />Change source</>}
-            </Button>
+            <div className="flex items-center gap-1">
+              {kb.source_type === 'field' ? (
+                <Button
+                  variant="ghost" size="sm"
+                  onClick={() => { setSourceType('field'); setShowForm(true) }}
+                >
+                  <PenLine size={12} className="mr-1" />Edit fields
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => setShowEdit(true)}>
+                  <PenLine size={12} className="mr-1" />Edit
+                </Button>
+              )}
+              {kb.source_type === 'website' && kb.source_url && (
+                <Button variant="ghost" size="sm" onClick={handleWebsiteRefresh} disabled={refreshing}>
+                  <RefreshCw size={12} className={`mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Fetching…' : 'Refresh'}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setShowForm(f => !f)}>
+                {showForm
+                  ? <><ChevronUp size={12} className="mr-1" />Hide form</>
+                  : <><ChevronDown size={12} className="mr-1" />Change source</>}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-4">
+            {error && !showForm && <p className="text-xs text-destructive mb-2">{error}</p>}
             <div className="flex gap-2 mb-2 flex-wrap">
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800 uppercase">
                 {kb.source_type}
@@ -556,6 +621,16 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
           onApprove={handleApprove}
           onAiEdit={handleAiEdit}
           onClose={() => setShowApproval(false)}
+        />
+      )}
+
+      {showEdit && kb && (
+        <ApprovalModal
+          kb={kb}
+          mode="edit"
+          onApprove={handleEditSave}
+          onAiEdit={handleAiEdit}
+          onClose={() => setShowEdit(false)}
         />
       )}
     </>
