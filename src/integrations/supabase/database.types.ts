@@ -3959,6 +3959,7 @@ export type Database = {
           phone: string | null
           prc_number: string | null
           role: string | null
+          service_area: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -3976,6 +3977,7 @@ export type Database = {
           phone?: string | null
           prc_number?: string | null
           role?: string | null
+          service_area?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -3993,6 +3995,7 @@ export type Database = {
           phone?: string | null
           prc_number?: string | null
           role?: string | null
+          service_area?: string | null
           whatsapp?: string | null
         }
         Relationships: [
