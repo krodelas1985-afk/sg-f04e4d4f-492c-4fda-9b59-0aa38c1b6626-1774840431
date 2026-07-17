@@ -98,8 +98,6 @@ export default function CampaignDetailPage() {
     ai_screen_before_send: true,
     notification_message: ""
   });
-  const [initialKb, setInitialKb] = useState<any>(null);
-
   const [aiDecisionInstructions, setAiDecisionInstructions] = useState("");
   const [aiMessageInstructions, setAiMessageInstructions] = useState("");
   const [enrollmentRules, setEnrollmentRules] = useState<any>({
@@ -227,16 +225,6 @@ export default function CampaignDetailPage() {
       if (stepsRes.ok) {
         const stepsData = await stepsRes.json();
         setCampaignSteps(stepsData);
-      }
-
-      // ── Fetch active KB row from campaign_knowledge_base ──────────────────────
-      const token = await getToken();
-      const kbRes = await fetch(`/api/kb?campaign_id=${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (kbRes.ok) {
-        const { kb: kbData } = await kbRes.json();
-        setInitialKb(kbData ?? null);
       }
 
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
@@ -906,7 +894,6 @@ export default function CampaignDetailPage() {
               <CardContent>
                 <KnowledgeBaseSection
                   campaignId={id as string}
-                  initialKb={initialKb}
                   getToken={getToken}
                 />
               </CardContent>

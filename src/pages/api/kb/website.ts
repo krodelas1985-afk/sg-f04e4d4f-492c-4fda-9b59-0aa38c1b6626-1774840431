@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('profiles').select('role, client_id').eq('id', user.id).single()
   if (!profile) return res.status(403).json({ error: 'Forbidden' })
 
-  const { campaign_id, source_url, scope } = req.body
+  const { campaign_id, source_url, scope, replace_kb_id } = req.body
   if (!campaign_id) return res.status(400).json({ error: 'campaign_id is required' })
   if (!source_url?.trim()) return res.status(400).json({ error: 'source_url is required' })
   const kbScope = scope === 'client' ? 'client' : 'campaign'
@@ -39,29 +39,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(422).json({ error: FETCH_URL_ERRORS[result.reason] ?? 'Failed to fetch website.' })
   }
 
-  // Deactivate existing active KB rows
-  await supabase
-    .from('campaign_knowledge_base')
-    .update({ is_active: false })
-    .eq('campaign_id', campaign_id)
-    .eq('is_active', true)
-
-  // A client-shared KB replaces any previous client-shared KB (from any campaign)
-  if (kbScope === 'client') {
-    await supabase
+  // Additive: other sources stay active. When a row is being replaced
+  // (refresh, or re-adding the same URL), the old row stays live until the
+  // new extraction is approved — approve.ts retires it via replaces_kb_id.
+  let effectiveReplaceId: string | null = replace_kb_id ?? null
+  if (!effectiveReplaceId) {
+    // Re-adding a URL that's already an active source = refresh of that row
+    const { data: existing } = await supabase
       .from('campaign_knowledge_base')
-      .update({ is_active: false })
-      .eq('client_id', campaign.client_id)
-      .eq('scope', 'client')
+      .select('id')
+      .eq('campaign_id', campaign_id)
+      .eq('source_type', 'website')
+      .eq('source_url', source_url.trim())
       .eq('is_active', true)
+      .limit(1)
+    if (existing?.[0]) effectiveReplaceId = existing[0].id
   }
+
+  let sourceLabel: string | null = null
+  try { sourceLabel = new URL(source_url.trim()).hostname } catch { /* keep null */ }
 
   const { data: kb, error: insertError } = await supabase
     .from('campaign_knowledge_base')
     .insert({
       campaign_id,
       client_id: campaign.client_id,
-      title: campaign.name,
+      title: sourceLabel ? `${campaign.name} — ${sourceLabel}` : campaign.name,
       content: '',
       is_active: true,
       type: 'knowledge',
@@ -70,7 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       scope: kbScope,
       review_status: 'pending',
       source_url: source_url.trim(),
+      source_label: sourceLabel,
       source_text: result.text,
+      replaces_kb_id: effectiveReplaceId,
     })
     .select()
     .single()

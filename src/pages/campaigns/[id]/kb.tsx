@@ -12,7 +12,6 @@ export default function CampaignKbPage() {
   const { id } = router.query
   const { profile, loading: profileLoading } = useUserProfile()
   const [campaign, setCampaign] = useState<{ id: string; name: string } | null>(null)
-  const [initialKb, setInitialKb] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   const getSupabase = () => createBrowserClient(
@@ -34,7 +33,6 @@ export default function CampaignKbPage() {
   async function fetchData() {
     try {
       const supabase = getSupabase()
-      const token = await getToken()
 
       // Fetch campaign name directly from the browser client
       const { data: campaignData } = await supabase
@@ -44,15 +42,6 @@ export default function CampaignKbPage() {
         .single()
       if (!campaignData) { router.push('/campaigns'); return }
       setCampaign({ id: campaignData.id, name: campaignData.name })
-
-      // Fetch active KB row via service-role API
-      const kbRes = await fetch(`/api/kb?campaign_id=${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (kbRes.ok) {
-        const { kb } = await kbRes.json()
-        setInitialKb(kb ?? null)
-      }
     } catch {
       // ignore, will show empty state
     } finally {
@@ -89,7 +78,6 @@ export default function CampaignKbPage() {
         {campaign && (
           <KnowledgeBaseSection
             campaignId={campaign.id}
-            initialKb={initialKb}
             getToken={getToken}
           />
         )}
