@@ -1638,6 +1638,7 @@ export type Database = {
           ai_instruction: string | null
           ai_message_instructions: string | null
           campaign_rules: Json | null
+          campaign_type: string
           channel: string | null
           client_id: string
           config: Json | null
@@ -1671,6 +1672,7 @@ export type Database = {
           ai_instruction?: string | null
           ai_message_instructions?: string | null
           campaign_rules?: Json | null
+          campaign_type?: string
           channel?: string | null
           client_id: string
           config?: Json | null
@@ -1704,6 +1706,7 @@ export type Database = {
           ai_instruction?: string | null
           ai_message_instructions?: string | null
           campaign_rules?: Json | null
+          campaign_type?: string
           channel?: string | null
           client_id?: string
           config?: Json | null
@@ -3945,34 +3948,58 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           client_id: string | null
+          company: string | null
+          company_logo_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
           is_active: boolean | null
+          location_city: string | null
+          location_province: string | null
           phone: string | null
+          prc_number: string | null
           role: string | null
+          service_area: string | null
+          whatsapp: string | null
         }
         Insert: {
+          avatar_url?: string | null
           client_id?: string | null
+          company?: string | null
+          company_logo_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean | null
+          location_city?: string | null
+          location_province?: string | null
           phone?: string | null
+          prc_number?: string | null
           role?: string | null
+          service_area?: string | null
+          whatsapp?: string | null
         }
         Update: {
+          avatar_url?: string | null
           client_id?: string | null
+          company?: string | null
+          company_logo_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean | null
+          location_city?: string | null
+          location_province?: string | null
           phone?: string | null
+          prc_number?: string | null
           role?: string | null
+          service_area?: string | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
