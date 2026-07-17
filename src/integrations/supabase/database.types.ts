@@ -3945,34 +3945,55 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           client_id: string | null
+          company: string | null
+          company_logo_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
           is_active: boolean | null
+          location_city: string | null
+          location_province: string | null
           phone: string | null
+          prc_number: string | null
           role: string | null
+          whatsapp: string | null
         }
         Insert: {
+          avatar_url?: string | null
           client_id?: string | null
+          company?: string | null
+          company_logo_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean | null
+          location_city?: string | null
+          location_province?: string | null
           phone?: string | null
+          prc_number?: string | null
           role?: string | null
+          whatsapp?: string | null
         }
         Update: {
+          avatar_url?: string | null
           client_id?: string | null
+          company?: string | null
+          company_logo_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean | null
+          location_city?: string | null
+          location_province?: string | null
           phone?: string | null
+          prc_number?: string | null
           role?: string | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
