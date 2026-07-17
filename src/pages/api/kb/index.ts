@@ -112,10 +112,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ kb: data })
   }
 
-  const campaignId = req.query.campaign_id as string
+  // ── DELETE — deactivate (remove) one KB source row ─────────────────────────
+  if (req.method === 'DELETE') {
+    const kbId = req.query.kb_id as string
+    if (!kbId) return res.status(400).json({ error: 'kb_id is required' })
+
+    const { data: kbRow } = await supabase
+      .from('campaign_knowledge_base').select('id, client_id').eq('id', kbId).single()
+    if (!kbRow) return res.status(404).json({ error: 'KB entry not found' })
+    if (profile.role !== 'baymo_admin' && kbRow.client_id !== profile.client_id) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
+    const { error } = await supabase
+      .from('campaign_knowledge_base')
+      .update({ is_active: false })
+      .eq('id', kbId)
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ ok: true })
+  }
+
+  const campaignId = (req.query.campaign_id as string) || req.body?.campaign_id
   if (!campaignId) return res.status(400).json({ error: 'campaign_id is required' })
 
-  // ── GET — fetch active KB row (campaign-specific, else client-shared) ──────
+  // ── GET — fetch all active KB sources (campaign-specific + client-shared) ──
   if (req.method === 'GET') {
     const { data: campaign } = await supabase
       .from('campaigns').select('id, client_id').eq('id', campaignId).single()
@@ -132,9 +152,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .order('created_at', { ascending: false })
 
     if (error) return res.status(500).json({ error: error.message })
-    // Prefer this campaign's own KB; fall back to a client-shared KB from another campaign
-    const kb = rows?.find(r => r.campaign_id === campaignId) ?? rows?.[0] ?? null
-    return res.status(200).json({ kb })
+    const sources = rows ?? []
+    // kb kept for back-compat: this campaign's newest row, else a client-shared one
+    const kb = sources.find(r => r.campaign_id === campaignId) ?? sources[0] ?? null
+    return res.status(200).json({ kb, sources })
   }
 
   // ── POST — field-entry save ────────────────────────────────────────────────
@@ -150,21 +171,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const kbFields = fields as KbFields
-    const content = composeKbContent(kbFields)
+    const composed = composeKbContent(kbFields)
+    const content = composed ? `[SOURCE: Manual fields]\n${composed}` : composed
 
+    // The manual-fields source is a singleton per campaign: replace only the
+    // previous field-source row — other sources (website, documents…) stay active.
     await supabase
       .from('campaign_knowledge_base')
       .update({ is_active: false })
       .eq('campaign_id', campaignId)
+      .eq('source_type', 'field')
       .eq('is_active', true)
 
-    // A client-shared KB replaces any previous client-shared KB (from any campaign)
+    // A client-shared field KB replaces any previous client-shared field KB
     if (kbScope === 'client') {
       await supabase
         .from('campaign_knowledge_base')
         .update({ is_active: false })
         .eq('client_id', campaign.client_id)
         .eq('scope', 'client')
+        .eq('source_type', 'field')
         .eq('is_active', true)
     }
 
@@ -173,12 +199,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .insert({
         campaign_id: campaignId,
         client_id: campaign.client_id,
-        title: campaign.name,
+        title: `${campaign.name} — Manual fields`,
         content,
         is_active: true,
         type: 'knowledge',
         campaign_name: campaign.name,
         source_type: 'field',
+        source_label: 'Manual fields',
         review_status: 'approved',
         scope: kbScope,
         fields: kbFields,

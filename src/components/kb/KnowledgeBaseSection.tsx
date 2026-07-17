@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  CheckCircle2, Clock, FileText, Globe, PenLine, Database,
-  Plus, Trash2, RefreshCw, Upload, ChevronDown, ChevronUp,
+  FileText, Globe, PenLine, Database,
+  Plus, Trash2, RefreshCw, Upload, ChevronDown, ChevronUp, Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import ApprovalModal from './ApprovalModal'
 
-type SourceType = 'field' | 'document' | 'website' | 'listing'
+type SourceType = 'field' | 'document' | 'website' | 'listing' | 'image'
 
-interface KbEntry {
+export interface KbEntry {
   id: string
   campaign_id: string
   client_id: string
@@ -26,12 +26,16 @@ interface KbEntry {
   availability_status: string | null
   promo_valid_until: string | null
   raw_document_path: string | null
+  raw_document_paths: string[] | null
   source_url: string | null
+  source_label: string | null
   scope?: 'campaign' | 'client' | null
+  replaces_kb_id?: string | null
+  updated_at?: string
 }
 
-// Topics the AI gets asked about constantly — if a KB is missing one, the AI
-// can't answer it and will refer the lead to the agent (or worse, guess).
+// Topics the AI gets asked about constantly — if the combined KB is missing one,
+// the AI can't answer it and will refer the lead to the agent (or worse, guess).
 const COMPLETENESS_CHECKS: { label: string; test: (c: string) => boolean }[] = [
   { label: 'Pricing / TCP', test: c => /pricing|price|tcp|₱\s?[\d,]|php\s?[\d,]/i.test(c) },
   { label: 'Unit sizes (floor & lot area)', test: c => /floor\s?area|lot\s?area|sq\.?\s?m\b|sqm/i.test(c) },
@@ -47,6 +51,9 @@ function findKbGaps(content: string): string[] {
   if (!content?.trim()) return COMPLETENESS_CHECKS.map(c => c.label)
   return COMPLETENESS_CHECKS.filter(c => !c.test(content)).map(c => c.label)
 }
+
+// Combined size above which full-prompt injection starts to hurt quality/cost.
+const KB_SIZE_WARN_CHARS = 16000
 
 type KbFields = {
   project_name?: string
@@ -85,58 +92,92 @@ const AVAIL_OPTIONS = [
   { value: 'sold_out', label: 'Sold Out' },
 ]
 
+const SOURCE_META: Record<SourceType, { label: string; icon: typeof PenLine }> = {
+  field: { label: 'Manual fields', icon: PenLine },
+  document: { label: 'Document', icon: FileText },
+  website: { label: 'Website', icon: Globe },
+  listing: { label: 'Marketplace listing', icon: Database },
+  image: { label: 'Images', icon: Upload },
+}
+
 interface Props {
   campaignId: string
-  initialKb: KbEntry | null
   getToken: () => Promise<string>
 }
 
-export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }: Props) {
-  const [kb, setKb] = useState<KbEntry | null>(initialKb)
-  const [showForm, setShowForm] = useState(!initialKb || initialKb.review_status === 'draft')
-  const [sourceType, setSourceType] = useState<SourceType>(
-    (initialKb?.source_type as SourceType) ?? 'field'
-  )
-  const [fieldValues, setFieldValues] = useState<KbFields>(
-    initialKb?.source_type === 'field' && initialKb?.fields
-      ? (initialKb.fields as KbFields)
-      : {}
-  )
-  const [customFields, setCustomFields] = useState<{ label: string; value: string }[]>(
-    Array.isArray((initialKb?.fields as KbFields)?.custom)
-      ? ((initialKb!.fields as KbFields).custom ?? [])
-      : []
-  )
-  const [shareClientWide, setShareClientWide] = useState(initialKb?.scope === 'client')
-  const [availStatus, setAvailStatus] = useState(initialKb?.availability_status ?? '')
-  const [promoUntil, setPromoUntil] = useState(initialKb?.promo_valid_until ?? '')
-  const [websiteUrl, setWebsiteUrl] = useState(initialKb?.source_url ?? '')
-  const [docFile, setDocFile] = useState<File | null>(null)
-  const [docFileName, setDocFileName] = useState(initialKb?.raw_document_path?.split('/').pop() ?? '')
+export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
+  const [sources, setSources] = useState<KbEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [sourceType, setSourceType] = useState<SourceType>('field')
+  const [fieldValues, setFieldValues] = useState<KbFields>({})
+  const [customFields, setCustomFields] = useState<{ label: string; value: string }[]>([])
+  const [shareClientWide, setShareClientWide] = useState(false)
+  const [availStatus, setAvailStatus] = useState('')
+  const [promoUntil, setPromoUntil] = useState('')
+  const [websiteUrl, setWebsiteUrl] = useState('')
+  const [docFiles, setDocFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  const [showApproval, setShowApproval] = useState(false)
-  const [showEdit, setShowEdit] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
+  const [reviewKb, setReviewKb] = useState<KbEntry | null>(null)
+  const [editKb, setEditKb] = useState<KbEntry | null>(null)
+  const [refreshingId, setRefreshingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Poll when pending + no proposed_content yet
+  const fetchSources = useCallback(async () => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`/api/kb?campaign_id=${campaignId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setSources(Array.isArray(data.sources) ? data.sources : (data.kb ? [data.kb] : []))
+    } catch { /* ignore */ } finally {
+      setLoading(false)
+    }
+  }, [campaignId, getToken])
+
+  useEffect(() => { fetchSources() }, [fetchSources])
+
+  // Poll while any source is still extracting
+  const extracting = sources.some(s => s.review_status === 'pending' && !s.proposed_content)
   useEffect(() => {
-    if (kb?.review_status !== 'pending' || kb.proposed_content) return
-    const interval = setInterval(async () => {
-      try {
-        const token = await getToken()
-        const res = await fetch(`/api/kb?campaign_id=${campaignId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const { kb: fresh } = await res.json()
-        if (fresh) setKb(fresh)
-      } catch { /* ignore */ }
-    }, 5000)
+    if (!extracting) return
+    const interval = setInterval(fetchSources, 5000)
     return () => clearInterval(interval)
-  }, [kb?.review_status, kb?.proposed_content, campaignId, getToken])
+  }, [extracting, fetchSources])
+
+  const approvedSources = sources.filter(s => s.review_status === 'approved')
+  const combinedContent = approvedSources.map(s => s.content).join('\n\n')
+  const gaps = findKbGaps(combinedContent)
+  const fieldSource = sources.find(s => s.source_type === 'field')
+
+  function openFieldForm(existing?: KbEntry) {
+    setSourceType('field')
+    const f = (existing?.fields as KbFields) ?? {}
+    setFieldValues(f)
+    setCustomFields(Array.isArray(f.custom) ? f.custom : [])
+    setAvailStatus(existing?.availability_status ?? '')
+    setPromoUntil(existing?.promo_valid_until ?? '')
+    setShareClientWide(existing?.scope === 'client')
+    setShowForm(true)
+  }
+
+  function openAddForm() {
+    setSourceType(fieldSource ? 'website' : 'field')
+    setFieldValues({})
+    setCustomFields([])
+    setAvailStatus('')
+    setPromoUntil('')
+    setShareClientWide(false)
+    setWebsiteUrl('')
+    setDocFiles([])
+    setError('')
+    setShowForm(true)
+  }
 
   function setField(key: keyof KbFields, value: string) {
     setFieldValues(prev => ({ ...prev, [key]: value }))
@@ -162,22 +203,19 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
 
       if (sourceType === 'field') {
         const fields = { ...fieldValues, custom: customFields }
-        const res = await fetch('/api/kb', {
+        const res = await fetch(`/api/kb?campaign_id=${campaignId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ campaign_id: campaignId, fields, availability_status: availStatus, promo_valid_until: promoUntil, scope: shareClientWide ? 'client' : 'campaign' }),
         })
         if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
-        const { kb: saved } = await res.json()
-        setKb(saved)
-        setShowForm(false)
       }
 
-      if (sourceType === 'document') {
-        if (!docFile) { setError('Please select a document to upload.'); setSaving(false); return }
+      if (sourceType === 'document' || sourceType === 'image') {
+        if (docFiles.length === 0) { setError('Please select a file to upload.'); setSaving(false); return }
         setUploading(true)
         const fd = new FormData()
-        fd.append('file', docFile)
+        for (const f of docFiles) fd.append('file', f)
         fd.append('campaign_id', campaignId)
         fd.append('scope', shareClientWide ? 'client' : 'campaign')
         const upRes = await fetch('/api/kb/upload', {
@@ -187,9 +225,6 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
         })
         setUploading(false)
         if (!upRes.ok) { const d = await upRes.json(); throw new Error(d.error ?? 'Upload failed') }
-        const { kb: saved } = await upRes.json()
-        setKb(saved)
-        setShowForm(false)
       }
 
       if (sourceType === 'website') {
@@ -200,10 +235,11 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
           body: JSON.stringify({ campaign_id: campaignId, source_url: websiteUrl.trim(), scope: shareClientWide ? 'client' : 'campaign' }),
         })
         if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
-        const { kb: saved } = await res.json()
-        setKb(saved)
-        setShowForm(false)
       }
+
+      await fetchSources()
+      setShowForm(false)
+      setDocFiles([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -212,8 +248,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
     }
   }
 
-  async function handleApprove(content: string) {
-    if (!kb) return
+  async function handleApprove(kb: KbEntry, content: string) {
     const token = await getToken()
     const res = await fetch('/api/kb/approve', {
       method: 'POST',
@@ -221,13 +256,11 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
       body: JSON.stringify({ kb_id: kb.id, proposed_content: content }),
     })
     if (!res.ok) throw new Error('Approve failed')
-    const { kb: updated } = await res.json()
-    setKb(updated)
-    setShowApproval(false)
+    await fetchSources()
+    setReviewKb(null)
   }
 
-  async function handleAiEdit(currentContent: string, request: string) {
-    if (!kb) throw new Error('No KB entry')
+  async function handleAiEdit(kb: KbEntry, currentContent: string, request: string) {
     const token = await getToken()
     const res = await fetch('/api/kb/ai-edit', {
       method: 'POST',
@@ -238,21 +271,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
     return res.json()
   }
 
-  async function handleRefresh() {
-    try {
-      const token = await getToken()
-      const res = await fetch(`/api/kb?campaign_id=${campaignId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) return
-      const { kb: fresh } = await res.json()
-      if (fresh) setKb(fresh)
-    } catch { /* ignore */ }
-  }
-
-  // Edit an approved KB → PUT saves a new approved version
-  async function handleEditSave(content: string) {
-    if (!kb) return
+  async function handleEditSave(kb: KbEntry, content: string) {
     const token = await getToken()
     const res = await fetch('/api/kb', {
       method: 'PUT',
@@ -260,16 +279,30 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
       body: JSON.stringify({ kb_id: kb.id, content }),
     })
     if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
-    const { kb: updated } = await res.json()
-    setKb(updated)
-    setShowEdit(false)
+    await fetchSources()
+    setEditKb(null)
   }
 
-  // Re-fetch a website source → new pending extraction; old KB stays live until approval
-  async function handleWebsiteRefresh() {
-    if (!kb?.source_url) return
+  async function checkConflicts(kb: KbEntry, content: string): Promise<string[]> {
+    try {
+      const token = await getToken()
+      const res = await fetch('/api/kb/conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kb_id: kb.id, content }),
+      })
+      if (!res.ok) return []
+      const data = await res.json()
+      return Array.isArray(data.conflicts) ? data.conflicts : []
+    } catch {
+      return []
+    }
+  }
+
+  async function handleWebsiteRefresh(kb: KbEntry) {
+    if (!kb.source_url) return
     setError('')
-    setRefreshing(true)
+    setRefreshingId(kb.id)
     try {
       const token = await getToken()
       const res = await fetch('/api/kb/website', {
@@ -283,164 +316,235 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
         }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Refresh failed') }
-      const { kb: fresh } = await res.json()
-      setKb(fresh)
+      await fetchSources()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Refresh failed')
     } finally {
-      setRefreshing(false)
+      setRefreshingId(null)
     }
   }
 
-  // ── Status panel ────────────────────────────────────────────────────────────
+  async function handleRemove(kb: KbEntry) {
+    const label = kb.source_label ?? (kb.source_type ? SOURCE_META[kb.source_type].label : 'this source')
+    if (!window.confirm(`Remove "${label}" from the knowledge base? The AI will stop using its facts.`)) return
+    try {
+      const token = await getToken()
+      const res = await fetch(`/api/kb?kb_id=${kb.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Remove failed') }
+      await fetchSources()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Remove failed')
+    }
+  }
 
-  function StatusPanel() {
-    if (!kb) return null
+  // ── Source card ─────────────────────────────────────────────────────────────
 
-    if (kb.review_status === 'approved') {
-      const gaps = findKbGaps(kb.content)
-      const hasRealNotes = !!kb.review_notes?.trim()
-        && !/all facts appear complete/i.test(kb.review_notes)
-      return (
-        <Card>
-          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 border-b">
-            <div className="flex items-center gap-2 text-sm font-semibold text-green-700">
-              <CheckCircle2 size={15} />
-              Knowledge Base Active
+  function SourceCard({ kb }: { kb: KbEntry }) {
+    const meta = kb.source_type ? SOURCE_META[kb.source_type] : SOURCE_META.field
+    const Icon = meta.icon
+    const isShared = kb.scope === 'client'
+    const fromOtherCampaign = isShared && kb.campaign_id !== campaignId
+    const isExtracting = kb.review_status === 'pending' && !kb.proposed_content
+    const needsReview = kb.review_status === 'pending' && !!kb.proposed_content
+    const isApproved = kb.review_status === 'approved'
+    const expanded = expandedId === kb.id
+
+    return (
+      <Card className={needsReview ? 'border-amber-300' : undefined}>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className={`mt-0.5 flex-shrink-0 ${isApproved ? 'text-green-600' : 'text-amber-600'}`}>
+                <Icon size={16} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold truncate">
+                  {kb.source_label ?? meta.label}
+                </div>
+                <div className="flex gap-1.5 mt-1 flex-wrap items-center">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground uppercase">
+                    {meta.label}
+                  </span>
+                  {isApproved && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-800">
+                      Active
+                    </span>
+                  )}
+                  {isExtracting && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 flex items-center gap-1">
+                      <RefreshCw size={9} className="animate-spin" /> Extracting…
+                    </span>
+                  )}
+                  {needsReview && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      Needs review
+                    </span>
+                  )}
+                  {isShared && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                      Shared — all campaigns
+                    </span>
+                  )}
+                  {kb.availability_status && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {AVAIL_OPTIONS.find(o => o.value === kb.availability_status)?.label ?? kb.availability_status}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              {kb.source_type === 'field' ? (
+
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {needsReview && (
+                <Button size="sm" onClick={() => setReviewKb(kb)}>Review &amp; Approve</Button>
+              )}
+              {isApproved && kb.source_type === 'field' && (
+                <Button variant="ghost" size="sm" onClick={() => openFieldForm(kb)} title="Edit fields">
+                  <PenLine size={13} />
+                </Button>
+              )}
+              {isApproved && kb.source_type !== 'field' && (
+                <Button variant="ghost" size="sm" onClick={() => setEditKb(kb)} title="Edit content">
+                  <PenLine size={13} />
+                </Button>
+              )}
+              {isApproved && kb.source_type === 'website' && kb.source_url && (
                 <Button
-                  variant="ghost" size="sm"
-                  onClick={() => { setSourceType('field'); setShowForm(true) }}
+                  variant="ghost" size="sm" title="Re-fetch website"
+                  onClick={() => handleWebsiteRefresh(kb)}
+                  disabled={refreshingId === kb.id}
                 >
-                  <PenLine size={12} className="mr-1" />Edit fields
-                </Button>
-              ) : (
-                <Button variant="ghost" size="sm" onClick={() => setShowEdit(true)}>
-                  <PenLine size={12} className="mr-1" />Edit
+                  <RefreshCw size={13} className={refreshingId === kb.id ? 'animate-spin' : ''} />
                 </Button>
               )}
-              {kb.source_type === 'website' && kb.source_url && (
-                <Button variant="ghost" size="sm" onClick={handleWebsiteRefresh} disabled={refreshing}>
-                  <RefreshCw size={12} className={`mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-                  {refreshing ? 'Fetching…' : 'Refresh'}
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={() => setShowForm(f => !f)}>
-                {showForm
-                  ? <><ChevronUp size={12} className="mr-1" />Hide form</>
-                  : <><ChevronDown size={12} className="mr-1" />Change source</>}
+              <Button
+                variant="ghost" size="sm" title="Remove source"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => handleRemove(kb)}
+              >
+                <Trash2 size={13} />
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="p-4">
-            {error && !showForm && <p className="text-xs text-destructive mb-2">{error}</p>}
-            <div className="flex gap-2 mb-2 flex-wrap">
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800 uppercase">
-                {kb.source_type}
-              </span>
-              {kb.scope === 'client' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 uppercase">
-                  Shared — all campaigns
-                </span>
-              )}
-              {kb.availability_status && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                  {AVAIL_OPTIONS.find(o => o.value === kb.availability_status)?.label ?? kb.availability_status}
-                </span>
-              )}
-            </div>
-            {kb.scope === 'client' && kb.campaign_id !== campaignId && (
-              <p className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-2">
-                This knowledge base is shared client-wide and was created in another campaign.
-                Saving a new KB here creates a version for this campaign (or replaces the shared one if you keep it shared).
-              </p>
-            )}
-            {gaps.length > 0 && (
-              <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
-                <span className="font-semibold">KB gaps — the AI cannot answer questions about:</span>{' '}
-                {gaps.join(' · ')}. Leads asking these will be told the team will confirm, and the agent gets notified.
-                Add these details so the AI can answer directly.
-              </div>
-            )}
-            {hasRealNotes && (
-              <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2 whitespace-pre-wrap">
-                <span className="font-semibold">Review notes from extraction:</span>{'\n'}{kb.review_notes}
-              </div>
-            )}
-            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans line-clamp-6 leading-relaxed">
-              {kb.content || '(empty)'}
-            </pre>
-          </CardContent>
-        </Card>
-      )
-    }
+          </div>
 
-    if (kb.review_status === 'pending') {
-      if (kb.proposed_content) {
-        return (
-          <Card className="border-amber-300">
-            <CardContent className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
-                <Clock size={14} />
-                Extraction complete — review &amp; approve
-              </div>
-              <Button size="sm" onClick={() => setShowApproval(true)}>Review &amp; Approve</Button>
-            </CardContent>
-          </Card>
-        )
-      }
-      return (
-        <Card className="border-amber-200">
-          <CardContent className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-amber-700">
-              <RefreshCw size={14} className="animate-spin" />
-              Extracting knowledge base… this may take a minute
-            </div>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw size={12} className="mr-1" /> Refresh
-            </Button>
-          </CardContent>
-        </Card>
-      )
-    }
+          {fromOtherCampaign && (
+            <p className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 mt-2">
+              Shared client-wide — created in another campaign.
+            </p>
+          )}
 
-    return null
+          {isApproved && kb.content && (
+            <div className="mt-2">
+              <pre className={`text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
+                {kb.content}
+              </pre>
+              <button
+                className="text-[11px] text-primary hover:underline mt-1 flex items-center gap-0.5"
+                onClick={() => setExpandedId(expanded ? null : kb.id)}
+              >
+                {expanded ? <><ChevronUp size={11} /> Show less</> : <><ChevronDown size={11} /> Show all</>}
+              </button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
   }
 
-  // ── Source picker ───────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
 
-  const sources = [
-    { id: 'field' as SourceType, label: 'Write fields', desc: 'Fill in labeled boxes — saved immediately, no AI needed.', icon: PenLine, disabled: false },
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-muted-foreground animate-pulse">
+          Loading knowledge base…
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const sourcePicker = [
+    { id: 'field' as SourceType, label: fieldSource ? 'Edit fields' : 'Write fields', desc: 'Fill in labeled boxes — saved immediately, no AI needed.', icon: PenLine, disabled: false },
     { id: 'document' as SourceType, label: 'Upload document', desc: 'PDF or DOCX — AI extracts the facts for your review.', icon: FileText, disabled: false },
-    { id: 'website' as SourceType, label: 'Website link', desc: 'One-time fetch — AI extracts facts for your review.', icon: Globe, disabled: false },
+    { id: 'website' as SourceType, label: 'Website link', desc: 'Fetched once — AI extracts facts for your review. Refresh anytime.', icon: Globe, disabled: false },
     { id: 'listing' as SourceType, label: 'Marketplace listing', desc: 'Coming soon — pull facts from bahaymo.com.', icon: Database, disabled: true },
   ]
 
   return (
     <>
-      <StatusPanel />
-
-      {showForm && (
-        <Card className="mt-4">
-          <CardHeader className="py-3 px-4 border-b">
-            <div className="text-sm font-semibold">
-              {kb ? 'Change Knowledge Base Source' : 'Set Up Knowledge Base'}
+      {/* Summary header */}
+      <Card>
+        <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 border-b">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Layers size={15} className={approvedSources.length > 0 ? 'text-green-600' : 'text-muted-foreground'} />
+            Knowledge Base
+            <span className="text-xs font-normal text-muted-foreground">
+              {sources.length === 0
+                ? 'no sources yet'
+                : `${sources.length} source${sources.length === 1 ? '' : 's'} · ~${Math.max(1, Math.round(combinedContent.length / 1000))} KB`}
+            </span>
+          </div>
+          <Button size="sm" onClick={openAddForm}>
+            <Plus size={13} className="mr-1" /> Add reference
+          </Button>
+        </CardHeader>
+        <CardContent className="p-4 flex flex-col gap-2">
+          {error && !showForm && <p className="text-xs text-destructive">{error}</p>}
+          {sources.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Add at least one source of truth — the AI can only answer with facts you put here.
+              Combine manual fields, your website, brochures, and price lists; every source is
+              reviewed by you before the bot uses it.
+            </p>
+          )}
+          {sources.length > 0 && gaps.length > 0 && (
+            <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <span className="font-semibold">KB gaps — the AI cannot answer questions about:</span>{' '}
+              {gaps.join(' · ')}. Leads asking these will be told the team will confirm, and the agent gets notified.
+              Add these details (in any source) so the AI can answer directly.
             </div>
+          )}
+          {combinedContent.length > KB_SIZE_WARN_CHARS && (
+            <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <span className="font-semibold">Knowledge base is getting large</span>{' '}
+              (~{Math.round(combinedContent.length / 1000)} KB). Very large KBs slow the AI down and
+              raise costs — consider trimming outdated sections or removing overlapping sources.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Source cards */}
+      {sources.map(kb => <SourceCard key={kb.id} kb={kb} />)}
+
+      {/* Add / edit form */}
+      {showForm && (
+        <Card className="mt-2">
+          <CardHeader className="py-3 px-4 border-b flex flex-row items-center justify-between space-y-0">
+            <div className="text-sm font-semibold">Add Knowledge Source</div>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
+              <ChevronUp size={12} className="mr-1" />Close
+            </Button>
           </CardHeader>
           <CardContent className="p-4 flex flex-col gap-4">
 
             {/* Source picker */}
             <div className="grid grid-cols-2 gap-2">
-              {sources.map(s => {
+              {sourcePicker.map(s => {
                 const Icon = s.icon
                 const selected = sourceType === s.id
                 return (
                   <button
                     key={s.id}
                     disabled={s.disabled}
-                    onClick={() => !s.disabled && setSourceType(s.id)}
+                    onClick={() => {
+                      if (s.disabled) return
+                      if (s.id === 'field') { openFieldForm(fieldSource ?? undefined); return }
+                      setSourceType(s.id)
+                    }}
                     className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
                       s.disabled
                         ? 'opacity-40 cursor-not-allowed border-border bg-muted'
@@ -546,8 +650,8 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
                   className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all"
                 >
                   <Upload size={20} className="mx-auto text-muted-foreground mb-2" />
-                  {docFileName ? (
-                    <div className="text-xs font-medium">{docFileName}</div>
+                  {docFiles.length > 0 ? (
+                    <div className="text-xs font-medium">{docFiles.map(f => f.name).join(', ')}</div>
                   ) : (
                     <div className="text-xs text-muted-foreground">Click to pick a file</div>
                   )}
@@ -557,13 +661,14 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
                     accept=".pdf,.docx,.txt"
                     className="hidden"
                     onChange={e => {
-                      const f = e.target.files?.[0]
-                      if (f) { setDocFile(f); setDocFileName(f.name) }
+                      const list = Array.from(e.target.files ?? [])
+                      if (list.length) setDocFiles(list)
                     }}
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1.5">
                   After upload, AI will extract the facts. You review &amp; approve before the bot uses them.
+                  This is added alongside your other sources.
                 </p>
               </div>
             )}
@@ -580,6 +685,7 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
                 />
                 <p className="text-[10px] text-muted-foreground mt-1.5">
                   The page is fetched once. AI extracts facts. You review &amp; approve before the bot uses them.
+                  Adding a URL that is already a source refreshes that source instead.
                 </p>
               </div>
             )}
@@ -593,17 +699,15 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
               />
               <span>
                 <span className="font-semibold">Share with all campaigns of this client.</span>{' '}
-                For developers running several campaigns on the same project — one KB feeds the AI in every campaign,
-                instead of copying it per campaign. Replaces any previous shared KB for this client.
+                For developers running several campaigns on the same project — this source feeds the AI in
+                every campaign, instead of copying it per campaign.
               </span>
             </label>
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 
             <div className="flex justify-end gap-2 pt-1">
-              {kb && (
-                <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              )}
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
               <Button
                 onClick={handleSave}
                 disabled={saving || uploading}
@@ -615,22 +719,30 @@ export default function KnowledgeBaseSection({ campaignId, initialKb, getToken }
         </Card>
       )}
 
-      {showApproval && kb?.proposed_content && (
+      {/* Review pending extraction */}
+      {reviewKb?.proposed_content && (
         <ApprovalModal
-          kb={kb}
-          onApprove={handleApprove}
-          onAiEdit={handleAiEdit}
-          onClose={() => setShowApproval(false)}
+          kb={reviewKb}
+          onApprove={content => handleApprove(reviewKb, content)}
+          onAiEdit={(content, request) => handleAiEdit(reviewKb, content, request)}
+          onCheckConflicts={approvedSources.some(s => s.id !== reviewKb.id && s.id !== reviewKb.replaces_kb_id)
+            ? (content => checkConflicts(reviewKb, content))
+            : undefined}
+          onClose={() => setReviewKb(null)}
         />
       )}
 
-      {showEdit && kb && (
+      {/* Edit approved source */}
+      {editKb && (
         <ApprovalModal
-          kb={kb}
+          kb={editKb}
           mode="edit"
-          onApprove={handleEditSave}
-          onAiEdit={handleAiEdit}
-          onClose={() => setShowEdit(false)}
+          onApprove={content => handleEditSave(editKb, content)}
+          onAiEdit={(content, request) => handleAiEdit(editKb, content, request)}
+          onCheckConflicts={approvedSources.some(s => s.id !== editKb.id)
+            ? (content => checkConflicts(editKb, content))
+            : undefined}
+          onClose={() => setEditKb(null)}
         />
       )}
     </>

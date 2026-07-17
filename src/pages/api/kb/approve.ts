@@ -27,16 +27,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Fetch the KB row to verify access
   const { data: kbRow } = await supabase
-    .from('campaign_knowledge_base').select('id, client_id, replaces_kb_id').eq('id', kb_id).single()
+    .from('campaign_knowledge_base')
+    .select('id, client_id, replaces_kb_id, source_type, source_label')
+    .eq('id', kb_id).single()
   if (!kbRow) return res.status(404).json({ error: 'KB entry not found' })
   if (profile.role !== 'baymo_admin' && kbRow.client_id !== profile.client_id) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
+  // Provenance header so the AI (and reviewers) can tell sources apart when
+  // several sources are aggregated into one prompt.
+  let finalContent = proposed_content.trim()
+  if (!finalContent.startsWith('[SOURCE:')) {
+    const label = kbRow.source_label ?? kbRow.source_type ?? 'source'
+    finalContent = `[SOURCE: ${label}]\n${finalContent}`
+  }
+
   const { data: kb, error } = await supabase
     .from('campaign_knowledge_base')
     .update({
-      content: proposed_content.trim(),
+      content: finalContent,
       review_status: 'approved',
       approved_at: new Date().toISOString(),
       approved_by: user.id,

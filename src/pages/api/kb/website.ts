@@ -39,25 +39,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(422).json({ error: FETCH_URL_ERRORS[result.reason] ?? 'Failed to fetch website.' })
   }
 
-  // Refresh flow (replace_kb_id): keep the old row active until the new
-  // extraction is approved — approve.ts retires it via replaces_kb_id.
-  if (!replace_kb_id) {
-    // Deactivate existing active KB rows
-    await supabase
+  // Additive: other sources stay active. When a row is being replaced
+  // (refresh, or re-adding the same URL), the old row stays live until the
+  // new extraction is approved — approve.ts retires it via replaces_kb_id.
+  let effectiveReplaceId: string | null = replace_kb_id ?? null
+  if (!effectiveReplaceId) {
+    // Re-adding a URL that's already an active source = refresh of that row
+    const { data: existing } = await supabase
       .from('campaign_knowledge_base')
-      .update({ is_active: false })
+      .select('id')
       .eq('campaign_id', campaign_id)
+      .eq('source_type', 'website')
+      .eq('source_url', source_url.trim())
       .eq('is_active', true)
-
-    // A client-shared KB replaces any previous client-shared KB (from any campaign)
-    if (kbScope === 'client') {
-      await supabase
-        .from('campaign_knowledge_base')
-        .update({ is_active: false })
-        .eq('client_id', campaign.client_id)
-        .eq('scope', 'client')
-        .eq('is_active', true)
-    }
+      .limit(1)
+    if (existing?.[0]) effectiveReplaceId = existing[0].id
   }
 
   let sourceLabel: string | null = null
@@ -68,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .insert({
       campaign_id,
       client_id: campaign.client_id,
-      title: campaign.name,
+      title: sourceLabel ? `${campaign.name} — ${sourceLabel}` : campaign.name,
       content: '',
       is_active: true,
       type: 'knowledge',
@@ -79,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source_url: source_url.trim(),
       source_label: sourceLabel,
       source_text: result.text,
-      replaces_kb_id: replace_kb_id ?? null,
+      replaces_kb_id: effectiveReplaceId,
     })
     .select()
     .single()

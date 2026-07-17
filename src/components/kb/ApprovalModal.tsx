@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, CheckCircle, Sparkles, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,10 +18,12 @@ interface Props {
   mode?: 'review' | 'edit'
   onApprove: (content: string) => Promise<void>
   onAiEdit: (currentContent: string, request: string) => Promise<{ proposed_content: string; review_notes: string }>
+  /** When provided, the content is checked against the campaign's other sources for contradictions */
+  onCheckConflicts?: (content: string) => Promise<string[]>
   onClose: () => void
 }
 
-export default function ApprovalModal({ kb, mode = 'review', onApprove, onAiEdit, onClose }: Props) {
+export default function ApprovalModal({ kb, mode = 'review', onApprove, onAiEdit, onCheckConflicts, onClose }: Props) {
   const isEdit = mode === 'edit'
   const [editedContent, setEditedContent] = useState(
     isEdit ? (kb.content ?? '') : (kb.proposed_content ?? '')
@@ -31,6 +33,26 @@ export default function ApprovalModal({ kb, mode = 'review', onApprove, onAiEdit
   const [aiEditing, setAiEditing] = useState(false)
   const [approving, setApproving] = useState(false)
   const [aiError, setAiError] = useState('')
+  const [conflicts, setConflicts] = useState<string[] | null>(null)
+  const [checkingConflicts, setCheckingConflicts] = useState(false)
+
+  async function runConflictCheck(content: string) {
+    if (!onCheckConflicts) return
+    setCheckingConflicts(true)
+    try {
+      setConflicts(await onCheckConflicts(content))
+    } catch {
+      setConflicts([])
+    } finally {
+      setCheckingConflicts(false)
+    }
+  }
+
+  // Compare against the campaign's other sources once, when the modal opens
+  useEffect(() => {
+    runConflictCheck(isEdit ? (kb.content ?? '') : (kb.proposed_content ?? ''))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const hasReviewFlags = reviewNotes && (
     reviewNotes.includes('MISSING:') ||
@@ -83,6 +105,24 @@ export default function ApprovalModal({ kb, mode = 'review', onApprove, onAiEdit
         </div>
 
         <div className="p-5 flex flex-col gap-4">
+          {/* Conflicts with other sources */}
+          {onCheckConflicts && checkingConflicts && (
+            <div className="rounded-lg border border-border bg-muted px-4 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
+              <span className="animate-pulse">Checking for conflicts with your other sources…</span>
+            </div>
+          )}
+          {conflicts && conflicts.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+              <div className="flex items-center gap-1.5 font-semibold mb-1.5">
+                <AlertTriangle size={12} />
+                Conflicts with your other sources — resolve before {isEdit ? 'saving' : 'approving'}
+              </div>
+              <ul className="list-disc pl-4 space-y-1">
+                {conflicts.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
+            </div>
+          )}
+
           {/* Review notes */}
           {reviewNotes && (
             <div className={`rounded-lg border px-4 py-3 text-xs ${

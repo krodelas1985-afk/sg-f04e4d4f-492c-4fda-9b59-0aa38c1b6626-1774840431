@@ -104,8 +104,6 @@ export default function AdminCampaignDetailPage() {
     notification_message: ""
   });
 
-  const [initialKb, setInitialKb] = useState<any>(null);
-
   const [aiDecisionInstructions, setAiDecisionInstructions] = useState("");
   const [aiMessageInstructions, setAiMessageInstructions] = useState("");
   const [assignedClientIds, setAssignedClientIds] = useState<string[]>([]);
@@ -240,16 +238,6 @@ export default function AdminCampaignDetailPage() {
 
       const stepsRes = await fetch(`/api/campaigns/${id}/steps`);
       if (stepsRes.ok) setCampaignSteps(await stepsRes.json());
-
-      // ── Fetch active KB row from campaign_knowledge_base ──────────────────────
-      const token = await getToken();
-      const kbRes = await fetch(`/api/kb?campaign_id=${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (kbRes.ok) {
-        const { kb: kbData } = await kbRes.json();
-        setInitialKb(kbData ?? null);
-      }
 
       const tRes = await fetch(`/api/campaigns/${id}/templates`);
       if (tRes.ok) setTemplates(await tRes.json());
@@ -905,7 +893,6 @@ export default function AdminCampaignDetailPage() {
             <CardContent>
               <KnowledgeBaseSection
                 campaignId={id as string}
-                initialKb={initialKb}
                 getToken={getToken}
               />
             </CardContent>

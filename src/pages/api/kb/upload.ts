@@ -46,6 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!campaignId) return res.status(400).json({ error: 'campaign_id is required' })
   const rawScope = Array.isArray(fields.scope) ? fields.scope[0] : fields.scope
   const kbScope = rawScope === 'client' ? 'client' : 'campaign'
+  const replaceKbId = Array.isArray(fields.replace_kb_id) ? fields.replace_kb_id[0] : fields.replace_kb_id
 
   const fileArr = files.file
   const uploadedFile = Array.isArray(fileArr) ? fileArr[0] : fileArr
@@ -85,38 +86,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (uploadError) return res.status(500).json({ error: uploadError.message })
 
-  // Deactivate existing active KB rows
-  await supabase
-    .from('campaign_knowledge_base')
-    .update({ is_active: false })
-    .eq('campaign_id', campaignId)
-    .eq('is_active', true)
-
-  // A client-shared KB replaces any previous client-shared KB (from any campaign)
-  if (kbScope === 'client') {
-    await supabase
-      .from('campaign_knowledge_base')
-      .update({ is_active: false })
-      .eq('client_id', campaign.client_id)
-      .eq('scope', 'client')
-      .eq('is_active', true)
-  }
-
+  // Additive: other sources stay active. If replace_kb_id is set, the old row
+  // stays live until this extraction is approved (approve.ts retires it).
   const { data: kb, error: insertError } = await supabase
     .from('campaign_knowledge_base')
     .insert({
       campaign_id: campaignId,
       client_id: campaign.client_id,
-      title: campaign.name,
+      title: `${campaign.name} — ${origName}`,
       content: '',
       is_active: true,
       type: 'knowledge',
       campaign_name: campaign.name,
       source_type: 'document',
+      source_label: origName,
       scope: kbScope,
       review_status: 'pending',
       raw_document_path,
       source_text,
+      replaces_kb_id: replaceKbId ?? null,
     })
     .select()
     .single()
