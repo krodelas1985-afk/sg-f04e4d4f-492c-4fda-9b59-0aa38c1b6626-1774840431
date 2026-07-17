@@ -1638,6 +1638,7 @@ export type Database = {
           ai_instruction: string | null
           ai_message_instructions: string | null
           campaign_rules: Json | null
+          campaign_type: string
           channel: string | null
           client_id: string
           config: Json | null
@@ -1671,6 +1672,7 @@ export type Database = {
           ai_instruction?: string | null
           ai_message_instructions?: string | null
           campaign_rules?: Json | null
+          campaign_type?: string
           channel?: string | null
           client_id: string
           config?: Json | null
@@ -1704,6 +1706,7 @@ export type Database = {
           ai_instruction?: string | null
           ai_message_instructions?: string | null
           campaign_rules?: Json | null
+          campaign_type?: string
           channel?: string | null
           client_id?: string
           config?: Json | null
