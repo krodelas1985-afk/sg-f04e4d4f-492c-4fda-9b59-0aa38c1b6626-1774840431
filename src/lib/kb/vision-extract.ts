@@ -4,10 +4,12 @@ import Anthropic from '@anthropic-ai/sdk'
 // text layer is empty (pdf-parse gets nothing to read). Runs in-app — the DB
 // trigger skips n8n extraction when proposed_content is preset.
 
-export type VisionImageType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+// Keep in sync with the kb-docs bucket's allowed_mime_types
+// (migration 20260717010000) and the UI file-picker accept list.
+export type VisionImageType = 'image/png' | 'image/jpeg' | 'image/webp'
 
 export const VISION_IMAGE_TYPES = new Set<string>([
-  'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+  'image/png', 'image/jpeg', 'image/webp',
 ])
 
 // Claude API per-image limit
