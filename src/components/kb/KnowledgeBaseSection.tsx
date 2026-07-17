@@ -92,6 +92,27 @@ const AVAIL_OPTIONS = [
   { value: 'sold_out', label: 'Sold Out' },
 ]
 
+interface MarketplaceListing {
+  id: string
+  title: string
+  price: number | string | null
+  property_type: string | null
+  city: string | null
+  location: string | null
+  bedrooms: number | null
+  bathrooms: number | null
+  floor_area: number | string | null
+  lot_area: number | string | null
+  listing_url: string
+}
+
+function pesoDisplay(n: number | string | null): string {
+  if (n === null || n === undefined || n === '') return ''
+  const num = typeof n === 'string' ? Number(n) : n
+  if (!Number.isFinite(num)) return String(n)
+  return `₱${num.toLocaleString('en-PH')}`
+}
+
 const SOURCE_META: Record<SourceType, { label: string; icon: typeof PenLine }> = {
   field: { label: 'Manual fields', icon: PenLine },
   document: { label: 'Document', icon: FileText },
@@ -122,6 +143,11 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
   const [error, setError] = useState('')
   const [reviewKb, setReviewKb] = useState<KbEntry | null>(null)
   const [editKb, setEditKb] = useState<KbEntry | null>(null)
+  const [listingSearch, setListingSearch] = useState('')
+  const [listingResults, setListingResults] = useState<MarketplaceListing[]>([])
+  const [listingLoading, setListingLoading] = useState(false)
+  const [listingError, setListingError] = useState('')
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null)
   const [refreshingId, setRefreshingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -237,6 +263,17 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
         if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
       }
 
+      if (sourceType === 'listing') {
+        if (!selectedListingId) { setError('Please pick a listing.'); setSaving(false); return }
+        const res = await fetch('/api/kb/listing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ campaign_id: campaignId, listing_id: selectedListingId, scope: shareClientWide ? 'client' : 'campaign' }),
+        })
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
+        setSelectedListingId(null)
+      }
+
       await fetchSources()
       setShowForm(false)
       setDocFiles([])
@@ -296,6 +333,30 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
       return Array.isArray(data.conflicts) ? data.conflicts : []
     } catch {
       return []
+    }
+  }
+
+  async function searchListings(query: string) {
+    setListingLoading(true)
+    setListingError('')
+    try {
+      const token = await getToken()
+      const res = await fetch(`/api/kb/listings?search=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setListingResults([])
+        setListingError(res.status === 501
+          ? 'Marketplace connection is not configured yet — ask your BaMo admin to enable it.'
+          : (data.error ?? 'Failed to load listings'))
+        return
+      }
+      setListingResults(Array.isArray(data.listings) ? data.listings : [])
+    } catch {
+      setListingError('Failed to load listings')
+    } finally {
+      setListingLoading(false)
     }
   }
 
@@ -471,7 +532,7 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
     { id: 'document' as SourceType, label: 'Upload document', desc: 'PDF or DOCX — AI extracts the facts for your review. Scanned PDFs work too.', icon: FileText, disabled: false },
     { id: 'image' as SourceType, label: 'Photos / price lists', desc: 'PNG or JPG images — AI reads brochure photos and price lists.', icon: Upload, disabled: false },
     { id: 'website' as SourceType, label: 'Website link', desc: 'Fetched once — AI extracts facts for your review. Refresh anytime.', icon: Globe, disabled: false },
-    { id: 'listing' as SourceType, label: 'Marketplace listing', desc: 'Coming soon — pull facts from bahaymo.com.', icon: Database, disabled: true },
+    { id: 'listing' as SourceType, label: 'Marketplace listing', desc: 'Pull facts straight from your bahaymo.com listing — no extraction needed.', icon: Database, disabled: false },
   ]
 
   return (
@@ -546,6 +607,9 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
                       if (s.id === 'field') { openFieldForm(fieldSource ?? undefined); return }
                       setSourceType(s.id)
                       setDocFiles([])
+                      if (s.id === 'listing' && listingResults.length === 0 && !listingError) {
+                        searchListings('')
+                      }
                     }}
                     className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
                       s.disabled
@@ -699,6 +763,60 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
               </div>
             )}
 
+            {/* Marketplace listing picker */}
+            {sourceType === 'listing' && (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs block">Pick a listing from bahaymo.com</Label>
+                <div className="flex gap-2">
+                  <Input
+                    className="flex-1 text-sm"
+                    placeholder="Search by title, city, or location…"
+                    value={listingSearch}
+                    onChange={e => setListingSearch(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && searchListings(listingSearch)}
+                  />
+                  <Button variant="outline" onClick={() => searchListings(listingSearch)} disabled={listingLoading}>
+                    {listingLoading ? 'Searching…' : 'Search'}
+                  </Button>
+                </div>
+                {listingError && <p className="text-xs text-destructive">{listingError}</p>}
+                {!listingError && !listingLoading && listingResults.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No active listings found.</p>
+                )}
+                <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+                  {listingResults.map(l => {
+                    const selected = selectedListingId === l.id
+                    const specs = [
+                      pesoDisplay(l.price),
+                      l.bedrooms != null ? `${l.bedrooms} BR` : null,
+                      l.bathrooms != null ? `${l.bathrooms} T&B` : null,
+                      l.floor_area ? `${l.floor_area} sqm floor` : null,
+                      l.lot_area ? `${l.lot_area} sqm lot` : null,
+                    ].filter(Boolean).join(' · ')
+                    return (
+                      <button
+                        key={l.id}
+                        onClick={() => setSelectedListingId(selected ? null : l.id)}
+                        className={`text-left border rounded-lg px-3 py-2 transition-all ${
+                          selected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        <div className="text-xs font-semibold">{l.title}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {[l.property_type, [l.location, l.city].filter(Boolean).join(', ')].filter(Boolean).join(' — ')}
+                        </div>
+                        {specs && <div className="text-[11px] text-muted-foreground mt-0.5">{specs}</div>}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Listing facts (price, sizes, location, agent contact) are added as-is — no AI extraction,
+                  active immediately. Re-add the listing anytime to pull its latest details.
+                </p>
+              </div>
+            )}
+
             <label className="flex items-start gap-2 text-xs cursor-pointer select-none border rounded-md p-3 bg-muted/40">
               <input
                 type="checkbox"
@@ -721,7 +839,11 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
                 onClick={handleSave}
                 disabled={saving || uploading}
               >
-                {uploading ? 'Uploading...' : saving ? 'Saving...' : sourceType === 'field' ? 'Save Knowledge Base' : 'Submit for Extraction'}
+                {uploading ? 'Uploading...'
+                  : saving ? 'Saving...'
+                  : sourceType === 'field' ? 'Save Knowledge Base'
+                  : sourceType === 'listing' ? 'Add Listing to KB'
+                  : 'Submit for Extraction'}
               </Button>
             </div>
           </CardContent>
