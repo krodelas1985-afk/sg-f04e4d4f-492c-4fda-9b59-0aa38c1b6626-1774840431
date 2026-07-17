@@ -468,7 +468,8 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
 
   const sourcePicker = [
     { id: 'field' as SourceType, label: fieldSource ? 'Edit fields' : 'Write fields', desc: 'Fill in labeled boxes — saved immediately, no AI needed.', icon: PenLine, disabled: false },
-    { id: 'document' as SourceType, label: 'Upload document', desc: 'PDF or DOCX — AI extracts the facts for your review.', icon: FileText, disabled: false },
+    { id: 'document' as SourceType, label: 'Upload document', desc: 'PDF or DOCX — AI extracts the facts for your review. Scanned PDFs work too.', icon: FileText, disabled: false },
+    { id: 'image' as SourceType, label: 'Photos / price lists', desc: 'PNG or JPG images — AI reads brochure photos and price lists.', icon: Upload, disabled: false },
     { id: 'website' as SourceType, label: 'Website link', desc: 'Fetched once — AI extracts facts for your review. Refresh anytime.', icon: Globe, disabled: false },
     { id: 'listing' as SourceType, label: 'Marketplace listing', desc: 'Coming soon — pull facts from bahaymo.com.', icon: Database, disabled: true },
   ]
@@ -544,6 +545,7 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
                       if (s.disabled) return
                       if (s.id === 'field') { openFieldForm(fieldSource ?? undefined); return }
                       setSourceType(s.id)
+                      setDocFiles([])
                     }}
                     className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
                       s.disabled
@@ -639,11 +641,13 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
               </>
             )}
 
-            {/* Document upload */}
-            {sourceType === 'document' && (
+            {/* Document / image upload */}
+            {(sourceType === 'document' || sourceType === 'image') && (
               <div>
                 <Label className="text-xs mb-1.5 block">
-                  Document <span className="text-muted-foreground font-normal">PDF, DOCX, or TXT — max 50 MB</span>
+                  {sourceType === 'document'
+                    ? <>Document <span className="text-muted-foreground font-normal">PDF, DOCX, or TXT — max 50 MB</span></>
+                    : <>Images <span className="text-muted-foreground font-normal">PNG, JPG, or WebP — up to 8 images, 5 MB each</span></>}
                 </Label>
                 <div
                   onClick={() => fileRef.current?.click()}
@@ -653,21 +657,26 @@ export default function KnowledgeBaseSection({ campaignId, getToken }: Props) {
                   {docFiles.length > 0 ? (
                     <div className="text-xs font-medium">{docFiles.map(f => f.name).join(', ')}</div>
                   ) : (
-                    <div className="text-xs text-muted-foreground">Click to pick a file</div>
+                    <div className="text-xs text-muted-foreground">
+                      {sourceType === 'document' ? 'Click to pick a file' : 'Click to pick images (brochure pages, price lists…)'}
+                    </div>
                   )}
                   <input
                     ref={fileRef}
                     type="file"
-                    accept=".pdf,.docx,.txt"
+                    accept={sourceType === 'document' ? '.pdf,.docx,.txt' : 'image/png,image/jpeg,image/webp'}
+                    multiple={sourceType === 'image'}
                     className="hidden"
                     onChange={e => {
                       const list = Array.from(e.target.files ?? [])
-                      if (list.length) setDocFiles(list)
+                      if (list.length) setDocFiles(sourceType === 'image' ? list.slice(0, 8) : list.slice(0, 1))
                     }}
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1.5">
-                  After upload, AI will extract the facts. You review &amp; approve before the bot uses them.
+                  {sourceType === 'image'
+                    ? 'AI reads the images and extracts the facts — may take up to a minute. You review & approve before the bot uses them.'
+                    : 'After upload, AI will extract the facts. You review & approve before the bot uses them.'}{' '}
                   This is added alongside your other sources.
                 </p>
               </div>
