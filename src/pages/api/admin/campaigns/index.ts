@@ -60,10 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-      const { name, channel, client_id } = req.body;
+      const { name, channel, client_id, campaign_type } = req.body;
 
       if (!name || !channel) {
         return res.status(400).json({ error: "Name and channel are required" });
+      }
+      if (campaign_type !== undefined && !["buyer_leadgen", "bamo_b2b"].includes(campaign_type)) {
+        return res.status(400).json({ error: "Invalid campaign_type" });
       }
 
       const { data, error } = await adminClient
@@ -71,6 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .insert({
           name,
           channel,
+          campaign_type: campaign_type || "buyer_leadgen",
           client_id: client_id || null,
           status: "draft",
           is_active: false,

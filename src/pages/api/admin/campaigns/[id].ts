@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === "PUT") {
       const {
-        name, channel, status, target_action, config,
+        name, channel, status, target_action, config, campaign_type,
         is_locked, is_active, client_id, currency,
         start_date, end_date, success_metric, source_detail,
         target_industries, job_titles, campaign_rules,
@@ -67,6 +67,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (channel !== undefined) updateData.channel = channel;
       if (status !== undefined) updateData.status = status;
       if (target_action !== undefined) updateData.target_action = target_action;
+      if (campaign_type !== undefined) {
+        if (!["buyer_leadgen", "bamo_b2b"].includes(campaign_type)) {
+          return res.status(400).json({ error: "Invalid campaign_type" });
+        }
+        updateData.campaign_type = campaign_type;
+      }
       if (config !== undefined) updateData.config = config;
       if (is_locked !== undefined) updateData.is_locked = is_locked;
       if (is_active !== undefined) updateData.is_active = is_active;
