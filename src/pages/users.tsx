@@ -522,8 +522,11 @@ export default function UsersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            {/* Edit profile (photo, PRC, company, location…) */}
-                            {(currentUserRole === "baymo_admin" || currentUserRole === "client_admin") && (
+                            {/* Edit profile (photo, PRC, company, location…).
+                                Personal details belong to the account owner: only
+                                BaMo staff may edit someone else's (enforced by the
+                                trg_enforce_profile_personal_fields trigger). */}
+                            {(currentUserRole === "baymo_admin" || user.id === currentUserId) && (
                               <Button
                                 variant="ghost"
                                 size="sm"

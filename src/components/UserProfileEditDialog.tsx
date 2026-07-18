@@ -24,11 +24,14 @@ import { useToast } from "@/hooks/use-toast";
 import psgc from "@/data/psgc.json";
 
 /**
- * Admin edit of an agent's profile (Agent Profile Phase 3).
- * Same fields as the mobile /profile screen. Writes are covered by the
- * profiles_update RLS (client_admin limited to own workspace) and the
- * guard trigger blocks role/client_id changes; uploads to profile-media go
- * under the TARGET user's folder via the profile_media_admin_* policies.
+ * Edit of a user's profile (Agent Profile Phase 3).
+ * Same fields as the mobile /profile screen.
+ *
+ * These are the owner's personal details: only the account owner or a
+ * baymo_admin may write them. trg_enforce_profile_personal_fields rejects
+ * anyone else, and the profile_media_* storage policies match (owner folder,
+ * or baymo_admin). A client_admin keeps role/is_active control over their
+ * workspace but no longer edits an agent's identity — mount accordingly.
  */
 
 const NONE = "__none__"; // shadcn Select can't represent null with an empty value
