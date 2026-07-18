@@ -4493,6 +4493,63 @@ export type Database = {
           },
         ]
       }
+      user_onboarding_tour: {
+        Row: {
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          help_request: string | null
+          listing_intent: boolean
+          profile_id: string
+          services_needed: string[]
+          skipped: boolean
+          started_at: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          help_request?: string | null
+          listing_intent?: boolean
+          profile_id: string
+          services_needed?: string[]
+          skipped?: boolean
+          started_at?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          help_request?: string | null
+          listing_intent?: boolean
+          profile_id?: string
+          services_needed?: string[]
+          skipped?: boolean
+          started_at?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_onboarding_tour_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_onboarding_tour_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_requests: {
         Row: {
           client_id: string
