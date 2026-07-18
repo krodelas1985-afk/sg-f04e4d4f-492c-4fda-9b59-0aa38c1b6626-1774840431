@@ -12,8 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { UserPlus, Mail, X } from "lucide-react";
+import { UserPlus, Mail, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UserProfileEditDialog } from "@/components/UserProfileEditDialog";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -28,6 +29,9 @@ export default function UsersPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserClientId, setCurrentUserClientId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Agent profile editing (Agent Profile Phase 3)
+  const [editProfileTarget, setEditProfileTarget] = useState<{ id: string; label: string } | null>(null);
 
   // Deactivation with lead handoff
   const [deactivateTarget, setDeactivateTarget] = useState<{
@@ -518,6 +522,23 @@ export default function UsersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
+                            {/* Edit profile (photo, PRC, company, location…) */}
+                            {(currentUserRole === "baymo_admin" || currentUserRole === "client_admin") && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setEditProfileTarget({
+                                    id: user.id,
+                                    label: user.full_name || user.email,
+                                  })
+                                }
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Profile
+                              </Button>
+                            )}
+
                             {/* Toggle Active/Inactive */}
                             {user.id !== currentUserId && currentUserRole === "client_admin" && (
                               <div className="flex items-center gap-2">
@@ -601,6 +622,16 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit agent profile */}
+      <UserProfileEditDialog
+        userId={editProfileTarget?.id ?? null}
+        userLabel={editProfileTarget?.label ?? ""}
+        onClose={() => setEditProfileTarget(null)}
+        onSaved={(userId, fullName) =>
+          setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, full_name: fullName } : u)))
+        }
+      />
 
       {/* Deactivate user — open-lead handoff */}
       <Dialog open={!!deactivateTarget} onOpenChange={(open) => !open && setDeactivateTarget(null)}>
