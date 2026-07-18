@@ -30,11 +30,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!body.entry || !Array.isArray(body.entry)) return res.status(200).json({ status: "ok" });
 
       for (const entry of body.entry) {
-        if (!entry.messaging || !Array.isArray(entry.messaging)) continue;
-
         // ── ROUTE BY PAGE ID ─────────────────────────────────────────
         // entry.id is the Facebook Page ID that received the message.
-        // Look up which client owns this page.
+        // Look up which client owns this page. Done before the entry.messaging
+        // check below since standby-only payloads (no entry.messaging) also
+        // need pageId/clientId/fbToken resolved.
         const pageId = entry.id as string;
 
         const { data: clientRecord } = await supabase
@@ -51,6 +51,149 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           clientRecord?.fb_page_token ?? process.env.FB_PAGE_ACCESS_TOKEN;
 
         if (!clientId) continue;
+
+        // ── STANDBY CHANNEL — Cristy Joy pilot only ──────────────────
+        // Her page's messages arrive on `standby` instead of `messaging`
+        // because another receiver (the native Page Inbox) currently holds
+        // primary control of the thread. This block is capture-only (no AI
+        // reply, no enroll_lead — automation_enabled stays false) and makes
+        // one best-effort attempt per lead to call take_thread_control so
+        // future messages on that thread start arriving via the normal
+        // entry.messaging path instead. Hardcoded to this one page ID
+        // deliberately — this is a scoped pilot, not a general capability.
+        const STANDBY_PILOT_PAGE_ID = "109379701215089";
+        if (pageId === STANDBY_PILOT_PAGE_ID && Array.isArray(entry.standby)) {
+          for (const event of entry.standby) {
+            try {
+              if (event.message?.is_echo) continue;
+              if (!event.message?.text) continue;
+
+              const psid = event.sender?.id as string | undefined;
+              if (!psid) continue;
+              const messageText = event.message.text as string;
+              const externalMsgId = event.message.mid as string | undefined;
+              const timestamp = event.timestamp as number;
+
+              const { data: existingLead } = await supabase
+                .from("leads")
+                .select("id, metadata")
+                .eq("messenger_id", psid)
+                .eq("client_id", clientId)
+                .maybeSingle();
+
+              let leadId: string;
+              let leadMetadata: Record<string, unknown> = {};
+
+              if (!existingLead) {
+                let leadName = "Messenger Lead";
+                if (fbToken) {
+                  try {
+                    const profileRes = await fetch(
+                      `https://graph.facebook.com/v21.0/${psid}?fields=first_name,last_name&access_token=${fbToken}`
+                    );
+                    const profileData = await profileRes.json();
+                    if (profileData.first_name) {
+                      leadName = `${profileData.first_name} ${profileData.last_name ?? ""}`.trim();
+                    }
+                  } catch (e) {
+                    console.warn(`Standby name lookup failed for PSID ${psid}:`, e);
+                  }
+                }
+
+                const { data: newLead, error: createError } = await supabase
+                  .from("leads")
+                  .insert({
+                    name: leadName,
+                    messenger_id: psid,
+                    source: "FB Messenger",
+                    status: "New",
+                    lead_temperature: "Cold",
+                    client_id: clientId,
+                    automation_enabled: false,
+                    automation_source: "standby_capture",
+                    metadata: { standby_capture: true, take_control_attempted: false },
+                  })
+                  .select("id, metadata")
+                  .single();
+
+                if (createError || !newLead) {
+                  console.error(`Standby lead insert failed (PSID ${psid}):`, createError);
+                  continue;
+                }
+                leadId = newLead.id;
+                leadMetadata = (newLead.metadata as Record<string, unknown>) ?? {};
+
+                await supabase
+                  .from("lead_qualifications")
+                  .insert({ lead_id: leadId, client_id: clientId });
+              } else {
+                leadId = existingLead.id;
+                leadMetadata = (existingLead.metadata as Record<string, unknown>) ?? {};
+              }
+
+              // Log the message. The unique index on external_msg_id guards
+              // against a double-capture if this thread is later promoted to
+              // primary and Meta redelivers the same message via entry.messaging.
+              const { error: insertErr } = await supabase.from("conversations").insert({
+                lead_id: leadId,
+                client_id: clientId,
+                sender: "lead",
+                direction: "inbound",
+                channel: "messenger",
+                message_content: messageText,
+                external_msg_id: externalMsgId ?? null,
+                delivery_status: "received",
+                sent_via: "facebook_standby",
+                created_at: new Date(timestamp).toISOString(),
+              });
+              if (insertErr && !insertErr.message?.includes("unique")) {
+                console.error("Standby conversation insert error:", insertErr);
+              }
+
+              await supabase
+                .from("leads")
+                .update({
+                  last_message_at: new Date(timestamp).toISOString(),
+                  last_inbound_at: new Date(timestamp).toISOString(),
+                })
+                .eq("id", leadId);
+
+              // One-time attempt to become primary receiver for this thread.
+              if (fbToken && !leadMetadata?.take_control_attempted) {
+                try {
+                  const tcRes = await fetch(
+                    `https://graph.facebook.com/v21.0/me/take_thread_control?access_token=${fbToken}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ recipient: { id: psid } }),
+                    }
+                  );
+                  const tcJson = await tcRes.json();
+                  console.log("STANDBY_TAKE_CONTROL", psid, JSON.stringify(tcJson));
+                  await supabase
+                    .from("leads")
+                    .update({
+                      metadata: {
+                        ...leadMetadata,
+                        take_control_attempted: true,
+                        take_control_result: tcJson,
+                        take_control_at: new Date().toISOString(),
+                      },
+                    })
+                    .eq("id", leadId);
+                } catch (tcErr) {
+                  console.error("take_thread_control error:", tcErr);
+                }
+              }
+            } catch (standbyErr) {
+              console.error("Error processing standby event:", standbyErr);
+            }
+          }
+        }
+        // ── END STANDBY CHANNEL ───────────────────────────────────────
+
+        if (!entry.messaging || !Array.isArray(entry.messaging)) continue;
 
         for (const event of entry.messaging) {
           // ── ECHO HANDLING — must be the very first check in this loop ──
