@@ -13,6 +13,7 @@ import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import { qualificationFieldsFor } from "@/lib/qualificationFields";
 
 interface Client {
   id: string;
@@ -53,24 +54,8 @@ export default function AdminCampaignDetailPage() {
   const [jobTitles, setJobTitles] = useState<string[]>([]);
   const [jobTitleInput, setJobTitleInput] = useState("");
 
-  const QUALIFICATION_FIELDS = [
-    { field: 'current_location', label: "Lead's Current Location", placeholder: 'e.g. Saan po kayo nakatira ngayon?' },
-    { field: 'property_type', label: 'Preferred Property Type', placeholder: 'e.g. Anong type ng property po ang hinahanap ninyo?' },
-    { field: 'property_sub_type', label: 'Property Structure Type', placeholder: 'e.g. Bahay at lupa, condo, town house, o vacant lot lang?' },
-    { field: 'payment_scheme', label: 'Payment Scheme', placeholder: 'e.g. Cash, installment, o bank financing ang plano?' },
-    { field: 'budget', label: 'Budget', placeholder: 'e.g. May budget range po ba kayo?' },
-    { field: 'timeframe', label: 'Buying Timeline', placeholder: 'e.g. Kailan kayo balak bumili?' },
-    { field: 'phone', label: 'Contact Number', placeholder: 'e.g. May contact number po ba kayo?' },
-    { field: 'purpose', label: 'Purpose of Purchase', placeholder: 'e.g. Para sa sariling tirahan o investment?' },
-    { field: 'viewing_schedule', label: 'Viewing Availability', placeholder: 'e.g. Kelan po kayo available para sa viewing?' },
-    { field: 'preferred_location', label: 'Preferred Location', placeholder: 'e.g. Saan po ang gusto ninyong lokasyon ng property?' },
-    { field: 'bedroom', label: 'Bedroom Preference', placeholder: 'e.g. Ilang bedroom po ang hinahanap ninyo?' },
-    { field: 'unit_preferred', label: 'Unit Preferred', placeholder: 'e.g. Anong type ng unit po ang gusto ninyo? (Studio, 1BR, 2BR?)' },
-    { field: 'motivation', label: 'Motivation', placeholder: 'e.g. Ano po ang dahilan ng paghahanap ng property?' },
-    { field: 'civil_status', label: 'Civil Status', placeholder: 'e.g. Ano po ang inyong civil status?' },
-    { field: 'decision_maker', label: 'Decision Maker', placeholder: 'e.g. Kayo po ba ang mag-desisyon o may kasama kayong mag-aapprove?' },
-    { field: 'email', label: 'Email Address', placeholder: 'e.g. May email address po ba kayo?' },
-  ];
+  const [campaignType, setCampaignType] = useState("buyer_leadgen");
+  const QUALIFICATION_FIELDS = qualificationFieldsFor(campaignType);
 
   const [qualificationFields, setQualificationFields] = useState<Record<string, string>>(
     Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']))
@@ -157,6 +142,7 @@ export default function AdminCampaignDetailPage() {
       }
 
       setCampaign(data);
+      setCampaignType(data.campaign_type || "buyer_leadgen");
       setName(data.name || "");
       setChannel(data.channel || "webform");
       setStatus(data.status || "draft");
@@ -220,8 +206,10 @@ export default function AdminCampaignDetailPage() {
       setPropertyTypes(targetAudience.property_types || []);
       setBuyerType(targetAudience.buyer_type || "");
       const savedFields = config.qualification_fields || [];
-      const fieldMap: Record<string, string> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, '']));
-      const enabledMap: Record<string, boolean> = Object.fromEntries(QUALIFICATION_FIELDS.map(f => [f.field, true]));
+      // Build the maps from the campaign's own type (state update above hasn't applied yet)
+      const activeFields = qualificationFieldsFor(data.campaign_type);
+      const fieldMap: Record<string, string> = Object.fromEntries(activeFields.map(f => [f.field, '']));
+      const enabledMap: Record<string, boolean> = Object.fromEntries(activeFields.map(f => [f.field, true]));
       savedFields.forEach((item: { field: string; question: string; enabled?: boolean }) => {
         if (item.field in fieldMap) fieldMap[item.field] = item.question || '';
         if (item.field in enabledMap) enabledMap[item.field] = item.enabled !== false;
@@ -341,6 +329,7 @@ export default function AdminCampaignDetailPage() {
           name,
           channel,
           status,
+          campaign_type: campaignType,
           target_action: targetAction,
           is_locked: isLocked,
           is_active: isActive,
@@ -414,7 +403,14 @@ export default function AdminCampaignDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => router.push("/admin/campaigns")}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-2xl font-semibold flex-1">{campaign.name}</h1>
+          <div className="flex items-center gap-3 flex-1">
+            <h1 className="text-2xl font-semibold">{campaign.name}</h1>
+            {campaignType === "bamo_b2b" && (
+              <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-xs font-semibold text-brand-orange">
+                BaMo B2B
+              </span>
+            )}
+          </div>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Campaign"}
           </Button>
@@ -555,6 +551,23 @@ export default function AdminCampaignDetailPage() {
                       <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Campaign Type</Label>
+                  <Select value={campaignType} onValueChange={(val) => {
+                    setCampaignType(val);
+                    // Reset qualification maps to the new type's field catalog
+                    const list = qualificationFieldsFor(val);
+                    setQualificationFields(Object.fromEntries(list.map(f => [f.field, ''])));
+                    setQualificationEnabled(Object.fromEntries(list.map(f => [f.field, true])));
+                  }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="buyer_leadgen">Buyer Lead Gen (client)</SelectItem>
+                      <SelectItem value="bamo_b2b">BaMo B2B (sell BaMo to RE professionals)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">B2B campaigns switch the AI persona to BaMo&apos;s own assistant and use B2B qualification questions.</p>
                 </div>
               </div>
             </CardContent>

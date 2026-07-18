@@ -14,6 +14,7 @@ interface Campaign {
   id: string;
   name: string;
   channel: string;
+  campaign_type?: string;
   status: string;
   is_active: boolean;
   is_locked: boolean;
@@ -38,6 +39,7 @@ export default function AdminCampaignsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [newChannel, setNewChannel] = useState("facebook");
+  const [newCampaignType, setNewCampaignType] = useState("buyer_leadgen");
   const [newClientId, setNewClientId] = useState("unallocated");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export default function AdminCampaignsPage() {
         body: JSON.stringify({
           name: newName.trim(),
           channel: newChannel,
+          campaign_type: newCampaignType,
           client_id: newClientId === "unallocated" ? null : newClientId,
         }),
       });
@@ -90,6 +93,7 @@ export default function AdminCampaignsPage() {
       setShowCreateModal(false);
       setNewName("");
       setNewChannel("facebook");
+      setNewCampaignType("buyer_leadgen");
       setNewClientId("unallocated");
       toast({ title: "Campaign created" });
       router.push(`/admin/campaigns/${data.id}`);
@@ -254,7 +258,14 @@ export default function AdminCampaignsPage() {
                         className="px-6 py-4 font-medium text-slate-900 cursor-pointer hover:text-brand-orange"
                         onClick={() => router.push(`/admin/campaigns/${c.id}`)}
                       >
-                        {c.name}
+                        <span className="inline-flex items-center gap-2">
+                          {c.name}
+                          {c.campaign_type === "bamo_b2b" && (
+                            <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-semibold text-brand-orange">
+                              B2B
+                            </span>
+                          )}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-slate-500">
                         {c.clients ? c.clients.name : <span className="italic text-slate-400">Unallocated</span>}
@@ -334,6 +345,17 @@ export default function AdminCampaignsPage() {
                   <SelectItem value="all">All</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Campaign Type</Label>
+              <Select value={newCampaignType} onValueChange={setNewCampaignType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="buyer_leadgen">Buyer Lead Gen (client)</SelectItem>
+                  <SelectItem value="bamo_b2b">BaMo B2B (sell BaMo to RE professionals)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">B2B campaigns use BaMo&apos;s own AI persona and B2B qualification questions.</p>
             </div>
             <div className="space-y-2">
               <Label>Allocate to Client (optional)</Label>
