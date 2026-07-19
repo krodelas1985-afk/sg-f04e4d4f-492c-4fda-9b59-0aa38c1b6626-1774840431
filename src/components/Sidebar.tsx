@@ -13,6 +13,7 @@ import {
   Workflow,
   Inbox,
   Bell,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ const ADMIN_NAV: NavGroup[] = [
     label: "Operations",
     items: [
       { href: "/admin/requests", label: "Client Requests", icon: Inbox },
+      { href: "/admin/automation-reviews", label: "Automation Reviews", icon: Sparkles },
       { href: "/announcements", label: "Announcements", icon: Bell },
       { href: "/admin/settings", label: "Settings", icon: Settings },
     ],
