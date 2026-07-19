@@ -1637,6 +1637,7 @@ export type Database = {
           ai_decision_instructions: string | null
           ai_instruction: string | null
           ai_message_instructions: string | null
+          automation_scope: string
           campaign_rules: Json | null
           campaign_type: string
           channel: string | null
@@ -1653,10 +1654,12 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_locked: boolean | null
+          is_organic_owner: boolean
           job_titles: string[] | null
           name: string
           priority: number
           scheduled_steps_enabled: boolean
+          scoped_ref: Json | null
           source_detail: string | null
           start_date: string | null
           status: string | null
@@ -1671,6 +1674,7 @@ export type Database = {
           ai_decision_instructions?: string | null
           ai_instruction?: string | null
           ai_message_instructions?: string | null
+          automation_scope?: string
           campaign_rules?: Json | null
           campaign_type?: string
           channel?: string | null
@@ -1687,10 +1691,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_locked?: boolean | null
+          is_organic_owner?: boolean
           job_titles?: string[] | null
           name: string
           priority?: number
           scheduled_steps_enabled?: boolean
+          scoped_ref?: Json | null
           source_detail?: string | null
           start_date?: string | null
           status?: string | null
@@ -1705,6 +1711,7 @@ export type Database = {
           ai_decision_instructions?: string | null
           ai_instruction?: string | null
           ai_message_instructions?: string | null
+          automation_scope?: string
           campaign_rules?: Json | null
           campaign_type?: string
           channel?: string | null
@@ -1721,10 +1728,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_locked?: boolean | null
+          is_organic_owner?: boolean
           job_titles?: string[] | null
           name?: string
           priority?: number
           scheduled_steps_enabled?: boolean
+          scoped_ref?: Json | null
           source_detail?: string | null
           start_date?: string | null
           status?: string | null
@@ -3919,6 +3928,57 @@ export type Database = {
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_connection_requests: {
+        Row: {
+          admin_notes: string | null
+          client_id: string
+          created_at: string
+          id: string
+          page_name: string
+          page_url: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          page_name: string
+          page_url?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          page_name?: string
+          page_url?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_connection_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "page_connection_requests_requested_by_fkey"
+            columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
