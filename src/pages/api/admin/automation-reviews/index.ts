@@ -112,6 +112,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { key: "sources", label: "Lead source selected", pass: sources.length > 0, detail: sources.join(", ") || "none" },
       ];
 
+      // Scoped automations that don't own organic traffic only receive leads via a
+      // positive attribution match — verify the ad linkage exists (or is promised).
+      if (r.automation_scope !== "general" && !r.is_organic_owner) {
+        const adLink = cfg.selfserve?.ad_link as string | undefined;
+        const hasAttr = !!(enroll.fb_ad_id || enroll.asset_id || enroll.webform_id);
+        checklist.push({
+          key: "ad_link",
+          label: "Ad linkage for scoped automation",
+          pass: hasAttr || adLink === "bamo_managed",
+          detail: hasAttr
+            ? `fb_ad_id ${enroll.fb_ad_id ?? enroll.asset_id ?? enroll.webform_id}`
+            : adLink === "bamo_managed"
+              ? "BaMo-managed ads — set fb_ad_id in enrollment_rules before activation"
+              : "No ad ID and not BaMo-managed — this automation would never receive leads",
+        });
+      }
+
       return {
         id: r.id,
         name: r.name,

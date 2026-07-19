@@ -15,6 +15,8 @@ interface Review {
   name: string;
   clientName: string;
   scope: string;
+  isOrganicOwner?: boolean;
+  selfserve?: { ad_link?: string | null; enroll_existing?: boolean } | null;
   targetAction: string;
   tone: string | null;
   tonePersona: string;
@@ -173,6 +175,8 @@ export default function AutomationReviewsPage() {
                     <p className="text-xs text-slate-500">
                       Submitted {new Date(r.createdAt).toLocaleString()} by{" "}
                       {r.creator?.full_name || r.creator?.email || "unknown"} · scope: {r.scope}
+                      {r.isOrganicOwner ? " · owns direct messages" : ""}
+                      {r.selfserve?.ad_link ? ` · ads: ${r.selfserve.ad_link}` : ""}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
