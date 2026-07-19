@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Sparkles, Facebook } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles, Facebook, Repeat } from "lucide-react";
 
 type ChecklistItem = { key: string; label: string; pass: boolean; detail: string };
 
@@ -37,10 +37,27 @@ interface Connection {
   clients?: { name: string } | null;
 }
 
+interface FollowupRequest {
+  id: string;
+  style: string;
+  duration_days: number;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  clients?: { name: string } | null;
+}
+
+const FOLLOWUP_PLAYBOOK_HINT: Record<string, string> = {
+  gentle: "2 soft nudges over the duration — clone a light playbook",
+  standard: "3 touches (day 1 / mid / end) — clone the standard playbook",
+  persistent: "4–5 touches — clone the blitz playbook, respect quiet hours",
+};
+
 export default function AutomationReviewsPage() {
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [followups, setFollowups] = useState<FollowupRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -53,6 +70,7 @@ export default function AutomationReviewsPage() {
         const data = await res.json();
         setReviews(data.reviews ?? []);
         setConnections(data.connections ?? []);
+        setFollowups(data.followups ?? []);
       }
     } finally {
       setLoading(false);
@@ -77,6 +95,23 @@ export default function AutomationReviewsPage() {
     setBusyId(null);
     if (res.ok) {
       toast({ title: action === "activate" ? "Activated — BayMo is live" : "Changes requested" });
+      load();
+    } else {
+      const err = await res.json();
+      toast({ title: "Failed", description: err.error, variant: "destructive" });
+    }
+  };
+
+  const patchFollowup = async (id: string, status: "active" | "rejected") => {
+    setBusyId(id);
+    const res = await fetch(`/api/admin/followup-requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, note: notes[`fu-${id}`] }),
+    });
+    setBusyId(null);
+    if (res.ok) {
+      toast({ title: status === "active" ? "Auto Follow-Up marked active" : "Request rejected" });
       load();
     } else {
       const err = await res.json();
@@ -187,6 +222,52 @@ export default function AutomationReviewsPage() {
                         onClick={() => act(r.id, "request_changes")}
                       >
                         Request changes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Repeat className="w-5 h-5 text-brand-navy" /> Auto Follow-Up requests{" "}
+                <Badge variant="secondary">{followups.length}</Badge>
+              </h2>
+              {followups.length === 0 && (
+                <p className="text-sm text-slate-500">No open follow-up requests.</p>
+              )}
+              {followups.map((f) => (
+                <Card key={f.id}>
+                  <CardContent className="pt-6 space-y-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium capitalize">
+                          {f.style} · {f.duration_days} days{" "}
+                          <span className="text-slate-400 font-normal">
+                            · {f.clients?.name ?? "Unknown client"}
+                          </span>
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {FOLLOWUP_PLAYBOOK_HINT[f.style]} · requested{" "}
+                          {new Date(f.created_at).toLocaleString()}
+                        </p>
+                        {f.notes && <p className="text-slate-600">“{f.notes}”</p>}
+                      </div>
+                      <Badge variant="outline">{f.status}</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <Input
+                        className="w-72"
+                        placeholder="Note to client (optional)"
+                        value={notes[`fu-${f.id}`] ?? ""}
+                        onChange={(e) => setNotes((n) => ({ ...n, [`fu-${f.id}`]: e.target.value }))}
+                      />
+                      <Button size="sm" disabled={busyId === f.id} onClick={() => patchFollowup(f.id, "active")}>
+                        Mark active
+                      </Button>
+                      <Button variant="destructive" size="sm" disabled={busyId === f.id} onClick={() => patchFollowup(f.id, "rejected")}>
+                        Reject
                       </Button>
                     </div>
                   </CardContent>

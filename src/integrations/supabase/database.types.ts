@@ -2946,6 +2946,60 @@ export type Database = {
           },
         ]
       }
+      followup_requests: {
+        Row: {
+          admin_notes: string | null
+          client_id: string
+          created_at: string
+          duration_days: number
+          id: string
+          notes: string | null
+          requested_by: string
+          status: string
+          style: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          client_id: string
+          created_at?: string
+          duration_days: number
+          id?: string
+          notes?: string | null
+          requested_by: string
+          status?: string
+          style: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          client_id?: string
+          created_at?: string
+          duration_days?: number
+          id?: string
+          notes?: string | null
+          requested_by?: string
+          status?: string
+          style?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kb_chunks: {
         Row: {
           campaign_id: string | null

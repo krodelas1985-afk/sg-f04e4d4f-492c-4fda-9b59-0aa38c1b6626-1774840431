@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-    const [{ data: pending }, { data: connections }] = await Promise.all([
+    const [{ data: pending }, { data: connections }, { data: followups }] = await Promise.all([
       adminClient
         .from("campaigns")
         .select(
@@ -52,6 +52,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from("page_connection_requests")
         .select("id, client_id, page_name, page_url, status, admin_notes, created_at, clients(name)")
         .in("status", ["pending", "in_progress"])
+        .order("created_at", { ascending: true }),
+      adminClient
+        .from("followup_requests")
+        .select("id, client_id, style, duration_days, notes, status, created_at, clients(name)")
+        .eq("status", "pending")
         .order("created_at", { ascending: true }),
     ]);
 
@@ -128,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     });
 
-    return res.status(200).json({ reviews, connections: connections ?? [] });
+    return res.status(200).json({ reviews, connections: connections ?? [], followups: followups ?? [] });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
