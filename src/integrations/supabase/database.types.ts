@@ -1114,11 +1114,14 @@ export type Database = {
       }
       agent_websites: {
         Row: {
+          admin_stage: string | null
           agent_email: string | null
           agent_name: string | null
           agent_phone: string | null
           area_coverage: string | null
           assets_drive_url: string | null
+          assigned_admin: string | null
+          build_notes: string | null
           client_id: string
           company: string | null
           created_by: string
@@ -1135,11 +1138,14 @@ export type Database = {
           whatsapp_link: string | null
         }
         Insert: {
+          admin_stage?: string | null
           agent_email?: string | null
           agent_name?: string | null
           agent_phone?: string | null
           area_coverage?: string | null
           assets_drive_url?: string | null
+          assigned_admin?: string | null
+          build_notes?: string | null
           client_id: string
           company?: string | null
           created_by: string
@@ -1156,11 +1162,14 @@ export type Database = {
           whatsapp_link?: string | null
         }
         Update: {
+          admin_stage?: string | null
           agent_email?: string | null
           agent_name?: string | null
           agent_phone?: string | null
           area_coverage?: string | null
           assets_drive_url?: string | null
+          assigned_admin?: string | null
+          build_notes?: string | null
           client_id?: string
           company?: string | null
           created_by?: string
@@ -1853,120 +1862,6 @@ export type Database = {
           },
         ]
       }
-      client_bamo_website: {
-        Row: {
-          accent_color: string | null
-          built_at: string | null
-          client_id: string | null
-          content: Json | null
-          created_at: string | null
-          created_by: string | null
-          custom_domain: string | null
-          deployment_logs: string | null
-          description: string | null
-          domain_status: string | null
-          favicon_url: string | null
-          hero_image_url: string | null
-          id: string
-          last_updated_at: string | null
-          lead_form_enabled: boolean | null
-          lead_form_title: string | null
-          lead_webhook_url: string | null
-          listing_filter: Json | null
-          logo_url: string | null
-          primary_color: string | null
-          published_at: string | null
-          show_listings: boolean | null
-          site_name: string
-          status: string | null
-          subdomain: string | null
-          tagline: string | null
-          theme: string | null
-          updated_at: string | null
-          vercel_deployment_url: string | null
-          vercel_project_id: string | null
-        }
-        Insert: {
-          accent_color?: string | null
-          built_at?: string | null
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          created_by?: string | null
-          custom_domain?: string | null
-          deployment_logs?: string | null
-          description?: string | null
-          domain_status?: string | null
-          favicon_url?: string | null
-          hero_image_url?: string | null
-          id?: string
-          last_updated_at?: string | null
-          lead_form_enabled?: boolean | null
-          lead_form_title?: string | null
-          lead_webhook_url?: string | null
-          listing_filter?: Json | null
-          logo_url?: string | null
-          primary_color?: string | null
-          published_at?: string | null
-          show_listings?: boolean | null
-          site_name: string
-          status?: string | null
-          subdomain?: string | null
-          tagline?: string | null
-          theme?: string | null
-          updated_at?: string | null
-          vercel_deployment_url?: string | null
-          vercel_project_id?: string | null
-        }
-        Update: {
-          accent_color?: string | null
-          built_at?: string | null
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          created_by?: string | null
-          custom_domain?: string | null
-          deployment_logs?: string | null
-          description?: string | null
-          domain_status?: string | null
-          favicon_url?: string | null
-          hero_image_url?: string | null
-          id?: string
-          last_updated_at?: string | null
-          lead_form_enabled?: boolean | null
-          lead_form_title?: string | null
-          lead_webhook_url?: string | null
-          listing_filter?: Json | null
-          logo_url?: string | null
-          primary_color?: string | null
-          published_at?: string | null
-          show_listings?: boolean | null
-          site_name?: string
-          status?: string | null
-          subdomain?: string | null
-          tagline?: string | null
-          theme?: string | null
-          updated_at?: string | null
-          vercel_deployment_url?: string | null
-          vercel_project_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_bamo_website_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_bamo_website_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       client_campaigns: {
         Row: {
           assigned_at: string | null
@@ -2124,220 +2019,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_analytics: {
-        Row: {
-          avg_session_seconds: number | null
-          bounce_rate: number | null
-          client_id: string | null
-          date: string
-          id: string
-          lead_form_submissions: number | null
-          listing_clicks: number | null
-          page_views: number | null
-          unique_visitors: number | null
-          website_id: string | null
-        }
-        Insert: {
-          avg_session_seconds?: number | null
-          bounce_rate?: number | null
-          client_id?: string | null
-          date: string
-          id?: string
-          lead_form_submissions?: number | null
-          listing_clicks?: number | null
-          page_views?: number | null
-          unique_visitors?: number | null
-          website_id?: string | null
-        }
-        Update: {
-          avg_session_seconds?: number | null
-          bounce_rate?: number | null
-          client_id?: string | null
-          date?: string
-          id?: string
-          lead_form_submissions?: number | null
-          listing_clicks?: number | null
-          page_views?: number | null
-          unique_visitors?: number | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_analytics_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_analytics_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_builds: {
-        Row: {
-          build_log: string | null
-          client_id: string | null
-          completed_at: string | null
-          deployment_url: string | null
-          id: string
-          started_at: string | null
-          status: string | null
-          triggered_by: string | null
-          website_id: string | null
-        }
-        Insert: {
-          build_log?: string | null
-          client_id?: string | null
-          completed_at?: string | null
-          deployment_url?: string | null
-          id?: string
-          started_at?: string | null
-          status?: string | null
-          triggered_by?: string | null
-          website_id?: string | null
-        }
-        Update: {
-          build_log?: string | null
-          client_id?: string | null
-          completed_at?: string | null
-          deployment_url?: string | null
-          id?: string
-          started_at?: string | null
-          status?: string | null
-          triggered_by?: string | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_builds_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_builds_triggered_by_fkey"
-            columns: ["triggered_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_builds_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_pages: {
-        Row: {
-          client_id: string | null
-          content: Json | null
-          created_at: string | null
-          id: string
-          is_published: boolean | null
-          slug: string
-          sort_order: number | null
-          title: string
-          updated_at: string | null
-          website_id: string | null
-        }
-        Insert: {
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          slug: string
-          sort_order?: number | null
-          title: string
-          updated_at?: string | null
-          website_id?: string | null
-        }
-        Update: {
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          slug?: string
-          sort_order?: number | null
-          title?: string
-          updated_at?: string | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_pages_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_pages_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_sections: {
-        Row: {
-          content: Json | null
-          created_at: string | null
-          id: string
-          is_visible: boolean | null
-          page_id: string | null
-          section_type: string
-          sort_order: number | null
-          website_id: string | null
-        }
-        Insert: {
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_visible?: boolean | null
-          page_id?: string | null
-          section_type: string
-          sort_order?: number | null
-          website_id?: string | null
-        }
-        Update: {
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_visible?: boolean | null
-          page_id?: string | null
-          section_type?: string
-          sort_order?: number | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_sections_page_id_fkey"
-            columns: ["page_id"]
-            isOneToOne: false
-            referencedRelation: "client_website_pages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_sections_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
             referencedColumns: ["id"]
           },
         ]
