@@ -1121,17 +1121,20 @@ export type Database = {
           area_coverage: string | null
           assets_drive_url: string | null
           assigned_admin: string | null
+          brief_generated_at: string | null
           build_notes: string | null
           client_id: string
           company: string | null
           created_by: string
           facts: string | null
+          generated_brief: string | null
           hero_photo_url: string | null
           id: string
           linked_listing_ids: string[]
           messenger_link: string | null
           prc_number: string | null
           requested_at: string
+          site_config: Json | null
           status: string
           updated_at: string
           website_url: string | null
@@ -1145,17 +1148,20 @@ export type Database = {
           area_coverage?: string | null
           assets_drive_url?: string | null
           assigned_admin?: string | null
+          brief_generated_at?: string | null
           build_notes?: string | null
           client_id: string
           company?: string | null
           created_by: string
           facts?: string | null
+          generated_brief?: string | null
           hero_photo_url?: string | null
           id?: string
           linked_listing_ids?: string[]
           messenger_link?: string | null
           prc_number?: string | null
           requested_at?: string
+          site_config?: Json | null
           status?: string
           updated_at?: string
           website_url?: string | null
@@ -1169,17 +1175,20 @@ export type Database = {
           area_coverage?: string | null
           assets_drive_url?: string | null
           assigned_admin?: string | null
+          brief_generated_at?: string | null
           build_notes?: string | null
           client_id?: string
           company?: string | null
           created_by?: string
           facts?: string | null
+          generated_brief?: string | null
           hero_photo_url?: string | null
           id?: string
           linked_listing_ids?: string[]
           messenger_link?: string | null
           prc_number?: string | null
           requested_at?: string
+          site_config?: Json | null
           status?: string
           updated_at?: string
           website_url?: string | null
