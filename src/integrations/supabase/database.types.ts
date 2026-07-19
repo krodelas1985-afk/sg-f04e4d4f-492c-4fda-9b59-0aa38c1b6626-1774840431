@@ -1126,6 +1126,8 @@ export type Database = {
           client_id: string
           company: string | null
           created_by: string
+          deploy_url: string | null
+          deployed_at: string | null
           facts: string | null
           generated_brief: string | null
           hero_photo_url: string | null
@@ -1133,10 +1135,14 @@ export type Database = {
           linked_listing_ids: string[]
           messenger_link: string | null
           prc_number: string | null
+          preflight_at: string | null
+          preflight_report: Json | null
+          repo_url: string | null
           requested_at: string
           site_config: Json | null
           status: string
           updated_at: string
+          vercel_project_id: string | null
           website_url: string | null
           whatsapp_link: string | null
         }
@@ -1153,6 +1159,8 @@ export type Database = {
           client_id: string
           company?: string | null
           created_by: string
+          deploy_url?: string | null
+          deployed_at?: string | null
           facts?: string | null
           generated_brief?: string | null
           hero_photo_url?: string | null
@@ -1160,10 +1168,14 @@ export type Database = {
           linked_listing_ids?: string[]
           messenger_link?: string | null
           prc_number?: string | null
+          preflight_at?: string | null
+          preflight_report?: Json | null
+          repo_url?: string | null
           requested_at?: string
           site_config?: Json | null
           status?: string
           updated_at?: string
+          vercel_project_id?: string | null
           website_url?: string | null
           whatsapp_link?: string | null
         }
@@ -1180,6 +1192,8 @@ export type Database = {
           client_id?: string
           company?: string | null
           created_by?: string
+          deploy_url?: string | null
+          deployed_at?: string | null
           facts?: string | null
           generated_brief?: string | null
           hero_photo_url?: string | null
@@ -1187,10 +1201,14 @@ export type Database = {
           linked_listing_ids?: string[]
           messenger_link?: string | null
           prc_number?: string | null
+          preflight_at?: string | null
+          preflight_report?: Json | null
+          repo_url?: string | null
           requested_at?: string
           site_config?: Json | null
           status?: string
           updated_at?: string
+          vercel_project_id?: string | null
           website_url?: string | null
           whatsapp_link?: string | null
         }
