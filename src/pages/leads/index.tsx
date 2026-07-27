@@ -32,12 +32,19 @@ import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { TemperatureBadge, StatusBadge } from "@/components/shared/badges";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const STATUS_OPTIONS = ["New", "Active", "In Contact", "Inactive", "Closed"];
+// Must match leads_status_chk. get_leads_with_details filters on l.status = p_status
+// (plain equality, no grouping), so any value not in the constraint matches nothing.
+const STATUS_OPTIONS = [
+  "New", "In Contact", "Qualifying", "Qualified", "Viewing",
+  "Negotiating", "Nurture", "Won", "Lost", "Unqualified",
+];
+// Must match leads_temperature_chk. Disqualification lives on the status axis, not
+// here — W2 rewrites lead_temperature on every inbound message.
 const STAGE_OPTIONS = [
   { value: "Hot", emoji: "🔥", color: "bg-red-100 text-red-800" },
   { value: "Warm", emoji: "🟠", color: "bg-amber-100 text-amber-800" },
   { value: "Cold", emoji: "❄️", color: "bg-gray-100 text-gray-800" },
-  { value: "Unqualified", emoji: "", color: "bg-gray-100 text-gray-600" },
+  { value: "New", emoji: "✨", color: "bg-blue-100 text-blue-800" },
 ];
 const LEAD_TYPE_OPTIONS = ["Buyer", "Seller", "Agent", "Developer", "Affiliate", "Others"];
 const SOURCE_OPTIONS = [
@@ -462,11 +469,16 @@ export default function LeadsPage() {
   
   const getStatusStyle = (status: string) => {
     const styles: Record<string, string> = {
-      "New": "bg-blue-100 text-blue-800",
-      "Active": "bg-green-100 text-green-800",
-      "In Contact": "bg-purple-100 text-purple-800",
-      "Inactive": "bg-gray-100 text-gray-600",
-      "Closed": "bg-red-100 text-red-800",
+      "New": "bg-[#F1EFE8] text-[#5F5E5A]",
+      "In Contact": "bg-[#EEF3FF] text-primary",
+      "Qualifying": "bg-[#EEF3FF] text-primary",
+      "Qualified": "bg-[#ECFDF5] text-[#065F46]",
+      "Viewing": "bg-[#FDF2E6] text-brand-orange-dark",
+      "Negotiating": "bg-[#FDF2E6] text-brand-orange-dark",
+      "Nurture": "bg-[#F5F3FF] text-[#5B21B6]",
+      "Won": "bg-[#ECFDF5] text-[#065F46]",
+      "Lost": "bg-[#FEF2F2] text-[#991B1B]",
+      "Unqualified": "bg-[#F3F4F6] text-[#6B7280]",
     };
     return styles[status] || "bg-gray-100 text-gray-600";
   };

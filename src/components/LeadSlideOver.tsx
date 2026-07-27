@@ -340,11 +340,16 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case "New": return "bg-blue-100 text-blue-800";
-      case "Active": return "bg-green-100 text-green-800";
-      case "In Contact": return "bg-purple-100 text-purple-800";
-      case "Inactive": return "bg-gray-100 text-gray-600";
-      case "Closed": return "bg-red-100 text-red-800";
+      case "New": return "bg-[#F1EFE8] text-[#5F5E5A]";
+      case "In Contact": return "bg-[#EEF3FF] text-primary";
+      case "Qualifying": return "bg-[#EEF3FF] text-primary";
+      case "Qualified": return "bg-[#ECFDF5] text-[#065F46]";
+      case "Viewing": return "bg-[#FDF2E6] text-brand-orange-dark";
+      case "Negotiating": return "bg-[#FDF2E6] text-brand-orange-dark";
+      case "Nurture": return "bg-[#F5F3FF] text-[#5B21B6]";
+      case "Won": return "bg-[#ECFDF5] text-[#065F46]";
+      case "Lost": return "bg-[#FEF2F2] text-[#991B1B]";
+      case "Unqualified": return "bg-[#F3F4F6] text-[#6B7280]";
       default: return "bg-gray-100 text-gray-600";
     }
   };
@@ -533,10 +538,15 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="New">New</SelectItem>
-                        <SelectItem value="Active">Active</SelectItem>
                         <SelectItem value="In Contact">In Contact</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
+                        <SelectItem value="Qualifying">Qualifying</SelectItem>
+                        <SelectItem value="Qualified">Qualified</SelectItem>
+                        <SelectItem value="Viewing">Viewing</SelectItem>
+                        <SelectItem value="Negotiating">Negotiating</SelectItem>
+                        <SelectItem value="Nurture">Nurture</SelectItem>
+                        <SelectItem value="Won">Won</SelectItem>
+                        <SelectItem value="Lost">Lost</SelectItem>
+                        <SelectItem value="Unqualified">Unqualified</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
