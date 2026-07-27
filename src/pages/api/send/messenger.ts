@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@supabase/supabase-js";
+import { requireUser, requireLeadAccess } from "@/lib/apiAuth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,16 +9,48 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const { messenger_id, message, lead_id, client_id } = req.body;
+  const caller = await requireUser(req, res);
+  if (!caller) return;
 
-    if (!messenger_id || !message || !lead_id || !client_id) {
+  try {
+    const { message, lead_id } = req.body;
+
+    if (!message || !lead_id) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    // messenger_id and client_id used to be taken from the request body, which
+    // let any caller pick the recipient. Both are now derived from the lead,
+    // and the lead itself is scoped to the caller's workspace.
+    const lead = await requireLeadAccess(caller, lead_id, res);
+    if (!lead) return;
+
+    const { data: leadRow } = await caller.admin
+      .from("leads")
+      .select("messenger_id")
+      .eq("id", lead_id)
+      .single();
+
+    const messengerId = leadRow?.messenger_id;
+    if (!messengerId) {
+      return res.status(400).json({ error: "Lead has no Messenger thread" });
+    }
+
+    // Send from the client's OWN Page, not a single global token — sending one
+    // client's message from another client's Page is a privacy incident. This
+    // mirrors the lookup the inbound webhook already does.
+    const { data: client } = await caller.admin
+      .from("clients")
+      .select("fb_page_token")
+      .eq("id", lead.client_id)
+      .eq("is_active", true)
+      .single();
+
+    const pageAccessToken = client?.fb_page_token;
     if (!pageAccessToken) {
-      return res.status(500).json({ error: "Facebook page access token not configured" });
+      return res
+        .status(400)
+        .json({ error: "No Facebook Page connected for this client" });
     }
 
     // Call Facebook Send API
@@ -30,7 +62,7 @@ export default async function handler(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          recipient: { id: messenger_id },
+          recipient: { id: messengerId },
           message: { text: message },
         }),
       }
@@ -40,16 +72,12 @@ export default async function handler(
 
     // If Facebook API call was successful, update conversation delivery status
     if (facebookResponse.ok && facebookData.message_id) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
       // Update the most recent outbound conversation for this lead to "sent"
-      await supabase
+      await caller.admin
         .from("conversations")
         .update({ delivery_status: "sent" })
         .eq("lead_id", lead_id)
-        .eq("client_id", client_id)
+        .eq("client_id", lead.client_id)
         .eq("direction", "outbound")
         .eq("message_content", message)
         .order("created_at", { ascending: false })
@@ -60,9 +88,9 @@ export default async function handler(
     return res.status(facebookResponse.status).json(facebookData);
   } catch (error) {
     console.error("Error sending messenger message:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Failed to send message",
-      details: error instanceof Error ? error.message : "Unknown error"
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }
