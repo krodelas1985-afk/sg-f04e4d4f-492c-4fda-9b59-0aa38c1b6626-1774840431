@@ -1114,65 +1114,101 @@ export type Database = {
       }
       agent_websites: {
         Row: {
+          admin_stage: string | null
           agent_email: string | null
           agent_name: string | null
           agent_phone: string | null
           area_coverage: string | null
           assets_drive_url: string | null
+          assigned_admin: string | null
+          brief_generated_at: string | null
+          build_notes: string | null
           client_id: string
           company: string | null
           created_by: string
+          deploy_url: string | null
+          deployed_at: string | null
           facts: string | null
+          generated_brief: string | null
           hero_photo_url: string | null
           id: string
           linked_listing_ids: string[]
           messenger_link: string | null
           prc_number: string | null
+          preflight_at: string | null
+          preflight_report: Json | null
+          repo_url: string | null
           requested_at: string
+          site_config: Json | null
           status: string
           updated_at: string
+          vercel_project_id: string | null
           website_url: string | null
           whatsapp_link: string | null
         }
         Insert: {
+          admin_stage?: string | null
           agent_email?: string | null
           agent_name?: string | null
           agent_phone?: string | null
           area_coverage?: string | null
           assets_drive_url?: string | null
+          assigned_admin?: string | null
+          brief_generated_at?: string | null
+          build_notes?: string | null
           client_id: string
           company?: string | null
           created_by: string
+          deploy_url?: string | null
+          deployed_at?: string | null
           facts?: string | null
+          generated_brief?: string | null
           hero_photo_url?: string | null
           id?: string
           linked_listing_ids?: string[]
           messenger_link?: string | null
           prc_number?: string | null
+          preflight_at?: string | null
+          preflight_report?: Json | null
+          repo_url?: string | null
           requested_at?: string
+          site_config?: Json | null
           status?: string
           updated_at?: string
+          vercel_project_id?: string | null
           website_url?: string | null
           whatsapp_link?: string | null
         }
         Update: {
+          admin_stage?: string | null
           agent_email?: string | null
           agent_name?: string | null
           agent_phone?: string | null
           area_coverage?: string | null
           assets_drive_url?: string | null
+          assigned_admin?: string | null
+          brief_generated_at?: string | null
+          build_notes?: string | null
           client_id?: string
           company?: string | null
           created_by?: string
+          deploy_url?: string | null
+          deployed_at?: string | null
           facts?: string | null
+          generated_brief?: string | null
           hero_photo_url?: string | null
           id?: string
           linked_listing_ids?: string[]
           messenger_link?: string | null
           prc_number?: string | null
+          preflight_at?: string | null
+          preflight_report?: Json | null
+          repo_url?: string | null
           requested_at?: string
+          site_config?: Json | null
           status?: string
           updated_at?: string
+          vercel_project_id?: string | null
           website_url?: string | null
           whatsapp_link?: string | null
         }
@@ -1637,6 +1673,7 @@ export type Database = {
           ai_decision_instructions: string | null
           ai_instruction: string | null
           ai_message_instructions: string | null
+          automation_scope: string
           campaign_rules: Json | null
           campaign_type: string
           channel: string | null
@@ -1653,10 +1690,12 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_locked: boolean | null
+          is_organic_owner: boolean
           job_titles: string[] | null
           name: string
           priority: number
           scheduled_steps_enabled: boolean
+          scoped_ref: Json | null
           source_detail: string | null
           start_date: string | null
           status: string | null
@@ -1671,6 +1710,7 @@ export type Database = {
           ai_decision_instructions?: string | null
           ai_instruction?: string | null
           ai_message_instructions?: string | null
+          automation_scope?: string
           campaign_rules?: Json | null
           campaign_type?: string
           channel?: string | null
@@ -1687,10 +1727,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_locked?: boolean | null
+          is_organic_owner?: boolean
           job_titles?: string[] | null
           name: string
           priority?: number
           scheduled_steps_enabled?: boolean
+          scoped_ref?: Json | null
           source_detail?: string | null
           start_date?: string | null
           status?: string | null
@@ -1705,6 +1747,7 @@ export type Database = {
           ai_decision_instructions?: string | null
           ai_instruction?: string | null
           ai_message_instructions?: string | null
+          automation_scope?: string
           campaign_rules?: Json | null
           campaign_type?: string
           channel?: string | null
@@ -1721,10 +1764,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_locked?: boolean | null
+          is_organic_owner?: boolean
           job_titles?: string[] | null
           name?: string
           priority?: number
           scheduled_steps_enabled?: boolean
+          scoped_ref?: Json | null
           source_detail?: string | null
           start_date?: string | null
           status?: string | null
@@ -1838,120 +1883,6 @@ export type Database = {
           {
             foreignKeyName: "client_assets_uploaded_by_fkey"
             columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_bamo_website: {
-        Row: {
-          accent_color: string | null
-          built_at: string | null
-          client_id: string | null
-          content: Json | null
-          created_at: string | null
-          created_by: string | null
-          custom_domain: string | null
-          deployment_logs: string | null
-          description: string | null
-          domain_status: string | null
-          favicon_url: string | null
-          hero_image_url: string | null
-          id: string
-          last_updated_at: string | null
-          lead_form_enabled: boolean | null
-          lead_form_title: string | null
-          lead_webhook_url: string | null
-          listing_filter: Json | null
-          logo_url: string | null
-          primary_color: string | null
-          published_at: string | null
-          show_listings: boolean | null
-          site_name: string
-          status: string | null
-          subdomain: string | null
-          tagline: string | null
-          theme: string | null
-          updated_at: string | null
-          vercel_deployment_url: string | null
-          vercel_project_id: string | null
-        }
-        Insert: {
-          accent_color?: string | null
-          built_at?: string | null
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          created_by?: string | null
-          custom_domain?: string | null
-          deployment_logs?: string | null
-          description?: string | null
-          domain_status?: string | null
-          favicon_url?: string | null
-          hero_image_url?: string | null
-          id?: string
-          last_updated_at?: string | null
-          lead_form_enabled?: boolean | null
-          lead_form_title?: string | null
-          lead_webhook_url?: string | null
-          listing_filter?: Json | null
-          logo_url?: string | null
-          primary_color?: string | null
-          published_at?: string | null
-          show_listings?: boolean | null
-          site_name: string
-          status?: string | null
-          subdomain?: string | null
-          tagline?: string | null
-          theme?: string | null
-          updated_at?: string | null
-          vercel_deployment_url?: string | null
-          vercel_project_id?: string | null
-        }
-        Update: {
-          accent_color?: string | null
-          built_at?: string | null
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          created_by?: string | null
-          custom_domain?: string | null
-          deployment_logs?: string | null
-          description?: string | null
-          domain_status?: string | null
-          favicon_url?: string | null
-          hero_image_url?: string | null
-          id?: string
-          last_updated_at?: string | null
-          lead_form_enabled?: boolean | null
-          lead_form_title?: string | null
-          lead_webhook_url?: string | null
-          listing_filter?: Json | null
-          logo_url?: string | null
-          primary_color?: string | null
-          published_at?: string | null
-          show_listings?: boolean | null
-          site_name?: string
-          status?: string | null
-          subdomain?: string | null
-          tagline?: string | null
-          theme?: string | null
-          updated_at?: string | null
-          vercel_deployment_url?: string | null
-          vercel_project_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_bamo_website_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_bamo_website_created_by_fkey"
-            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2115,220 +2046,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_analytics: {
-        Row: {
-          avg_session_seconds: number | null
-          bounce_rate: number | null
-          client_id: string | null
-          date: string
-          id: string
-          lead_form_submissions: number | null
-          listing_clicks: number | null
-          page_views: number | null
-          unique_visitors: number | null
-          website_id: string | null
-        }
-        Insert: {
-          avg_session_seconds?: number | null
-          bounce_rate?: number | null
-          client_id?: string | null
-          date: string
-          id?: string
-          lead_form_submissions?: number | null
-          listing_clicks?: number | null
-          page_views?: number | null
-          unique_visitors?: number | null
-          website_id?: string | null
-        }
-        Update: {
-          avg_session_seconds?: number | null
-          bounce_rate?: number | null
-          client_id?: string | null
-          date?: string
-          id?: string
-          lead_form_submissions?: number | null
-          listing_clicks?: number | null
-          page_views?: number | null
-          unique_visitors?: number | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_analytics_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_analytics_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_builds: {
-        Row: {
-          build_log: string | null
-          client_id: string | null
-          completed_at: string | null
-          deployment_url: string | null
-          id: string
-          started_at: string | null
-          status: string | null
-          triggered_by: string | null
-          website_id: string | null
-        }
-        Insert: {
-          build_log?: string | null
-          client_id?: string | null
-          completed_at?: string | null
-          deployment_url?: string | null
-          id?: string
-          started_at?: string | null
-          status?: string | null
-          triggered_by?: string | null
-          website_id?: string | null
-        }
-        Update: {
-          build_log?: string | null
-          client_id?: string | null
-          completed_at?: string | null
-          deployment_url?: string | null
-          id?: string
-          started_at?: string | null
-          status?: string | null
-          triggered_by?: string | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_builds_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_builds_triggered_by_fkey"
-            columns: ["triggered_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_builds_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_pages: {
-        Row: {
-          client_id: string | null
-          content: Json | null
-          created_at: string | null
-          id: string
-          is_published: boolean | null
-          slug: string
-          sort_order: number | null
-          title: string
-          updated_at: string | null
-          website_id: string | null
-        }
-        Insert: {
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          slug: string
-          sort_order?: number | null
-          title: string
-          updated_at?: string | null
-          website_id?: string | null
-        }
-        Update: {
-          client_id?: string | null
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          slug?: string
-          sort_order?: number | null
-          title?: string
-          updated_at?: string | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_pages_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_pages_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_website_sections: {
-        Row: {
-          content: Json | null
-          created_at: string | null
-          id: string
-          is_visible: boolean | null
-          page_id: string | null
-          section_type: string
-          sort_order: number | null
-          website_id: string | null
-        }
-        Insert: {
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_visible?: boolean | null
-          page_id?: string | null
-          section_type: string
-          sort_order?: number | null
-          website_id?: string | null
-        }
-        Update: {
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_visible?: boolean | null
-          page_id?: string | null
-          section_type?: string
-          sort_order?: number | null
-          website_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_website_sections_page_id_fkey"
-            columns: ["page_id"]
-            isOneToOne: false
-            referencedRelation: "client_website_pages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_website_sections_website_id_fkey"
-            columns: ["website_id"]
-            isOneToOne: false
-            referencedRelation: "client_bamo_website"
             referencedColumns: ["id"]
           },
         ]
@@ -2933,6 +2650,60 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      followup_requests: {
+        Row: {
+          admin_notes: string | null
+          client_id: string
+          created_at: string
+          duration_days: number
+          id: string
+          notes: string | null
+          requested_by: string
+          status: string
+          style: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          client_id: string
+          created_at?: string
+          duration_days: number
+          id?: string
+          notes?: string | null
+          requested_by: string
+          status?: string
+          style: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          client_id?: string
+          created_at?: string
+          duration_days?: number
+          id?: string
+          notes?: string | null
+          requested_by?: string
+          status?: string
+          style?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3919,6 +3690,57 @@ export type Database = {
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_connection_requests: {
+        Row: {
+          admin_notes: string | null
+          client_id: string
+          created_at: string
+          id: string
+          page_name: string
+          page_url: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          page_name: string
+          page_url?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          page_name?: string
+          page_url?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_connection_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "page_connection_requests_requested_by_fkey"
+            columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
