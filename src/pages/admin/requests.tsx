@@ -54,6 +54,20 @@ interface CampaignRequest {
   created_by_profile: Creator;
 }
 
+// Website (landing-page) client applications — client_onboarding rows with
+// source='web'. Approving one auto-creates the client workspace via a DB trigger.
+interface ClientApplication {
+  id: string;
+  full_name: string | null;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  status: "submitted" | "reviewed" | "approved";
+  client_id: string | null;
+  created_at: string;
+  answers: { city?: string | null } | null;
+}
+
 const PRODUCT_LABELS: Record<string, string> = {
   social_autopost: "Social Auto-Posting",
   fb_page_connection: "Facebook Page Connection",
@@ -63,8 +77,8 @@ const PRODUCT_LABELS: Record<string, string> = {
 };
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  if (["closed", "delivered", "launched"].includes(status)) return "default";
-  if (["contacted", "in_production", "reviewing"].includes(status)) return "secondary";
+  if (["closed", "delivered", "launched", "approved"].includes(status)) return "default";
+  if (["contacted", "in_production", "reviewing", "reviewed"].includes(status)) return "secondary";
   if (["cancelled", "declined"].includes(status)) return "destructive";
   return "outline";
 }
@@ -79,6 +93,7 @@ export default function AdminRequestsPage() {
   const [subscriptions, setSubscriptions] = useState<SubscriptionRequest[]>([]);
   const [videos, setVideos] = useState<VideoRequest[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignRequest[]>([]);
+  const [applications, setApplications] = useState<ClientApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deliverUrls, setDeliverUrls] = useState<Record<string, string>>({});
@@ -91,6 +106,7 @@ export default function AdminRequestsPage() {
         setSubscriptions(data.subscriptions ?? []);
         setVideos(data.videos ?? []);
         setCampaigns(data.campaigns ?? []);
+        setApplications(data.applications ?? []);
       }
     } finally {
       setLoading(false);
@@ -124,6 +140,26 @@ export default function AdminRequestsPage() {
     setBusyId(null);
     if (res.ok) {
       toast({ title: "Account deactivated", description: "Login revoked; their data was kept for records." });
+      load();
+    } else {
+      const err = await res.json();
+      toast({ title: "Failed", description: err.error, variant: "destructive" });
+    }
+  };
+
+  const patchApplication = async (id: string, status: string) => {
+    setBusyId(id);
+    const res = await fetch(`/api/admin/requests/application/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    setBusyId(null);
+    if (res.ok) {
+      toast({
+        title: status === "approved" ? "Client created" : "Updated",
+        description: status === "approved" ? "A client workspace was created from this application." : undefined,
+      });
       load();
     } else {
       const err = await res.json();
@@ -171,7 +207,8 @@ export default function AdminRequestsPage() {
         <div>
           <h1 className="text-2xl font-semibold mb-2 text-foreground">Client Requests</h1>
           <p className="text-muted-foreground">
-            Requests submitted from the BaMo RE Assistant mobile app — subscriptions, videos, and ad campaigns.
+            Website applications from bahaymo.com, plus requests submitted from the BaMo RE Assistant mobile
+            app — subscriptions, videos, and ad campaigns.
           </p>
         </div>
 
@@ -179,6 +216,82 @@ export default function AdminRequestsPage() {
           <div className="text-center py-12 text-muted-foreground">Loading...</div>
         ) : (
           <>
+            {/* Website client applications (landing page → client_onboarding source='web') */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Client Applications</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  People who applied to become a client from the website. Approving one creates their client
+                  workspace automatically — you still handle FB page access, Drive setup, and their login afterward.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {applications.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-4">No applications.</div>
+                ) : (
+                  applications.map((a) => {
+                    const who = a.full_name || a.company_name || a.email || "Unknown applicant";
+                    const details = [a.company_name, a.email, a.phone, a.answers?.city]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <div key={a.id} className="border rounded-lg p-4 flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{who}</span>
+                            <Badge variant={statusVariant(a.status)}>
+                              {a.status === "approved" ? "client created" : a.status}
+                            </Badge>
+                          </div>
+                          {details && <div className="text-sm text-muted-foreground">{details}</div>}
+                          <div className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</div>
+                        </div>
+                        {a.status !== "approved" ? (
+                          <div className="flex gap-2 shrink-0">
+                            {a.status === "submitted" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busyId === a.id}
+                                onClick={() => patchApplication(a.id, "reviewed")}
+                              >
+                                Mark reviewed
+                              </Button>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" disabled={busyId === a.id}>
+                                  Approve &amp; create client
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Create a client from this application?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This creates a client workspace for {who} (on the free plan) and notifies the
+                                    BaMo admins. Their app login, FB page access, and Drive folder are still set up
+                                    by you afterward. This cannot be auto-undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => patchApplication(a.id, "approved")}>
+                                    Approve &amp; create client
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground shrink-0 pt-1">Workspace created</span>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+
             {/* Subscription / plan / account requests */}
             <Card>
               <CardHeader>

@@ -49,10 +49,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // created_by references auth.users, not public.profiles, so there is no
     // FK PostgREST can embed directly — fetch profiles separately and merge.
-    const [subs, videos, campaigns] = await Promise.all([
+    // `applications` are website (landing-page) client applications that land in
+    // client_onboarding as source='web'; they have no created_by (no auth user).
+    const [subs, videos, campaigns, applications] = await Promise.all([
       adminClient.from("subscription_requests").select("*, clients(name)").order("created_at", { ascending: false }).limit(100),
       adminClient.from("video_requests").select("*, clients(name)").order("created_at", { ascending: false }).limit(100),
       adminClient.from("campaign_requests").select("*, clients(name)").order("created_at", { ascending: false }).limit(100),
+      adminClient.from("client_onboarding").select("*").eq("source", "web").order("created_at", { ascending: false }).limit(100),
     ]);
 
     const allRows = [...(subs.data ?? []), ...(videos.data ?? []), ...(campaigns.data ?? [])];
@@ -68,6 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       subscriptions: withCreator(subs.data ?? []),
       videos: withCreator(videos.data ?? []),
       campaigns: withCreator(campaigns.data ?? []),
+      applications: applications.data ?? [],
     });
   } catch (error) {
     console.error("Error in admin requests API:", error);
