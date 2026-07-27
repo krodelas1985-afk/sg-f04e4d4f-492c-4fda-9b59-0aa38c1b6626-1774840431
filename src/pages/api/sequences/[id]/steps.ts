@@ -75,11 +75,11 @@ export default async function handler(
 
   // Verify authentication
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (sessionError || !session) {
+  if (userError || !user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -87,7 +87,7 @@ export default async function handler(
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, client_id")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
