@@ -393,6 +393,7 @@ export default function LeadDetailPage() {
     Nurture:       "bg-[#F5F3FF] text-[#5B21B6]",
     Won:           "bg-[#ECFDF5] text-[#065F46]",
     Lost:          "bg-[#FEF2F2] text-[#991B1B]",
+    Unqualified:   "bg-[#F3F4F6] text-[#6B7280]",
   };
   const getStatusStyle = (s: string) =>
     statusStyle[s] ?? "bg-gray-50 text-gray-600";
@@ -711,6 +712,7 @@ export default function LeadDetailPage() {
                         <SelectItem value="Nurture">Nurture</SelectItem>
                         <SelectItem value="Won">Won</SelectItem>
                         <SelectItem value="Lost">Lost</SelectItem>
+                        <SelectItem value="Unqualified">Unqualified</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
