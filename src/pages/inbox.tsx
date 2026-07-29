@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Search, Send, Paperclip, Sparkles, MessageSquare, 
-  FileText, Loader2, Download, X, AlertCircle, Mail, Phone
+  Search, Send, Paperclip, Sparkles, MessageSquare,
+  FileText, Loader2, Download, X, AlertCircle, Mail, Phone,
+  Clock, ExternalLink
 } from "lucide-react";
 import { cn, senderLabel } from "@/lib/utils";
+import { getMessengerWindow, windowCountdownLabel } from "@/lib/messengerWindow";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { TemperatureBadge, ChannelBadge } from "@/components/shared/badges";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -60,6 +62,12 @@ export default function Inbox() {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [showStopCampaignDialog, setShowStopCampaignDialog] = useState(false);
 
+  // Facebook's 24h messaging window. `windowNow` ticks so an open window turns
+  // itself into an expired one while the agent sits on the page, rather than
+  // going stale until the next refetch.
+  const [messengerLinkUrl, setMessengerLinkUrl] = useState<string | null>(null);
+  const [windowNow, setWindowNow] = useState(() => new Date());
+
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +99,44 @@ export default function Inbox() {
   useEffect(() => {
     scrollToBottom();
   }, [conversations]);
+
+  useEffect(() => {
+    const t = setInterval(() => setWindowNow(new Date()), 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Resolve the Business Suite thread link for the selected Messenger lead. The
+  // Page ID belongs to the LEAD's client, so it is resolved server-side per
+  // lead — a baymo_admin viewing another workspace must not get their own Page.
+  useEffect(() => {
+    setMessengerLinkUrl(null);
+    if (!selectedLead?.id || !selectedLead?.messenger_id) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const res = await fetch(`/api/leads/${selectedLead.id}/messenger-link`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setMessengerLinkUrl(data.url ?? null);
+      } catch {
+        // Non-fatal: the banner still explains the window, just without a link.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLead?.id, selectedLead?.messenger_id]);
+
+  const messengerWindow = getMessengerWindow(selectedLead, windowNow);
+  const windowBlocked = !messengerWindow.canSend;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -328,22 +374,30 @@ export default function Inbox() {
   const handleSendMessage = async () => {
     if (!replyMessage.trim() || !selectedLead) return;
 
+    // Facebook would reject this outright; don't write a message to the thread
+    // that can never be delivered.
+    if (getMessengerWindow(selectedLead).canSend === false) return;
+
     setSending(true);
 
     try {
       const supabase = createClient();
 
       // Insert conversation
-      const { error } = await supabase.from("conversations").insert({
-        lead_id: selectedLead.id,
-        client_id: selectedLead.client_id,
-        sender: "agent",
-        message_content: replyMessage,
-        channel: selectedLead.primary_channel || "webform",
-        direction: "outbound",
-        sent_via: "manual",
-        created_at: new Date().toISOString(),
-      });
+      const { data: inserted, error } = await supabase
+        .from("conversations")
+        .insert({
+          lead_id: selectedLead.id,
+          client_id: selectedLead.client_id,
+          sender: "agent",
+          message_content: replyMessage,
+          channel: selectedLead.primary_channel || "webform",
+          direction: "outbound",
+          sent_via: "manual",
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
 
@@ -365,6 +419,16 @@ export default function Inbox() {
         const messengerData = await messengerResponse.json();
 
         if (!messengerResponse.ok) {
+          // The row was written before the send, so leaving it untouched would
+          // show an undelivered message as if it had gone out. Mark it failed
+          // and let the thread render it as such.
+          if (inserted?.id) {
+            await supabase
+              .from("conversations")
+              .update({ delivery_status: "failed" })
+              .eq("id", inserted.id);
+          }
+          fetchConversations();
           throw new Error(messengerData.error?.message || messengerData.error || "Failed to send via Messenger");
         }
       }
@@ -764,6 +828,70 @@ export default function Inbox() {
                     </Select>
                   </div>
 
+                  {windowBlocked ? (
+                    /* Facebook will not deliver here — offer the Page inbox
+                       instead of a composer that silently fails. */
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <Clock className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-amber-900">
+                            {messengerWindow.state === "never_opened"
+                              ? "This lead hasn't messaged you yet"
+                              : "Messenger's 24-hour reply window has closed"}
+                          </p>
+                          <p className="mt-1 text-sm text-amber-800">
+                            {messengerWindow.state === "never_opened"
+                              ? "Facebook only allows a Page to message someone who messaged it first, so replies can't be delivered from here yet."
+                              : "Facebook won't deliver new messages until this lead replies again. If they reply, the window reopens for another 24 hours."}
+                          </p>
+                          {messengerWindow.lastInboundAt && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              Lead last messaged{" "}
+                              {messengerWindow.lastInboundAt.toLocaleString()}
+                            </p>
+                          )}
+
+                          {messengerLinkUrl ? (
+                            <>
+                              <Button
+                                asChild
+                                size="sm"
+                                className="mt-3 bg-brand-orange hover:bg-brand-orange-dark text-white"
+                              >
+                                <a
+                                  href={messengerLinkUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Open in Messenger
+                                  <ExternalLink className="ml-2 h-4 w-4" />
+                                </a>
+                              </Button>
+                              <p className="mt-2 text-xs text-amber-700">
+                                Opens this conversation in your Facebook Page
+                                inbox. If it doesn&apos;t load, ask your admin
+                                for &ldquo;Messages&rdquo; access to the Page.
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-3 text-xs text-amber-700">
+                              No Facebook Page is linked for this client, so the
+                              conversation can&apos;t be opened from here.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
+                  {messengerWindow.state === "open" && (
+                    <div className="mb-3 flex items-center gap-1.5 text-xs text-amber-700">
+                      <Clock className="h-3.5 w-3.5" />
+                      {windowCountdownLabel(messengerWindow)}
+                    </div>
+                  )}
+
                   {/* Action Buttons Row */}
                   <div className="mb-3 flex items-center gap-2">
                     <Button
@@ -876,6 +1004,8 @@ export default function Inbox() {
                       )}
                     </Button>
                   </div>
+                  </>
+                  )}
                 </div>
               )}
             </>
