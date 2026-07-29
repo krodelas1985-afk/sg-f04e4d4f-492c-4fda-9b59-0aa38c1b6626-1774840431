@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")!)["default"],
   );
 
   // --- idempotency: skip if this Tally submission was already ingested ---
