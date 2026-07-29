@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireUser, requireLeadAccess } from "@/lib/apiAuth";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,6 +9,9 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const caller = await requireUser(req, res);
+  if (!caller) return;
+
   try {
     const { lead_id } = req.body;
 
@@ -16,7 +19,12 @@ export default async function handler(
       return res.status(400).json({ error: "lead_id is required" });
     }
 
-    const supabase = createServerClient();
+    // Scope check before any lead data is read — this endpoint returns the
+    // lead's profile and conversation history and spends AI credits, so it
+    // must not be usable to enumerate other workspaces' lead IDs.
+    if (!(await requireLeadAccess(caller, lead_id, res))) return;
+
+    const supabase = caller.admin;
 
     // Get lead profile
     const { data: lead, error: leadError } = await supabase
