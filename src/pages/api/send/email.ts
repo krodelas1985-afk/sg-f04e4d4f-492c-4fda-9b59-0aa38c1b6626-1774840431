@@ -19,12 +19,12 @@ export default async function handler(
     const supabase = createServerClient();
 
     // Get current user from session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const currentUserId = session.user.id;
+    const currentUserId = user.id;
 
     // Get lead details
     const { data: lead, error: leadError } = await supabase
