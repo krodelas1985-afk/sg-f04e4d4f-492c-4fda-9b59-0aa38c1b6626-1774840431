@@ -16,8 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return res.status(401).json({ error: "Unauthorized" });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
 
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: profile } = await adminClient
       .from("profiles")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (profile?.role !== "baymo_admin") {
@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: "draft",
           is_active: false,
           is_locked: false,
-          created_by: session.user.id,
+          created_by: user.id,
           config: {
             target_audience: {},
             qualification_questions: [],

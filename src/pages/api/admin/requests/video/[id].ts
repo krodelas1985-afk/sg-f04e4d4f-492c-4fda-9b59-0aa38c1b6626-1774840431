@@ -18,8 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { cookies: { get: (name) => req.cookies[name], set: () => {}, remove: () => {} } }
     );
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return res.status(401).json({ error: "Unauthorized" });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
 
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { data: profile } = await adminClient.from("profiles").select("role").eq("id", session.user.id).single();
+    const { data: profile } = await adminClient.from("profiles").select("role").eq("id", user.id).single();
     if (profile?.role !== "baymo_admin") return res.status(403).json({ error: "Forbidden" });
 
     if (req.method !== "PATCH") return res.status(405).json({ error: "Method not allowed" });
