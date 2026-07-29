@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { requireUser, requireLeadAccess } from '@/lib/apiAuth';
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,31 +9,34 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const caller = await requireUser(req, res);
+  if (!caller) return;
 
   const leadId = req.query.id as string;
   const { campaign_id } = req.body;
 
   try {
-    // STEP 1 — Get lead's client_id
-    const { data: lead, error: leadError } = await supabase
-      .from('leads')
-      .select('id, client_id, campaign_id')
-      .eq('id', leadId)
-      .single();
-
-    if (leadError || !lead) {
-      return res.status(404).json({ error: 'Lead not found' });
-    }
+    const lead = await requireLeadAccess(caller, leadId, res);
+    if (!lead) return;
 
     // A campaign was chosen — enroll via the single authority (manual always
     // wins: rules + opt-out guard are bypassed, AI is enabled, automation_source
     // is marked 'manual'). It also stops any other active/paused states.
     if (campaign_id) {
-      const { data: result, error: rpcError } = await supabase.rpc('enroll_lead', {
+      // The campaign has to belong to the same workspace as the lead, or a
+      // caller could enroll their own lead into another client's campaign and
+      // borrow that campaign's knowledge base and Page token.
+      const { data: campaign } = await caller.admin
+        .from('campaigns')
+        .select('id, client_id')
+        .eq('id', campaign_id)
+        .single();
+
+      if (!campaign || campaign.client_id !== lead.client_id) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
+
+      const { data: result, error: rpcError } = await caller.admin.rpc('enroll_lead', {
         p_lead_id: leadId,
         p_is_new: false,
         p_campaign_id: campaign_id,
@@ -51,12 +54,12 @@ export default async function handler(
     // No campaign selected — unenroll. Turning automation off fires
     // trg_leads_automation_off_unenroll (stops all states, clears campaign_id);
     // we also clear explicitly in case automation was already off.
-    await supabase
+    await caller.admin
       .from('leads')
       .update({ automation_enabled: false, automation_source: 'manual', campaign_id: null })
       .eq('id', leadId);
 
-    await supabase
+    await caller.admin
       .from('lead_campaign_states')
       .update({
         state: 'stopped',

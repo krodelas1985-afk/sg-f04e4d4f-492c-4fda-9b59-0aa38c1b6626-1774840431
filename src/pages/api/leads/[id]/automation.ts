@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { requireUser, requireLeadAccess } from '@/lib/apiAuth';
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,10 +9,8 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const caller = await requireUser(req, res);
+  if (!caller) return;
 
   const leadId = req.query.id as string;
   const { automation_enabled } = req.body;
@@ -21,13 +19,16 @@ export default async function handler(
     return res.status(400).json({ error: 'automation_enabled must be a boolean' });
   }
 
+  const lead = await requireLeadAccess(caller, leadId, res);
+  if (!lead) return;
+
   // Agent takeover. Mark the source 'manual' so auto-enrollment respects this
   // explicit choice (enroll_lead skips leads that are manual + automation off).
   // Turning automation OFF fires trg_leads_automation_off_unenroll, which stops
   // ALL of the lead's active/paused campaign states and clears campaign_id —
   // i.e. the lead is kicked out of every campaign. Re-enabling does NOT auto
   // re-enroll; the lead must re-qualify via a new inbound or be assigned manually.
-  const { error: leadError } = await supabase
+  const { error: leadError } = await caller.admin
     .from('leads')
     .update({ automation_enabled, automation_source: 'manual' })
     .eq('id', leadId);
