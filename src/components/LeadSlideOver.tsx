@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, MessageSquare, Activity, CheckSquare, Home, Paperclip, Sparkles } from "lucide-react";
+import { X, MessageSquare, Activity, CheckSquare, Home, Paperclip, Sparkles, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import { TemplatePicker, type PickableTemplate } from "@/components/TemplatePicker";
 import { substituteTemplateVariables } from "@/lib/templateVariables";
 import { senderLabel } from "@/lib/utils";
+import { getMessengerWindow, windowCountdownLabel } from "@/lib/messengerWindow";
 
 interface LeadSlideOverProps {
   leadId: string;
@@ -48,6 +49,10 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
   const [agents, setAgents] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
 
+  // Messenger 24h-window state (mirrors the Inbox composer)
+  const [windowNow, setWindowNow] = useState(new Date());
+  const [messengerLinkUrl, setMessengerLinkUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (isOpen && leadId) {
       fetchLead();
@@ -66,6 +71,43 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
       fetchTasks();
     }
   }, [activeTab, leadId]);
+
+  // Keep the window countdown live while the slide-over is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setInterval(() => setWindowNow(new Date()), 60 * 1000);
+    return () => clearInterval(t);
+  }, [isOpen]);
+
+  // Resolve the Business Suite thread link for a Messenger lead. The Page ID
+  // belongs to the LEAD's client, so it is resolved server-side per lead — a
+  // baymo_admin viewing another workspace must not get their own Page.
+  useEffect(() => {
+    setMessengerLinkUrl(null);
+    if (!isOpen || !lead?.id || !lead?.messenger_id) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const res = await fetch(`/api/leads/${lead.id}/messenger-link`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setMessengerLinkUrl(data.url ?? null);
+      } catch {
+        // Non-fatal: the banner still explains the window, just without a link.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, lead?.id, lead?.messenger_id]);
 
   const fetchLead = async () => {
     try {
@@ -225,12 +267,12 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-    
-    setSending(true);
-    try {
-      const channel = lead?.primary_channel || "email";
-      
-      if (channel === "email") {
+
+    const channel = lead?.primary_channel || "email";
+
+    if (channel === "email") {
+      setSending(true);
+      try {
         const response = await fetch("/api/send/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -240,14 +282,78 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
             lead_id: leadId,
           }),
         });
-        
+
         if (response.ok) {
           setNewMessage("");
           fetchMessages();
         }
-      } else {
-        alert("Messenger sending coming soon");
+      } catch (err) {
+        console.error("Error sending message:", err);
+      } finally {
+        setSending(false);
       }
+      return;
+    }
+
+    // Messenger path — mirrors the Inbox composer. Facebook would reject a send
+    // outside the 24h window, so don't even write a row that can never deliver.
+    if (getMessengerWindow(lead).canSend === false) return;
+
+    setSending(true);
+    try {
+      const supabase = createClient();
+
+      // The row is inserted BEFORE the send so the thread updates immediately;
+      // if the Graph call fails we flip it to delivery_status: "failed" below.
+      const { data: inserted, error } = await supabase
+        .from("conversations")
+        .insert({
+          lead_id: leadId,
+          client_id: lead.client_id,
+          sender: "agent",
+          message_content: newMessage,
+          channel: lead.primary_channel || "messenger",
+          direction: "outbound",
+          sent_via: "manual",
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      if (lead.messenger_id) {
+        // The route is auth-hardened: it derives recipient + Page token from the
+        // lead server-side and scopes it to the caller, so we send only these two.
+        const messengerResponse = await fetch("/api/send/messenger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: newMessage,
+            lead_id: leadId,
+          }),
+        });
+
+        const messengerData = await messengerResponse.json();
+
+        if (!messengerResponse.ok) {
+          // Row was written before the send, so leaving it "sent" would show an
+          // undelivered message as delivered. Mark it failed and re-render.
+          if (inserted?.id) {
+            await supabase
+              .from("conversations")
+              .update({ delivery_status: "failed" })
+              .eq("id", inserted.id);
+          }
+          fetchMessages();
+          throw new Error(
+            messengerData.error?.message || messengerData.error || "Failed to send via Messenger"
+          );
+        }
+      }
+
+      setNewMessage("");
+      fetchMessages();
     } catch (err) {
       console.error("Error sending message:", err);
     } finally {
@@ -356,6 +462,12 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
 
   if (!isOpen) return null;
   if (loading) return null;
+
+  // Messenger 24h window for the loaded lead. "not_messenger" (email/SMS leads)
+  // returns canSend: true, so this is a no-op for every non-Messenger thread.
+  const messengerWindow = getMessengerWindow(lead, windowNow);
+  const isMessengerLead = messengerWindow.state !== "not_messenger";
+  const windowBlocked = isMessengerLead && !messengerWindow.canSend;
 
   const pending = tasks.filter(t => t.status !== "completed" && new Date(t.due_date) <= new Date());
   const upcoming = tasks.filter(t => t.status !== "completed" && new Date(t.due_date) > new Date());
@@ -727,14 +839,81 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                           </div>
                           <p className="text-sm">{msg.message_content}</p>
                           <p className="text-xs mt-1 opacity-70">{new Date(msg.created_at).toLocaleString()}</p>
+                          {msg.direction === "outbound" && msg.delivery_status === "failed" && (
+                            <p className="text-xs mt-1 font-semibold text-red-100">
+                              ⚠ Not delivered
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                   
+                  {windowBlocked ? (
+                    /* Facebook will not deliver here — offer the Page inbox
+                       instead of a composer that silently fails. */
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <Clock className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-amber-900">
+                            {messengerWindow.state === "never_opened"
+                              ? "This lead hasn't messaged you yet"
+                              : "Messenger's 24-hour reply window has closed"}
+                          </p>
+                          <p className="mt-1 text-sm text-amber-800">
+                            {messengerWindow.state === "never_opened"
+                              ? "Facebook only allows a Page to message someone who messaged it first, so replies can't be delivered from here yet."
+                              : "Facebook won't deliver new messages until this lead replies again. If they reply, the window reopens for another 24 hours."}
+                          </p>
+                          {messengerWindow.lastInboundAt && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              Lead last messaged{" "}
+                              {messengerWindow.lastInboundAt.toLocaleString()}
+                            </p>
+                          )}
+
+                          {messengerLinkUrl ? (
+                            <>
+                              <Button
+                                asChild
+                                size="sm"
+                                className="mt-3 bg-brand-orange hover:bg-brand-orange-dark text-white"
+                              >
+                                <a
+                                  href={messengerLinkUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Open in Messenger
+                                  <ExternalLink className="ml-2 h-4 w-4" />
+                                </a>
+                              </Button>
+                              <p className="mt-2 text-xs text-amber-700">
+                                Opens this conversation in your Facebook Page
+                                inbox. If it doesn&apos;t load, ask your admin
+                                for &ldquo;Messages&rdquo; access to the Page.
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-3 text-xs text-amber-700">
+                              No Facebook Page is linked for this client, so the
+                              conversation can&apos;t be opened from here.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="space-y-2">
-                    <Textarea 
-                      placeholder="Type your message..." 
+                    {isMessengerLead && messengerWindow.state === "open" && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-700">
+                        <Clock className="h-3.5 w-3.5" />
+                        {windowCountdownLabel(messengerWindow)}
+                      </div>
+                    )}
+                    <Textarea
+                      placeholder="Type your message..."
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       rows={3}
@@ -751,17 +930,17 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       >
                         💬 Saved Response
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={handleAISuggest}
                         disabled={aiSuggesting}
                       >
                         <Sparkles className="h-4 w-4 mr-1" />
                         {aiSuggesting ? "Generating..." : "AI Suggest"}
                       </Button>
-                      <Button 
-                        className="ml-auto bg-brand-orange hover:bg-brand-orange-dark" 
+                      <Button
+                        className="ml-auto bg-brand-orange hover:bg-brand-orange-dark"
                         onClick={handleSendMessage}
                         disabled={sending || !newMessage.trim()}
                       >
@@ -769,6 +948,7 @@ export function LeadSlideOver({ leadId, isOpen, onClose, onUpdate }: LeadSlideOv
                       </Button>
                     </div>
                   </div>
+                  )}
                 </div>
               </TabsContent>
 
