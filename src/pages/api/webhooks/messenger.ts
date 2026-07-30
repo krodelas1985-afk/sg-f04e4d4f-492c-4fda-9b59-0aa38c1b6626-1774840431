@@ -1,6 +1,25 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Headers for calls out to n8n.
+ *
+ * The n8n webhooks (W1 update-lead-profile, W2 baymo-ai-campaign-responder)
+ * are Header Auth protected — anyone who knew the URL could otherwise trigger
+ * AI work and Messenger sends. The secret must match the value in the n8n
+ * `x-bamo-crm-secret` credential exactly.
+ *
+ * Sent unconditionally: if N8N_WEBHOOK_SECRET is unset the header goes out
+ * empty and n8n rejects it, which surfaces the misconfiguration immediately
+ * rather than leaving the endpoint quietly reachable without a secret.
+ */
+function n8nHeaders(): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "x-bamo-secret": process.env.N8N_WEBHOOK_SECRET ?? "",
+  };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // GET — Facebook webhook verification
   if (req.method === "GET") {
@@ -459,7 +478,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── TRIGGER LEAD PROFILE UPDATE (fire-and-forget) ────────
             fetch("https://n8n-bahaymo.onrender.com/webhook/update-lead-profile", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: n8nHeaders(),
               body: JSON.stringify({ lead_id: leadId, message: messageText, client_id: clientId }),
             }).catch((err) => console.error("update-lead-profile n8n error:", err));
 
@@ -535,7 +554,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // .catch keeps a transient n8n error from throwing — we still 200 FB.
             await fetch("https://n8n-bahaymo.onrender.com/webhook/baymo-ai-campaign-responder", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: n8nHeaders(),
               body: JSON.stringify({
                 lead_id: leadId,
                 message: messageText,

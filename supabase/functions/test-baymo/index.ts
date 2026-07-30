@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS")!)["default"],
       { global: { headers: { Authorization: authHeader } } },
     );
     const { data: { user } } = await userClient.auth.getUser();
@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")!)["default"],
     );
 
     // Campaign must belong to the caller's workspace (or caller is baymo_admin).
