@@ -32,6 +32,12 @@ interface Settings {
   first_follow_up_after_hours: number;
   escalate_after_touches: number;
   custom_instructions: string;
+  // Gap in hours from the previous touch. Cumulative from the lead's last
+  // inbound, which is when Facebook's 24h window opens.
+  followup_ladder_hours: number[];
+  min_inbound_for_followup: number;
+  max_inbound_for_followup: number;
+  min_gap_hours: number;
 }
 
 interface Config {
@@ -50,22 +56,35 @@ const GOAL_OPTIONS: { value: Settings["goal"]; label: string; hint: string }[] =
   { value: "nurture", label: "Nurture", hint: "Keep the lead warm with light value touches" },
 ];
 
+const DEFAULT_LADDER = [2, 3, 5, 10];
+const MAX_LADDER_STEPS = 6;
+const MAX_CUMULATIVE_HOURS = 22; // headroom before the 24h window shuts
+
 const DEFAULT_CONFIG: Config = {
   enabled: false,
   settings: {
     goal: "book_viewing",
     language: "auto",
     tone: "friendly",
-    max_touches_per_pass: 3,
-    first_follow_up_after_hours: 4,
-    escalate_after_touches: 3,
+    max_touches_per_pass: DEFAULT_LADDER.length,
+    first_follow_up_after_hours: DEFAULT_LADDER[0],
+    escalate_after_touches: DEFAULT_LADDER.length,
     custom_instructions: "",
+    followup_ladder_hours: DEFAULT_LADDER,
+    min_inbound_for_followup: 3,
+    max_inbound_for_followup: 50,
+    min_gap_hours: 1,
   },
-  send_window_start: "08:00",
-  send_window_end: "20:00",
+  send_window_start: "07:00",
+  send_window_end: "21:00",
   reenroll_cooldown_days: 14,
   max_passes: 3,
 };
+
+// Running total from the lead's last inbound, so the operator can see at a
+// glance whether the last touch still lands inside the 24h window.
+const cumulative = (ladder: number[]) =>
+  ladder.reduce<number[]>((acc, h) => [...acc, (acc[acc.length - 1] ?? 0) + h], []);
 
 export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Props) {
   const { toast } = useToast();
@@ -235,39 +254,90 @@ export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Pro
         </div>
       </div>
 
+      {/* Touch ladder — the timing source of truth */}
+      <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+        <div>
+          <Label>Follow-up schedule</Label>
+          <p className="text-xs text-slate-500">
+            Each step is the wait after the previous message. Timing is fixed — the AI decides
+            whether to send, wait or escalate, never when. Everything is measured from the lead&apos;s
+            last message, which is when Facebook&apos;s 24-hour window opens.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {config.settings.followup_ladder_hours.map((h, i) => {
+            const cum = cumulative(config.settings.followup_ladder_hours)[i];
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-20 shrink-0 text-sm text-slate-600">Touch {i + 1}</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={24}
+                  className="w-24"
+                  value={h}
+                  onChange={(e) => {
+                    const next = [...config.settings.followup_ladder_hours];
+                    next[i] = Number(e.target.value);
+                    setSetting("followup_ladder_hours", next);
+                  }}
+                  disabled={disabled}
+                />
+                <span className="text-sm text-slate-500">
+                  hours later &mdash; lands {cum}h after the lead&apos;s last message
+                </span>
+                {!disabled && config.settings.followup_ladder_hours.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto text-slate-500"
+                    onClick={() =>
+                      setSetting(
+                        "followup_ladder_hours",
+                        config.settings.followup_ladder_hours.filter((_, j) => j !== i)
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {(() => {
+          const cums = cumulative(config.settings.followup_ladder_hours);
+          const total = cums[cums.length - 1] ?? 0;
+          const over = total > MAX_CUMULATIVE_HOURS;
+          return (
+            <div className="flex items-center gap-3">
+              {!disabled && config.settings.followup_ladder_hours.length < MAX_LADDER_STEPS && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSetting("followup_ladder_hours", [...config.settings.followup_ladder_hours, 4])
+                  }
+                >
+                  Add a touch
+                </Button>
+              )}
+              <p className={`text-xs ${over ? "text-red-600" : "text-slate-500"}`}>
+                {config.settings.followup_ladder_hours.length} touches, last one {total}h in.
+                {over
+                  ? ` Over the ${MAX_CUMULATIVE_HOURS}h limit — steps past it are dropped on save, since Messenger won't deliver them.`
+                  : " Inside Facebook's 24-hour window."}
+              </p>
+            </div>
+          );
+        })()}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
-        {/* Max touches */}
-        <div className="space-y-2">
-          <Label>Max follow-ups per pass</Label>
-          <Input
-            type="number"
-            min={1}
-            max={5}
-            value={config.settings.max_touches_per_pass}
-            onChange={(e) => setSetting("max_touches_per_pass", Number(e.target.value))}
-            disabled={disabled}
-          />
-        </div>
-
-        {/* First follow-up delay */}
-        <div className="space-y-2">
-          <Label>First follow-up after</Label>
-          <Select
-            value={String(config.settings.first_follow_up_after_hours)}
-            onValueChange={(v) => setSetting("first_follow_up_after_hours", Number(v))}
-            disabled={disabled}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="2">2 hours of silence</SelectItem>
-              <SelectItem value="4">4 hours of silence</SelectItem>
-              <SelectItem value="8">8 hours of silence</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Escalate after */}
         <div className="space-y-2">
           <Label>Escalate to agent after</Label>
@@ -280,6 +350,38 @@ export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Pro
             disabled={disabled}
           />
           <p className="text-xs text-slate-500">unanswered touches (buying intent always escalates immediately)</p>
+        </div>
+
+        {/* Minimum engagement to qualify */}
+        <div className="space-y-2">
+          <Label>Only follow up after at least</Label>
+          <Input
+            type="number"
+            min={0}
+            max={20}
+            value={config.settings.min_inbound_for_followup}
+            onChange={(e) => setSetting("min_inbound_for_followup", Number(e.target.value))}
+            disabled={disabled}
+          />
+          <p className="text-xs text-slate-500">
+            messages from the lead — skips one-word tyre-kickers
+          </p>
+        </div>
+
+        {/* Upper bound */}
+        <div className="space-y-2">
+          <Label>…and no more than</Label>
+          <Input
+            type="number"
+            min={config.settings.min_inbound_for_followup + 1}
+            max={999}
+            value={config.settings.max_inbound_for_followup}
+            onChange={(e) => setSetting("max_inbound_for_followup", Number(e.target.value))}
+            disabled={disabled}
+          />
+          <p className="text-xs text-slate-500">
+            stops chasing very long threads
+          </p>
         </div>
       </div>
 

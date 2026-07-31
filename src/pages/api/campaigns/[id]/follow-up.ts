@@ -17,6 +17,15 @@ const GOALS = ["book_viewing", "book_call", "qualify_only", "nurture"] as const;
 const LANGUAGES = ["auto", "taglish", "english", "filipino"] as const;
 const TONES = ["friendly", "professional", "luxury"] as const;
 
+// The touch ladder is the source of truth for timing. Each entry is the gap in
+// hours from the previous touch, and every step is measured cumulatively from
+// the lead's LAST INBOUND — which is also when Facebook's 24h window opens, so
+// the cumulative total must stay comfortably under 24. The AI decides whether
+// to send, wait or escalate; it does NOT choose when. (It used to, and set
+// appointments outside the window that could never be delivered.)
+const MAX_LADDER_STEPS = 6;
+const MAX_CUMULATIVE_HOURS = 22; // leave headroom before the 24h window shuts
+
 type FollowUpSettings = {
   goal: (typeof GOALS)[number];
   language: (typeof LANGUAGES)[number];
@@ -25,16 +34,28 @@ type FollowUpSettings = {
   first_follow_up_after_hours: number;
   escalate_after_touches: number;
   custom_instructions: string;
+  followup_ladder_hours: number[];
+  min_inbound_for_followup: number;
+  max_inbound_for_followup: number;
+  min_gap_hours: number;
 };
+
+const DEFAULT_LADDER = [2, 3, 5, 10]; // touches at +2h, +5h, +10h, +20h
 
 const DEFAULT_SETTINGS: FollowUpSettings = {
   goal: "book_viewing",
   language: "auto",
   tone: "friendly",
-  max_touches_per_pass: 3,
-  first_follow_up_after_hours: 4,
-  escalate_after_touches: 3,
+  max_touches_per_pass: DEFAULT_LADDER.length,
+  first_follow_up_after_hours: DEFAULT_LADDER[0],
+  escalate_after_touches: DEFAULT_LADDER.length,
   custom_instructions: "",
+  followup_ladder_hours: DEFAULT_LADDER,
+  // A lead who sent 1-2 words is a tyre-kicker; the engaged ones are worth
+  // chasing. min/max must never cross or the eligibility set is silently empty.
+  min_inbound_for_followup: 3,
+  max_inbound_for_followup: 50,
+  min_gap_hours: 1,
 };
 
 const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
@@ -52,19 +73,55 @@ const oneOf = <T extends readonly string[]>(
   fallback: T[number]
 ): T[number] => (allowed.includes(v as string) ? (v as T[number]) : fallback);
 
+// Steps are whole hours, each 1..24, and the running total is capped so the last
+// touch still lands inside Facebook's 24h window. Steps that would overflow are
+// dropped rather than silently scheduling an undeliverable touch.
+function sanitizeLadder(input: unknown): number[] {
+  const raw = Array.isArray(input) ? input : DEFAULT_SETTINGS.followup_ladder_hours;
+  const out: number[] = [];
+  let cumulative = 0;
+  for (const step of raw.slice(0, MAX_LADDER_STEPS)) {
+    // Check the raw value first: Number(null) is 0, which would otherwise clamp
+    // *up* to a 1-hour step rather than being discarded.
+    const n = Number(step);
+    if (!Number.isFinite(n) || n < 1) continue;
+    const h = clampInt(n, 1, 24, 0);
+    if (!h) continue;
+    if (cumulative + h > MAX_CUMULATIVE_HOURS) break;
+    cumulative += h;
+    out.push(h);
+  }
+  return out.length ? out : DEFAULT_SETTINGS.followup_ladder_hours;
+}
+
 // Whitelist + clamp everything the client sends — never store arbitrary JSONB.
 function sanitizeSettings(input: any): FollowUpSettings {
   const s = input ?? {};
-  const max_touches = clampInt(s.max_touches_per_pass, 1, 5, DEFAULT_SETTINGS.max_touches_per_pass);
+  const ladder = sanitizeLadder(s.followup_ladder_hours);
+  // The ladder defines how many touches there are; a separate cap would only
+  // let the two drift apart.
+  const max_touches = ladder.length;
+  const min_inbound = clampInt(s.min_inbound_for_followup, 0, 20, DEFAULT_SETTINGS.min_inbound_for_followup);
+  // max must stay strictly above min, or the eligibility window is empty and
+  // nothing enrols — with no error anywhere to explain why.
+  const max_inbound = Math.max(
+    min_inbound + 1,
+    clampInt(s.max_inbound_for_followup, 1, 999, DEFAULT_SETTINGS.max_inbound_for_followup)
+  );
   return {
     goal: oneOf(s.goal, GOALS, DEFAULT_SETTINGS.goal),
     language: oneOf(s.language, LANGUAGES, DEFAULT_SETTINGS.language),
     tone: oneOf(s.tone, TONES, DEFAULT_SETTINGS.tone),
     max_touches_per_pass: max_touches,
-    first_follow_up_after_hours: clampInt(s.first_follow_up_after_hours, 1, 48, DEFAULT_SETTINGS.first_follow_up_after_hours),
+    // Kept in sync with the ladder's first step so the two can never disagree.
+    first_follow_up_after_hours: ladder[0],
     // Escalate cap can't exceed the touch cap.
     escalate_after_touches: clampInt(s.escalate_after_touches, 1, max_touches, max_touches),
     custom_instructions: typeof s.custom_instructions === "string" ? s.custom_instructions.trim().slice(0, 2000) : "",
+    followup_ladder_hours: ladder,
+    min_inbound_for_followup: min_inbound,
+    max_inbound_for_followup: max_inbound,
+    min_gap_hours: clampInt(s.min_gap_hours, 1, 12, DEFAULT_SETTINGS.min_gap_hours),
   };
 }
 
@@ -110,9 +167,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Window / lifecycle knobs live on sequence columns; goal/tone/etc. live in ai_settings.
   const readWindow = (body: any) => ({
-    send_window_start: isHHMM(body?.send_window_start) ? body.send_window_start : "08:00",
-    send_window_end: isHHMM(body?.send_window_end) ? body.send_window_end : "20:00",
-    reenroll_cooldown_days: clampInt(body?.reenroll_cooldown_days, 1, 90, 14),
+    send_window_start: isHHMM(body?.send_window_start) ? body.send_window_start : "07:00",
+    send_window_end: isHHMM(body?.send_window_end) ? body.send_window_end : "21:00",
+    // 0 is legitimate — it means "no cooldown, may re-enrol on the next reply",
+    // which is what a pilot wants. Clamping the floor to 1 silently rewrote it.
+    reenroll_cooldown_days: clampInt(body?.reenroll_cooldown_days, 0, 90, 14),
     max_passes: clampInt(body?.max_passes, 1, 10, 3),
   });
 
@@ -131,8 +190,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           sequence_id: null,
           enabled: false,
           settings: DEFAULT_SETTINGS,
-          send_window_start: "08:00",
-          send_window_end: "20:00",
+          send_window_start: "07:00",
+          send_window_end: "21:00",
           reenroll_cooldown_days: 14,
           max_passes: 3,
         };
