@@ -221,7 +221,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: existing, error: findErr } = await db
       .from("sequences")
-      .select("id")
+      .select("id, ai_settings")
       .eq("campaign_id", campaignId)
       .eq("mode", "ai_adaptive")
       .maybeSingle();
@@ -230,12 +230,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Failed to load follow-up settings" });
     }
 
+    // Cutoff for "leads this campaign acquired after follow-up went live" —
+    // without it, switching on an established campaign would sweep months of
+    // old leads into the ladder. Stamped once, on first enable, and preserved
+    // afterwards so an off/on cycle doesn't orphan leads acquired in between.
+    const priorActivatedAt = (existing?.ai_settings as any)?.activated_at ?? null;
+    const activated_at = enabled ? priorActivatedAt ?? new Date().toISOString() : priorActivatedAt;
+    const settingsWithCutoff = { ...settings, ...(activated_at ? { activated_at } : {}) };
+
     if (existing) {
       const { data: updated, error: updErr } = await db
         .from("sequences")
         .update({
           is_active: enabled,
-          ai_settings: settings,
+          ai_settings: settingsWithCutoff,
           ...win,
           scheduled_steps_enabled: false, // W6 owns adaptive scheduling, not W4
           updated_at: new Date().toISOString(),
@@ -261,7 +269,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mode: "ai_adaptive",
         is_active: enabled,
         scheduled_steps_enabled: false,
-        ai_settings: settings,
+        ai_settings: settingsWithCutoff,
         ...win,
       })
       .select("id, is_active, ai_settings, send_window_start, send_window_end, reenroll_cooldown_days, max_passes")
