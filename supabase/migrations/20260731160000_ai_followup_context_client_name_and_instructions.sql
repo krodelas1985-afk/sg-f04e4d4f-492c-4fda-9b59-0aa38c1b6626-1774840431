@@ -1,0 +1,20 @@
+-- Give the follow-up engine the identity and instructions W2 already uses.
+--
+-- 1. Identity. W2's buyer prompt says "you are BayMo, the AI assistant of
+--    <clientName>". W6 had no client name in its bundle at all and introduced
+--    itself as "BaMo", so a lead on a client's Page would get live replies from
+--    "BayMo, assistant of <client>" and then a follow-up in the same thread
+--    calling itself BaMo - inconsistent, and it surfaces the platform name
+--    rather than the client's. Cristy Joy's own campaign instruction literally
+--    reads "Introduce yourself as BayMo - You are an AI Assistant of Cristy Joy".
+--
+-- 2. Campaign instructions. Every active campaign has ai_instruction set, and
+--    W2 injects it under a "follow these precisely" block. W6 passed only KB
+--    instructions, so Cristy Joy's "only ask for a viewing schedule after 3
+--    qualification questions were answered" was obeyed by her live replies and
+--    ignored by her follow-ups.
+--
+-- Adds context.client_name plus campaign.ai_instruction and
+-- campaign.additional_instructions. Paired W6 node change deployed via the DB
+-- patch runbook (nodes -> workflow_history -> versionId bump -> API cycle).
+-- (full function body applied live under the same migration name)
