@@ -26,10 +26,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   );
 
+  // getUser() revalidates the JWT against the Auth server; getSession() only
+  // decodes the cookie. Authorization here rests on RLS (anon key, so PostgREST
+  // verifies the signature anyway), but house style since the api-auth-hardening
+  // sweep is getUser() everywhere — no route should model the weaker pattern.
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return res.status(401).json({ error: "Unauthorized" });
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
   const db = supabase as any;
 
