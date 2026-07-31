@@ -1,0 +1,20 @@
+-- AI follow-up must obey the campaign's automation switch.
+--
+-- campaigns.conversational_ai_enabled is the "BayMo replies automatically"
+-- toggle an operator sees on the campaign. Turning it off has to mean the
+-- campaign goes quiet - not "quiet except for the follow-up engine, which
+-- carries on messaging under its own ladder". The per-lead automation_enabled
+-- flag was already honoured in both functions; the campaign-level one was not.
+--
+-- Applied to enrol AND fetch, so switching automation off also halts passes
+-- already in flight rather than only preventing new ones. Nothing is destroyed:
+-- enrollments simply stop being fetched, and resume if automation returns.
+--
+-- Verified with a rolled-back transaction, same enrollment and instant, only
+-- the toggle differing: automation on -> 1 fetched, automation off -> 0 fetched
+-- and 0 enrolled.
+--
+-- Both function bodies are reproduced in full by the migration applied to the
+-- database under the same name; see 20260731140000 for the prior enrol body and
+-- 20260730090000 for the prior fetch body.
+-- (function bodies applied live; see migration history in Supabase)
