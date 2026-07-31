@@ -13,6 +13,7 @@ import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import AiFollowUpSection from "@/components/followup/AiFollowUpSection";
 import { qualificationFieldsFor } from "@/lib/qualificationFields";
 
 interface Client {
@@ -907,6 +908,23 @@ export default function AdminCampaignDetailPage() {
               <KnowledgeBaseSection
                 campaignId={id as string}
                 getToken={getToken}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className={cn(activeTab !== "ai" && "hidden")}>
+            <CardHeader>
+              <CardTitle>AI Follow-Up</CardTitle>
+              <p className="text-sm text-slate-500">
+                Autonomous re-engagement for stalled Messenger leads on this campaign. Touches run on a fixed
+                ladder inside Facebook&apos;s 24-hour window; the AI decides whether to send, wait, or escalate.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AiFollowUpSection
+                campaignId={id as string}
+                getToken={getToken}
+                canEdit={true}
               />
             </CardContent>
           </Card>

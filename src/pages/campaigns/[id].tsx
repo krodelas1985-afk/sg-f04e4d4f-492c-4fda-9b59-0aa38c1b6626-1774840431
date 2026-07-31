@@ -15,6 +15,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import AiFollowUpSection from "@/components/followup/AiFollowUpSection";
 import { qualificationFieldsFor } from "@/lib/qualificationFields";
 
 export default function CampaignDetailPage() {
@@ -890,6 +891,28 @@ export default function CampaignDetailPage() {
                 <KnowledgeBaseSection
                   campaignId={id as string}
                   getToken={getToken}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* baymo_admin only for now. The API already authorises client_admin and
+              manager for their own campaign, so opening this is a one-line change
+              once the pilot has enough decision history to trust client-side edits. */}
+          {profile?.role === "baymo_admin" && (
+            <Card className={cn(activeTab !== "ai" && "hidden")}>
+              <CardHeader>
+                <CardTitle>AI Follow-Up</CardTitle>
+                <p className="text-sm text-slate-500">
+                  Autonomous re-engagement for stalled Messenger leads on this campaign. Touches run on a fixed
+                  ladder inside Facebook&apos;s 24-hour window; the AI decides whether to send, wait, or escalate.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <AiFollowUpSection
+                  campaignId={id as string}
+                  getToken={getToken}
+                  canEdit={canEdit}
                 />
               </CardContent>
             </Card>
