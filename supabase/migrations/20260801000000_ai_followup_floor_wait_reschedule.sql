@@ -1,0 +1,24 @@
+-- A "wait" decision re-fired on every 15-minute tick.
+--
+-- On wait, next_action_at was recomputed from the ladder. For touch 1 that is
+-- last_inbound + 2h, which after the send-window clamp is usually a time that
+-- has ALREADY PASSED - a lead messaging at 19:02 gets a touch-1 target of 21:02,
+-- clamped to 07:00 next morning, and by the time the wait is evaluated 07:00 is
+-- behind us. The enrollment was immediately due again, and the min_gap floor did
+-- not catch it: that floor only applied after a send, or when a previous touch
+-- existed. On a wait with touch_count=0 there was no floor at all.
+--
+-- Observed on the pilot 2026-08-01: decisions at 07:00, 07:15 and 07:30 for one
+-- lead - three LLM calls and three feed rows where one was wanted. The lead was
+-- never at risk of spam (sends stay floored an hour apart and capped by the
+-- touch limit); the cost is model calls and a noisy decision feed.
+--
+-- Fix: floor every computed target at now() + min_gap, not only post-send ones.
+-- A wait now means "re-check in an hour" rather than "re-check next tick".
+-- Verified in a rolled-back transaction against the live enrollment reset to the
+-- exact pre-send state: next_action_at came back 60.0 minutes out.
+--
+-- The window-closing case is unaffected: Parse Decision converts a wait carrying
+-- a message into a send at evaluation time, before any scheduling happens.
+--
+-- (Full function body applied live under the same migration name.)
