@@ -55,7 +55,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .order("created_at", { ascending: true }),
       adminClient
         .from("followup_requests")
-        .select("id, client_id, style, duration_days, notes, status, created_at, clients(name)")
+        .select(
+          "id, client_id, campaign_id, action, style, duration_days, notes, status, created_at, clients(name), campaigns(name, status)"
+        )
         .eq("status", "pending")
         .order("created_at", { ascending: true }),
     ]);

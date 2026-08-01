@@ -41,12 +41,17 @@ interface Connection {
 
 interface FollowupRequest {
   id: string;
-  style: string;
-  duration_days: number;
+  campaign_id: string | null;
+  action: string | null;
+  // Legacy client-scoped rows carry style/duration; per-campaign toggle
+  // requests from the mobile app carry campaign_id + action instead.
+  style: string | null;
+  duration_days: number | null;
   notes: string | null;
   status: string;
   created_at: string;
   clients?: { name: string } | null;
+  campaigns?: { name: string; status: string } | null;
 }
 
 const FOLLOWUP_PLAYBOOK_HINT: Record<string, string> = {
@@ -246,21 +251,43 @@ export default function AutomationReviewsPage() {
                   <CardContent className="pt-6 space-y-3 text-sm">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium capitalize">
-                          {f.style} · {f.duration_days} days{" "}
+                        <p className="font-medium">
+                          {f.campaign_id ? (
+                            <>
+                              Turn AI follow-up <span className="uppercase">{f.action ?? "enable"}</span> —{" "}
+                              {f.campaigns?.name ?? "Unknown campaign"}
+                            </>
+                          ) : (
+                            <span className="capitalize">
+                              {f.style ?? "follow-up"}
+                              {f.duration_days ? ` · ${f.duration_days} days` : ""}
+                            </span>
+                          )}
                           <span className="text-slate-400 font-normal">
-                            · {f.clients?.name ?? "Unknown client"}
+                            {" "}· {f.clients?.name ?? "Unknown client"}
                           </span>
                         </p>
                         <p className="text-xs text-slate-500">
-                          {FOLLOWUP_PLAYBOOK_HINT[f.style]} · requested{" "}
-                          {new Date(f.created_at).toLocaleString()}
+                          {f.campaign_id
+                            ? "Set the ladder, goal and send window on the campaign, then switch it on there — activating notifies the client and closes this request automatically."
+                            : FOLLOWUP_PLAYBOOK_HINT[f.style ?? ""] ?? "Legacy request"}{" "}
+                          · requested {new Date(f.created_at).toLocaleString()}
                         </p>
+                        {f.campaign_id && f.campaigns?.status !== "active" && (
+                          <p className="text-xs text-amber-600">
+                            Campaign is {f.campaigns?.status ?? "not active"} — follow-up will not run until it is active.
+                          </p>
+                        )}
                         {f.notes && <p className="text-slate-600">“{f.notes}”</p>}
                       </div>
                       <Badge variant="outline">{f.status}</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
+                      {f.campaign_id && (
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={`/admin/campaigns/${f.campaign_id}`}>Open campaign settings</a>
+                        </Button>
+                      )}
                       <Input
                         className="w-72"
                         placeholder="Note to client (optional)"
