@@ -51,10 +51,13 @@ const DEFAULT_SETTINGS: FollowUpSettings = {
   escalate_after_touches: DEFAULT_LADDER.length,
   custom_instructions: "",
   followup_ladder_hours: DEFAULT_LADDER,
-  // A lead who sent 1-2 words is a tyre-kicker; the engaged ones are worth
-  // chasing. min/max must never cross or the eligibility set is silently empty.
-  min_inbound_for_followup: 3,
-  max_inbound_for_followup: 50,
+  // Follow-up exists for leads who barely engaged then went quiet. Someone deep
+  // in a conversation is already being handled, by the live AI or by an agent,
+  // and does not need chasing - so this is a CEILING on messages from the lead,
+  // not a floor. min/max must never cross or the eligibility set is silently
+  // empty with nothing to explain why.
+  min_inbound_for_followup: 0,
+  max_inbound_for_followup: 3,
   min_gap_hours: 1,
 };
 

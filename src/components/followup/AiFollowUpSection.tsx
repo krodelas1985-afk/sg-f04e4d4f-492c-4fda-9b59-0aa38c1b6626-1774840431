@@ -71,8 +71,8 @@ const DEFAULT_CONFIG: Config = {
     escalate_after_touches: DEFAULT_LADDER.length,
     custom_instructions: "",
     followup_ladder_hours: DEFAULT_LADDER,
-    min_inbound_for_followup: 3,
-    max_inbound_for_followup: 50,
+    min_inbound_for_followup: 0,
+    max_inbound_for_followup: 3,
     min_gap_hours: 1,
   },
   send_window_start: "07:00",
@@ -354,7 +354,7 @@ export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Pro
 
         {/* Minimum engagement to qualify */}
         <div className="space-y-2">
-          <Label>Only follow up after at least</Label>
+          <Label>Skip leads with more than</Label>
           <Input
             type="number"
             min={0}
@@ -364,13 +364,14 @@ export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Pro
             disabled={disabled}
           />
           <p className="text-xs text-slate-500">
-            messages from the lead — skips one-word tyre-kickers
+            messages from the lead — a lead already deep in conversation is being
+            handled and does not need chasing
           </p>
         </div>
 
         {/* Upper bound */}
         <div className="space-y-2">
-          <Label>…and no more than</Label>
+          <Label>…and at least</Label>
           <Input
             type="number"
             min={config.settings.min_inbound_for_followup + 1}
@@ -380,7 +381,7 @@ export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Pro
             disabled={disabled}
           />
           <p className="text-xs text-slate-500">
-            stops chasing very long threads
+            messages from the lead (0 = anyone who replied at all)
           </p>
         </div>
       </div>
