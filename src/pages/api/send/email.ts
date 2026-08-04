@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient } from "@/lib/supabase/server";
 
+// Verified Resend sending domain. Root bahaymo.com is Zoho's (SPF -all), so all
+// transactional mail goes out on this subdomain — never on the root.
+const SENDING_DOMAIN = "send.bahaymo.com";
+const FALLBACK_REPLY_TO = "admin@bahaymo.com";
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -48,9 +53,17 @@ export default async function handler(
       .eq("id", lead.client_id)
       .single();
 
+    // Replies belong to the agent who sent the message, not to the noreply box.
+    const { data: sender } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", currentUserId)
+      .single();
+
     // Prepare email data
     const emailData: any = {
-      from: `${client?.name || "BayMo"} <noreply@baymo.io>`,
+      from: `${client?.name || "BayMo"} <notifications@${SENDING_DOMAIN}>`,
+      reply_to: sender?.email || FALLBACK_REPLY_TO,
       to: lead.email,
       subject: subject || `Message from ${client?.name || "BayMo"}`,
       html: message.replace(/\n/g, "<br>"),
