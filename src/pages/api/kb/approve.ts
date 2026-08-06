@@ -57,8 +57,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (error) return res.status(500).json({ error: error.message })
 
-  // If this row replaces another (e.g. website refresh), retire the old one now —
-  // it stayed active during review so the bot never ran without a KB.
+  // If this row replaces another (e.g. website refresh), retire the old one now.
+  // The predecessor stayed active through review, so a *refresh* never leaves the
+  // bot without a KB. That is the only case this covers: a first upload has no
+  // predecessor to fall back on, and on 2026-08-06 a campaign went active with
+  // conversational AI on while its only source was still pending with content='',
+  // giving W2 an empty {{kb_text}} for four days. The gap is closed by
+  // trg_assert_campaign_kb_ready, not by this branch — see
+  // supabase/migrations/20260806100000_campaign_kb_empty_guard.sql.
   if (kbRow.replaces_kb_id) {
     await supabase
       .from('campaign_knowledge_base')
