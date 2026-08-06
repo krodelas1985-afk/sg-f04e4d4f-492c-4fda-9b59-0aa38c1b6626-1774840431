@@ -13,6 +13,7 @@ import { ArrowLeft, Save, Lock, Unlock, Plus, Trash2, Eye, EyeOff } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import KbReadinessBanner from "@/components/kb/KbReadinessBanner";
 import AiFollowUpSection from "@/components/followup/AiFollowUpSection";
 import { qualificationFieldsFor } from "@/lib/qualificationFields";
 
@@ -31,6 +32,9 @@ export default function AdminCampaignDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [campaign, setCampaign] = useState<any>(null);
+  // Bumped after a save so the KB banner re-checks instead of showing the
+  // readiness that was true before the campaign was edited.
+  const [kbRefreshKey, setKbRefreshKey] = useState(0);
   const [clients, setClients] = useState<Client[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
 
@@ -385,9 +389,13 @@ export default function AdminCampaignDetailPage() {
         throw new Error(errData.error || "Failed to update campaign");
       }
       toast({ title: "Campaign saved successfully" });
+      setKbRefreshKey(k => k + 1);
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+      // A 409 from the KB guard means the toggle never actually went live —
+      // re-check so the banner explains the block next to the switch.
+      setKbRefreshKey(k => k + 1);
     } finally {
       setSaving(false);
     }
@@ -416,6 +424,13 @@ export default function AdminCampaignDetailPage() {
             {saving ? "Saving..." : "Save Campaign"}
           </Button>
         </div>
+
+        <KbReadinessBanner
+          campaignId={id as string}
+          conversationalAiEnabled={conversationalAiEnabled}
+          getToken={getToken}
+          refreshKey={kbRefreshKey}
+        />
 
         {/* Editor tabs */}
         <div className="mb-6 flex flex-wrap items-center gap-0.5 overflow-x-auto rounded-lg border bg-card p-1">

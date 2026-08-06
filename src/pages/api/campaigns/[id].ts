@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient } from "@supabase/ssr";
+import { getCampaignKbReadiness, kbBlockReason } from "@/lib/kb/readiness";
 
 export default async function handler(
   req: NextApiRequest,
@@ -163,6 +164,32 @@ export default async function handler(
 
     updateData.updated_at = new Date().toISOString();
 
+    // Never let conversational AI go live against an empty knowledge base — it
+    // answers from prompt instructions alone and invents the rest (incident
+    // 2026-08-06). trg_assert_campaign_kb_ready is the real enforcement; this
+    // runs first only so the operator gets a reason instead of a raw PG error.
+    // Same transition-only rule as the trigger: a campaign already in the bad
+    // state stays editable, otherwise the save that fixes it would be rejected.
+    const nextStatus = updateData.status ?? campaign.status;
+    const nextAi = updateData.conversational_ai_enabled ?? campaign.conversational_ai_enabled;
+    const wasLiveWithAi = campaign.status === "active" && !!campaign.conversational_ai_enabled;
+
+    if (nextStatus === "active" && !!nextAi && !wasLiveWithAi) {
+      try {
+        const readiness = await getCampaignKbReadiness(id, campaign.client_id);
+        if (!readiness.ready) {
+          return res.status(409).json({
+            error: kbBlockReason(readiness),
+            code: "campaign_kb_empty",
+            readiness,
+          });
+        }
+      } catch (err) {
+        console.error("KB readiness check failed:", err);
+        return res.status(500).json({ error: "Could not verify the campaign knowledge base" });
+      }
+    }
+
     const { data, error } = await supabase
       .from("campaigns")
       .update(updateData)
@@ -171,6 +198,11 @@ export default async function handler(
       .single();
 
     if (error) {
+      // The DB trigger backstops every write path, including ones that skip
+      // this handler. Surface its message rather than a generic 500.
+      if ((error as { hint?: string }).hint === "campaign_kb_empty") {
+        return res.status(409).json({ error: error.message, code: "campaign_kb_empty" });
+      }
       console.error("Update campaign error:", error);
       return res.status(500).json({ error: "Failed to update campaign" });
     }

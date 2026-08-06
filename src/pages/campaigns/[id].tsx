@@ -15,6 +15,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import KnowledgeBaseSection from "@/components/kb/KnowledgeBaseSection";
+import KbReadinessBanner from "@/components/kb/KbReadinessBanner";
 import AiFollowUpSection from "@/components/followup/AiFollowUpSection";
 import { qualificationFieldsFor } from "@/lib/qualificationFields";
 
@@ -29,6 +30,9 @@ export default function CampaignDetailPage() {
 
   const [campaign, setCampaign] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
+  // Bumped after a save so the KB banner re-checks instead of showing the
+  // readiness that was true before the campaign was edited.
+  const [kbRefreshKey, setKbRefreshKey] = useState(0);
 
   const [name, setName] = useState("");
   const [channel, setChannel] = useState("webform");
@@ -393,9 +397,13 @@ export default function CampaignDetailPage() {
       }
 
       toast({ title: "Campaign saved successfully" });
+      setKbRefreshKey(k => k + 1);
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+      // A 409 from the KB guard means the toggle never actually went live —
+      // re-check so the banner explains the block next to the switch.
+      setKbRefreshKey(k => k + 1);
     } finally {
       setSaving(false);
     }
@@ -441,6 +449,15 @@ export default function CampaignDetailPage() {
             <Lock className="w-5 h-5 mr-3 text-amber-500" />
             LOCKED — contact BayMo admin to edit
           </div>
+        )}
+
+        {(profile?.role === "baymo_admin" || profile?.role === "client_admin") && (
+          <KbReadinessBanner
+            campaignId={id as string}
+            conversationalAiEnabled={conversationalAiEnabled}
+            getToken={getToken}
+            refreshKey={kbRefreshKey}
+          />
         )}
 
         {/* Editor tabs */}
