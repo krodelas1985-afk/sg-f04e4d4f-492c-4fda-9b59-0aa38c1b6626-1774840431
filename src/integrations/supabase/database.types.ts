@@ -1527,6 +1527,51 @@ export type Database = {
           },
         ]
       }
+      campaign_prompt_backup_20260807: {
+        Row: {
+          ai_message_instructions: string | null
+          backed_up_at: string
+          campaign_id: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          ai_message_instructions?: string | null
+          backed_up_at?: string
+          campaign_id: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          ai_message_instructions?: string | null
+          backed_up_at?: string
+          campaign_id?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
+      campaign_prompt_backup_20260809: {
+        Row: {
+          ai_message_instructions: string | null
+          id: string | null
+          name: string | null
+          taken_at: string | null
+        }
+        Insert: {
+          ai_message_instructions?: string | null
+          id?: string | null
+          name?: string | null
+          taken_at?: string | null
+        }
+        Update: {
+          ai_message_instructions?: string | null
+          id?: string | null
+          name?: string | null
+          taken_at?: string | null
+        }
+        Relationships: []
+      }
       campaign_requests: {
         Row: {
           ad_campaign_id: string | null
@@ -1688,6 +1733,7 @@ export type Database = {
           end_date: string | null
           enrollment_rules: Json | null
           id: string
+          intro_line: string | null
           is_active: boolean | null
           is_locked: boolean | null
           is_organic_owner: boolean
@@ -1725,6 +1771,7 @@ export type Database = {
           end_date?: string | null
           enrollment_rules?: Json | null
           id?: string
+          intro_line?: string | null
           is_active?: boolean | null
           is_locked?: boolean | null
           is_organic_owner?: boolean
@@ -1762,6 +1809,7 @@ export type Database = {
           end_date?: string | null
           enrollment_rules?: Json | null
           id?: string
+          intro_line?: string | null
           is_active?: boolean | null
           is_locked?: boolean | null
           is_organic_owner?: boolean
@@ -2656,47 +2704,73 @@ export type Database = {
       }
       followup_requests: {
         Row: {
+          action: string
           admin_notes: string | null
+          campaign_id: string | null
           client_id: string
           created_at: string
-          duration_days: number
+          decided_at: string | null
+          decided_by: string | null
+          duration_days: number | null
           id: string
           notes: string | null
           requested_by: string
           status: string
-          style: string
+          style: string | null
           updated_at: string
         }
         Insert: {
+          action?: string
           admin_notes?: string | null
+          campaign_id?: string | null
           client_id: string
           created_at?: string
-          duration_days: number
+          decided_at?: string | null
+          decided_by?: string | null
+          duration_days?: number | null
           id?: string
           notes?: string | null
           requested_by: string
           status?: string
-          style: string
+          style?: string | null
           updated_at?: string
         }
         Update: {
+          action?: string
           admin_notes?: string | null
+          campaign_id?: string | null
           client_id?: string
           created_at?: string
-          duration_days?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          duration_days?: number | null
           id?: string
           notes?: string | null
           requested_by?: string
           status?: string
-          style?: string
+          style?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "followup_requests_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "followup_requests_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2796,6 +2870,53 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_alert_emails: {
+        Row: {
+          alert_kind: string
+          client_id: string
+          created_at: string
+          error: string | null
+          id: string
+          lead_id: string
+          provider_id: string | null
+          recipients: string | null
+          status: string
+          trigger_at: string | null
+        }
+        Insert: {
+          alert_kind: string
+          client_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          lead_id: string
+          provider_id?: string | null
+          recipients?: string | null
+          status?: string
+          trigger_at?: string | null
+        }
+        Update: {
+          alert_kind?: string
+          client_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          lead_id?: string
+          provider_id?: string | null
+          recipients?: string | null
+          status?: string
+          trigger_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_alert_emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -3602,6 +3723,7 @@ export type Database = {
         Row: {
           ads_updates: boolean
           appointment_reminders: boolean
+          daily_digest: boolean
           lead_assigned: boolean
           lead_hot: boolean
           lead_warm: boolean
@@ -3613,6 +3735,7 @@ export type Database = {
         Insert: {
           ads_updates?: boolean
           appointment_reminders?: boolean
+          daily_digest?: boolean
           lead_assigned?: boolean
           lead_hot?: boolean
           lead_warm?: boolean
@@ -3624,6 +3747,7 @@ export type Database = {
         Update: {
           ads_updates?: boolean
           appointment_reminders?: boolean
+          daily_digest?: boolean
           lead_assigned?: boolean
           lead_hot?: boolean
           lead_warm?: boolean
@@ -3911,6 +4035,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seq_enroll_backup_20260803: {
+        Row: {
+          client_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          current_step: number | null
+          enrolled_at: string | null
+          enrollment_rule_id: string | null
+          id: string | null
+          last_execution_id: string | null
+          last_step_at: string | null
+          lead_id: string | null
+          metadata: Json | null
+          next_action_at: string | null
+          next_step_at: string | null
+          outcome: string | null
+          pass_number: number | null
+          paused_by: string | null
+          paused_reason: string | null
+          send_lock: boolean | null
+          sequence_id: string | null
+          started_at: string | null
+          state: string | null
+          touch_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          enrolled_at?: string | null
+          enrollment_rule_id?: string | null
+          id?: string | null
+          last_execution_id?: string | null
+          last_step_at?: string | null
+          lead_id?: string | null
+          metadata?: Json | null
+          next_action_at?: string | null
+          next_step_at?: string | null
+          outcome?: string | null
+          pass_number?: number | null
+          paused_by?: string | null
+          paused_reason?: string | null
+          send_lock?: boolean | null
+          sequence_id?: string | null
+          started_at?: string | null
+          state?: string | null
+          touch_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          enrolled_at?: string | null
+          enrollment_rule_id?: string | null
+          id?: string | null
+          last_execution_id?: string | null
+          last_step_at?: string | null
+          lead_id?: string | null
+          metadata?: Json | null
+          next_action_at?: string | null
+          next_step_at?: string | null
+          outcome?: string | null
+          pass_number?: number | null
+          paused_by?: string | null
+          paused_reason?: string | null
+          send_lock?: boolean | null
+          sequence_id?: string | null
+          started_at?: string | null
+          state?: string | null
+          touch_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       sequence_enrollments: {
         Row: {
@@ -4695,12 +4897,32 @@ export type Database = {
           token_count: number
         }[]
       }
+      pending_lead_alerts: {
+        Args: { p_limit?: number }
+        Returns: {
+          agent_name: string
+          alert_kind: string
+          client_id: string
+          client_name: string
+          lead_id: string
+          lead_name: string
+          lead_status: string
+          reason: string
+          temperature: string
+          to_emails: string
+          trigger_at: string
+        }[]
+      }
       reassign_task: {
         Args: { p_task_id: string; p_user_id: string }
         Returns: undefined
       }
       recompute_lead_grade: { Args: { p_lead_id?: string }; Returns: number }
       recompute_my_performance_scores: { Args: never; Returns: number }
+      request_followup_disable: {
+        Args: { p_campaign_id: string }
+        Returns: Json
+      }
       resolve_lead_recipients: {
         Args: { p_assigned: string; p_client_id: string }
         Returns: string[]
