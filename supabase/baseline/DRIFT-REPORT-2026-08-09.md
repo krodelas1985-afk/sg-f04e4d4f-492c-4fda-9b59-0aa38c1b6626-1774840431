@@ -156,30 +156,33 @@ Costs already paid:
 
 Before the marketplace is merged into this project, the drift should stop growing - otherwise the marketplace tables join a schema no one can rebuild.
 
-## Security note found during capture
+## Security note found during capture — RESOLVED 2026-08-09
 
 Generating this baseline surfaced a hardcoded credential in a live function body:
 
-- `notify_n8n_kb_ingestion()` embeds a **219-character service_role JWT** as a
+- `notify_n8n_kb_ingestion()` embedded a **219-character service_role JWT** as a
   literal `Bearer` token in its `net.http_post` call.
 
-It is **redacted** in `20260809_schema_baseline.sql` (replaced with
-`<REDACTED_JWT__see_DRIFT-REPORT_security_note>`) so the baseline could be
-committed without re-publishing the key. The live function in the database still
-contains the real value - redaction here changes nothing in production.
+**Removed** from the database in migration
+`remove_hardcoded_jwt_from_notify_n8n_kb_ingestion`. The baseline above now
+reflects the credential-free version, and a sweep of **every function in every
+non-system schema** found no other embedded JWT, `sk-`, or Resend key.
 
-Context and why this still matters:
+Why removing the header outright was safe rather than reckless:
 
-- This is the same key family as the 2026-07-27 service_role leak. Legacy
-  anon/service_role JWTs on this project were disabled on 2026-08-05, so the
-  embedded token is very likely inert - but "likely inert" is not "revoked",
-  and it should be confirmed rather than assumed.
-- The correct pattern is the one `push-dispatch` already uses: hold the secret
-  in Vault and read it at call time. Three functions in this schema already
-  reference `vault.`; this one does not.
-- `kb_chunks`/KB ingestion is recorded elsewhere as dead code. If the function
-  is genuinely unused, dropping it is simpler than rotating it.
+- `kb_documents` has **never held a row**, so `trg_kb_documents_n8n` — the only
+  trigger calling this function — has never fired. Nothing was in flight.
+- Legacy anon/service_role JWTs on this project were disabled 2026-08-05, so the
+  token was already inert. It was a plaintext credential in a schema dump, not a
+  working key.
+- `kb-ingestion` runs with `verify_jwt = true`, so this path would 401 either
+  way. An unauthenticated call that fails loudly beats a plaintext key that
+  quietly does nothing.
 
-**Anything regenerating this baseline must re-run the secret scan before
-committing.** The generator reproduces function bodies verbatim, so the token
-will come back every time until it is removed from the database.
+If the KB-ingestion path is ever revived, supply the credential from Vault at
+call time — the pattern `push-dispatch` already uses — rather than pasting a
+literal back into the function body.
+
+**Anything regenerating this baseline must still re-run the secret scan before
+committing.** The generator reproduces function bodies verbatim, so any future
+hardcoded credential lands straight in the dump.

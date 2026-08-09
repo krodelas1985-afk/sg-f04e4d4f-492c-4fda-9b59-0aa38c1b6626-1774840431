@@ -4250,11 +4250,13 @@ CREATE OR REPLACE FUNCTION public.notify_n8n_kb_ingestion()
  SET search_path TO 'public'
 AS $function$
 BEGIN
+  -- NOTE: no Authorization header. kb-ingestion runs with verify_jwt = true, so
+  -- this call will 401 until a credential is supplied from Vault. That is
+  -- deliberate: an unauthenticated call that fails loudly beats a plaintext key.
   PERFORM net.http_post(
     url     := 'https://zyfkjxepykwpfzmkxitb.supabase.co/functions/v1/kb-ingestion',
     headers := jsonb_build_object(
-      'Content-Type',  'application/json',
-      'Authorization', 'Bearer <REDACTED_JWT__see_DRIFT-REPORT_security_note>'
+      'Content-Type', 'application/json'
     ),
     body    := jsonb_build_object(
       'document_id', NEW.id,
