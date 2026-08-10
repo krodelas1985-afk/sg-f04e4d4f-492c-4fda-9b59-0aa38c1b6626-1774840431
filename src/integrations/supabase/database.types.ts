@@ -4803,6 +4803,126 @@ export type Database = {
           },
         ]
       }
+      viewing_outcome_requests: {
+        Row: {
+          answered_at: string | null
+          appointment_id: string
+          client_id: string | null
+          created_at: string
+          due_at: string | null
+          first_sent_at: string | null
+          id: string
+          lead_id: string
+          recipients: string | null
+          reminder_due_at: string | null
+          reminder_sent_at: string | null
+          send_error: string | null
+          status: string
+          suppressed_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          appointment_id: string
+          client_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          first_sent_at?: string | null
+          id?: string
+          lead_id: string
+          recipients?: string | null
+          reminder_due_at?: string | null
+          reminder_sent_at?: string | null
+          send_error?: string | null
+          status?: string
+          suppressed_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          appointment_id?: string
+          client_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          first_sent_at?: string | null
+          id?: string
+          lead_id?: string
+          recipients?: string | null
+          reminder_due_at?: string | null
+          reminder_sent_at?: string | null
+          send_error?: string | null
+          status?: string
+          suppressed_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viewing_outcome_requests_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viewing_outcome_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      viewing_outcome_tokens: {
+        Row: {
+          created_at: string
+          email: string | null
+          expires_at: string
+          id: string
+          profile_id: string | null
+          request_id: string
+          token: string
+          used_at: string | null
+          used_ip: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          profile_id?: string | null
+          request_id: string
+          token: string
+          used_at?: string | null
+          used_ip?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          profile_id?: string | null
+          request_id?: string
+          token?: string
+          used_at?: string | null
+          used_ip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viewing_outcome_tokens_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "viewing_outcome_tokens_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "viewing_outcome_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_logs: {
         Row: {
           client_id: string | null
@@ -5121,6 +5241,10 @@ export type Database = {
       }
       lead_assigned_to_me: { Args: { p_lead_id: string }; Returns: boolean }
       lead_grade_has_answer: { Args: { v: string }; Returns: boolean }
+      mark_viewing_outcome_sent: {
+        Args: { p_error?: string; p_recipients: string; p_request_id: string }
+        Returns: undefined
+      }
       match_chunks: {
         Args: {
           match_campaign_id: string
@@ -5149,6 +5273,25 @@ export type Database = {
           token_count: number
         }[]
       }
+      mint_viewing_outcome_tokens: {
+        Args: { p_request_id: string }
+        Returns: {
+          email: string
+          profile_id: string
+          token: string
+        }[]
+      }
+      peek_viewing_outcome_token: {
+        Args: { p_polarity: string; p_token: string }
+        Returns: {
+          date_known: boolean
+          lead_name: string
+          recorded_polarity: string
+          scheduled_at: string
+          source_text: string
+          status: string
+        }[]
+      }
       pending_lead_alerts: {
         Args: { p_limit?: number }
         Returns: {
@@ -5165,12 +5308,37 @@ export type Database = {
           trigger_at: string
         }[]
       }
+      pending_viewing_outcome_emails: {
+        Args: { p_limit?: number }
+        Returns: {
+          appointment_id: string
+          client_id: string
+          client_name: string
+          date_known: boolean
+          lead_id: string
+          lead_name: string
+          recipient_emails: string
+          request_id: string
+          scheduled_at: string
+          send_kind: string
+          source_text: string
+        }[]
+      }
       reassign_task: {
         Args: { p_task_id: string; p_user_id: string }
         Returns: undefined
       }
       recompute_lead_grade: { Args: { p_lead_id?: string }; Returns: number }
       recompute_my_performance_scores: { Args: never; Returns: number }
+      redeem_viewing_outcome_token: {
+        Args: { p_ip?: string; p_polarity: string; p_token: string }
+        Returns: {
+          lead_name: string
+          recorded_polarity: string
+          scheduled_at: string
+          status: string
+        }[]
+      }
       request_followup_disable: {
         Args: { p_campaign_id: string }
         Returns: Json
@@ -5192,6 +5360,7 @@ export type Database = {
         Args: { p_mode: string; p_sources: string[] }
         Returns: undefined
       }
+      viewing_outcome_due_at: { Args: { p_scheduled: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
