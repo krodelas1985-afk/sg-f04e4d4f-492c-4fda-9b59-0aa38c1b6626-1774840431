@@ -5112,6 +5112,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ensure_viewing_appointment: {
+        Args: { p_lead_id: string }
+        Returns: string
+      }
       fetch_due_ai_followups: {
         Args: { p_limit?: number }
         Returns: {
