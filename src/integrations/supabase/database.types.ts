@@ -3387,10 +3387,12 @@ export type Database = {
           lead_grade_score: number | null
           lead_id: string
           lead_score: number | null
+          lost_reason: string | null
           prev_conversation_stage: string | null
           prev_lead_grade: string | null
           prev_lead_grade_score: number | null
           prev_lead_score: number | null
+          prev_lost_reason: string | null
           prev_status: string | null
           status: string | null
           status_reason: string | null
@@ -3407,10 +3409,12 @@ export type Database = {
           lead_grade_score?: number | null
           lead_id: string
           lead_score?: number | null
+          lost_reason?: string | null
           prev_conversation_stage?: string | null
           prev_lead_grade?: string | null
           prev_lead_grade_score?: number | null
           prev_lead_score?: number | null
+          prev_lost_reason?: string | null
           prev_status?: string | null
           status?: string | null
           status_reason?: string | null
@@ -3427,10 +3431,12 @@ export type Database = {
           lead_grade_score?: number | null
           lead_id?: string
           lead_score?: number | null
+          lost_reason?: string | null
           prev_conversation_stage?: string | null
           prev_lead_grade?: string | null
           prev_lead_grade_score?: number | null
           prev_lead_score?: number | null
+          prev_lost_reason?: string | null
           prev_status?: string | null
           status?: string | null
           status_reason?: string | null
@@ -3608,6 +3614,7 @@ export type Database = {
           lead_score: number | null
           lead_temperature: string | null
           lead_type: string | null
+          lost_reason: string | null
           messenger_id: string | null
           metadata: Json | null
           motivation: string | null
@@ -3670,6 +3677,7 @@ export type Database = {
           lead_score?: number | null
           lead_temperature?: string | null
           lead_type?: string | null
+          lost_reason?: string | null
           messenger_id?: string | null
           metadata?: Json | null
           motivation?: string | null
@@ -3732,6 +3740,7 @@ export type Database = {
           lead_score?: number | null
           lead_temperature?: string | null
           lead_type?: string | null
+          lost_reason?: string | null
           messenger_id?: string | null
           metadata?: Json | null
           motivation?: string | null
@@ -4973,6 +4982,39 @@ export type Database = {
       }
     }
     Views: {
+      v_ad_source_quality: {
+        Row: {
+          avg_grade_score: number | null
+          avg_questions_asked_back: number | null
+          avg_reciprocal_replies: number | null
+          avg_typed_inbound: number | null
+          canned_only_leads: number | null
+          client_id: string | null
+          client_name: string | null
+          cold: number | null
+          fb_ad_id: string | null
+          first_lead_at: string | null
+          hot: number | null
+          is_attributed: boolean | null
+          last_lead_at: string | null
+          leads: number | null
+          median_reply_latency_mins: number | null
+          pct_canned_only: number | null
+          pct_hot: number | null
+          pct_viewing: number | null
+          reached_viewing: number | null
+          warm: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_canned_messages: {
         Row: {
           message_content: string | null
@@ -5360,6 +5402,19 @@ export type Database = {
       }
       run_appointment_reminders: { Args: never; Returns: undefined }
       run_deferred_task_sweep: { Args: never; Returns: undefined }
+      set_lead_disposition: {
+        Args: {
+          p_disposition: string
+          p_lead_id: string
+          p_lost_reason?: string
+          p_note?: string
+          p_recorded_by?: string
+        }
+        Returns: {
+          lead_name: string
+          status: string
+        }[]
+      }
       set_my_assignment_settings: {
         Args: { p_mode: string; p_sources: string[] }
         Returns: undefined
