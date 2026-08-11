@@ -5029,6 +5029,47 @@ export type Database = {
       }
     }
     Views: {
+      canned_inbound_phrases: {
+        Row: {
+          lead_count: number | null
+          msg_count: number | null
+          phrase: string | null
+        }
+        Relationships: []
+      }
+      lead_engagement_counts: {
+        Row: {
+          canned_inbound_count: number | null
+          genuine_inbound: number | null
+          inbound_count: number | null
+          lead_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_objection_counts: {
+        Row: {
+          has_hard_refusal: boolean | null
+          lead_id: string | null
+          objection_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_memory_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_ad_source_quality: {
         Row: {
           avg_grade_score: number | null
@@ -5448,6 +5489,7 @@ export type Database = {
           status: string
         }[]
       }
+      refresh_canned_inbound_phrases: { Args: never; Returns: undefined }
       request_followup_disable: {
         Args: { p_campaign_id: string }
         Returns: Json
