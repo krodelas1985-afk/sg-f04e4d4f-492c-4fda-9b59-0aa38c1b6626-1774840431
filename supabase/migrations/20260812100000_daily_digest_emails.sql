@@ -22,11 +22,16 @@ create table if not exists public.daily_digest_emails (
   updated_at  timestamptz not null default now()
 );
 
--- One send per client per digest day. The edge function inserts the claim row
--- BEFORE calling Resend, so a retried or overlapping cron tick collides on this
--- index instead of mailing the client twice.
+-- One *successful* send per client per digest day. The edge function inserts the
+-- claim row BEFORE calling Resend, so a retried or overlapping cron tick collides
+-- on this index instead of mailing the client twice.
+--
+-- Partial on purpose: a `failed` row must NOT occupy the slot. W9 has exactly
+-- that bug — a failed row counts as already-sent and the alert is lost for 7
+-- days. Here a retry can claim again while the failed row stays as audit.
 create unique index if not exists daily_digest_emails_client_date_key
-  on public.daily_digest_emails (client_id, digest_date);
+  on public.daily_digest_emails (client_id, digest_date)
+  where status <> 'failed';
 
 alter table public.daily_digest_emails enable row level security;
 
