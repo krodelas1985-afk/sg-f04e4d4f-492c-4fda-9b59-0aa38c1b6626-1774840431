@@ -24,6 +24,24 @@ const LABELS: Record<string, string> = {
   ambiguous: "Still to come",
 };
 
+/**
+ * Optional second step. Asked here rather than in a follow-up email because this is the
+ * one moment we know an agent is present, has just answered, and has the lead in mind —
+ * and because Won/Lost has sat at 1 and 0 across 1,083 leads for want of anywhere to
+ * record it. Skipping is a first-class option; nothing is blocked on answering.
+ */
+const LOST_REASONS: Array<{ value: string; label: string }> = [
+  { value: "too_expensive", label: "Too expensive" },
+  { value: "cannot_finance", label: "Couldn't get financing" },
+  { value: "bought_elsewhere", label: "Bought somewhere else" },
+  { value: "too_far", label: "Location too far" },
+  { value: "not_a_buyer", label: "Not really a buyer" },
+  { value: "wrong_inventory", label: "Wanted something we don't have" },
+  { value: "timing", label: "Interested, but not yet" },
+  { value: "unreachable", label: "Can't reach them" },
+  { value: "other", label: "Something else" },
+];
+
 type Peek = {
   status: string;
   lead_name: string | null;
@@ -107,6 +125,12 @@ export default function ViewingOutcome({ token, polarity, peek, serverError }: P
     recordedPolarity: string | null;
   } | null>(null);
 
+  // second step: where did the lead end up
+  const [dispStep, setDispStep] = useState<"hidden" | "ask" | "reasons" | "saving" | "saved" | "skipped">(
+    "hidden"
+  );
+  const [dispResult, setDispResult] = useState<string | null>(null);
+
   const label = LABELS[polarity] ?? "this outcome";
   const leadName = peek?.lead_name ?? "this lead";
   const when = peek?.date_known ? formatWhen(peek?.scheduled_at ?? null) : null;
@@ -121,10 +145,29 @@ export default function ViewingOutcome({ token, polarity, peek, serverError }: P
       });
       const json = await res.json();
       setResult({ status: json.status, recordedPolarity: json.recordedPolarity ?? null });
+      // Offer the follow-up only once the outcome is safely on file, so a failure there
+      // never costs us the answer we already have.
+      if (json.status === "ok" || json.status === "already") setDispStep("ask");
     } catch {
       setResult({ status: "error", recordedPolarity: null });
     }
     setState("done");
+  }
+
+  async function recordDisposition(disposition: "Won" | "Lost", lostReason?: string) {
+    setDispStep("saving");
+    try {
+      const res = await fetch("/api/lead-disposition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, disposition, lostReason: lostReason ?? null }),
+      });
+      const json = await res.json();
+      setDispResult(json.status === "ok" ? disposition : "error");
+    } catch {
+      setDispResult("error");
+    }
+    setDispStep("saved");
   }
 
   // ---- what to show -------------------------------------------------------
@@ -247,6 +290,62 @@ export default function ViewingOutcome({ token, polarity, peek, serverError }: P
               Wrong one? Close this and tap a different button in the email.
             </p>
           ) : null}
+
+          {/* ---- optional second step: where did the lead end up ---- */}
+          {dispStep !== "hidden" ? (
+            <div className="step2">
+              {dispStep === "ask" ? (
+                <>
+                  <p className="q">While you&rsquo;re here — where&rsquo;s this lead now?</p>
+                  <button className="btn btn-sm" onClick={() => recordDisposition("Won")}>
+                    Reserved / bought
+                  </button>
+                  <button className="btn btn-sm btn-ghost" onClick={() => setDispStep("reasons")}>
+                    Lost it
+                  </button>
+                  <button className="linkbtn" onClick={() => setDispStep("skipped")}>
+                    Still working on it
+                  </button>
+                </>
+              ) : null}
+
+              {dispStep === "reasons" ? (
+                <>
+                  <p className="q">What happened?</p>
+                  <div className="reasons">
+                    {LOST_REASONS.map((r) => (
+                      <button
+                        key={r.value}
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => recordDisposition("Lost", r.value)}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="linkbtn" onClick={() => setDispStep("ask")}>
+                    Back
+                  </button>
+                </>
+              ) : null}
+
+              {dispStep === "saving" ? <p className="q">Saving…</p> : null}
+
+              {dispStep === "saved" ? (
+                <p className="q">
+                  {dispResult === "Won"
+                    ? "Marked as reserved — nice one."
+                    : dispResult === "Lost"
+                    ? "Marked as lost. We'll stop following up."
+                    : "That didn't save, but your viewing answer is safe."}
+                </p>
+              ) : null}
+
+              {dispStep === "skipped" ? (
+                <p className="q">Got it — we&rsquo;ll leave it open.</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </main>
 
@@ -341,6 +440,55 @@ export default function ViewingOutcome({ token, polarity, peek, serverError }: P
           font-size: 0.78rem;
           color: #868b9c;
           margin: 0;
+        }
+        .step2 {
+          margin-top: 1.5rem;
+          padding-top: 1.25rem;
+          border-top: 1px solid #ece6dc;
+        }
+        .q {
+          font-size: 0.92rem;
+          color: #55596a;
+          margin: 0 0 0.85rem;
+          line-height: 1.5;
+        }
+        .btn-sm {
+          font-size: 0.9rem;
+          padding: 0.7rem 1rem;
+          margin-bottom: 0.5rem;
+        }
+        .btn-ghost {
+          background: #fff;
+          color: #1f3c88;
+          border: 1px solid #dfd8cc;
+        }
+        .btn-ghost:hover:not(:disabled) {
+          background: #fbf7f1;
+        }
+        .reasons {
+          display: grid;
+          gap: 0.4rem;
+          margin-bottom: 0.5rem;
+        }
+        .reasons .btn-sm {
+          margin-bottom: 0;
+          max-width: none;
+        }
+        .linkbtn {
+          background: none;
+          border: 0;
+          color: #868b9c;
+          font-size: 0.82rem;
+          cursor: pointer;
+          text-decoration: underline;
+          padding: 0.35rem;
+        }
+        .linkbtn:hover {
+          color: #55596a;
+        }
+        .linkbtn:focus-visible {
+          outline: 2px solid #e67e22;
+          outline-offset: 2px;
         }
         strong {
           color: #2a2e38;
