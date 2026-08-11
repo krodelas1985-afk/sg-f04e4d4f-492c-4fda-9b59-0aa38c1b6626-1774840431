@@ -2502,6 +2502,53 @@ export type Database = {
           },
         ]
       }
+      daily_digest_emails: {
+        Row: {
+          client_id: string
+          created_at: string
+          digest_date: string
+          error: string | null
+          id: string
+          provider_id: string | null
+          status: string
+          subject: string | null
+          to_emails: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          digest_date: string
+          error?: string | null
+          id?: string
+          provider_id?: string | null
+          status?: string
+          subject?: string | null
+          to_emails?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          digest_date?: string
+          error?: string | null
+          id?: string
+          provider_id?: string | null
+          status?: string
+          subject?: string | null
+          to_emails?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_digest_emails_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_digests: {
         Row: {
           client_id: string
@@ -5134,6 +5181,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      digest_email_recipients: {
+        Args: { p_client_id: string }
+        Returns: string[]
+      }
       enroll_ai_followup_candidates: {
         Args: never
         Returns: {
@@ -5376,6 +5427,18 @@ export type Database = {
       }
       recompute_lead_grade: { Args: { p_lead_id?: string }; Returns: number }
       recompute_my_performance_scores: { Args: never; Returns: number }
+      record_disposition_from_token: {
+        Args: {
+          p_disposition: string
+          p_ip?: string
+          p_lost_reason?: string
+          p_token: string
+        }
+        Returns: {
+          lead_name: string
+          status: string
+        }[]
+      }
       redeem_viewing_outcome_token: {
         Args: { p_ip?: string; p_polarity: string; p_token: string }
         Returns: {
