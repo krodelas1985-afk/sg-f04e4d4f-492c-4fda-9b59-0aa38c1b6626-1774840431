@@ -5037,6 +5037,15 @@ export type Database = {
         }
         Relationships: []
       }
+      canned_outbound_phrases: {
+        Row: {
+          lead_count: number | null
+          median_reply_secs: number | null
+          msg_count: number | null
+          phrase: string | null
+        }
+        Relationships: []
+      }
       lead_engagement_counts: {
         Row: {
           canned_inbound_count: number | null
@@ -5189,6 +5198,10 @@ export type Database = {
       }
     }
     Functions: {
+      agent_active_recently: {
+        Args: { p_lead_id: string; p_minutes?: number }
+        Returns: boolean
+      }
       apply_ai_followup_decision: {
         Args: {
           p_action: string
