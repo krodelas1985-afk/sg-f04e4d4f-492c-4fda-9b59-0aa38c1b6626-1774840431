@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -26,6 +27,8 @@ interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
+  /** Key into the pending-count map; renders a badge when the count is > 0. */
+  badgeKey?: "requests";
 }
 
 interface NavGroup {
@@ -44,7 +47,7 @@ const ADMIN_NAV: NavGroup[] = [
   {
     label: "Operations",
     items: [
-      { href: "/admin/requests", label: "Client Requests", icon: Inbox },
+      { href: "/admin/requests", label: "Client Requests", icon: Inbox, badgeKey: "requests" },
       { href: "/admin/automation-reviews", label: "Automation Reviews", icon: Sparkles },
       { href: "/follow-up", label: "Follow-Up AI", icon: Send },
       { href: "/announcements", label: "Announcements", icon: Bell },
@@ -80,9 +83,51 @@ const CLIENT_NAV: NavGroup[] = [
   },
 ];
 
+/**
+ * Open client-request count for the sidebar badge. Refetches on navigation and
+ * on window focus so the badge clears shortly after an admin works the queue.
+ * Silently yields 0 on any failure — a broken badge must never break the nav.
+ */
+function usePendingRequestCount(enabled: boolean) {
+  const [count, setCount] = useState(0);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!enabled) {
+      setCount(0);
+      return;
+    }
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch("/api/admin/requests/pending-count");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setCount(Number(data.total) || 0);
+      } catch {
+        /* leave the previous count in place */
+      }
+    };
+
+    load();
+    window.addEventListener("focus", load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", load);
+    };
+  }, [enabled, router.asPath]);
+
+  return count;
+}
+
 export function Sidebar({ role }: SidebarProps) {
   const router = useRouter();
   const groups = role === "baymo_admin" ? ADMIN_NAV : CLIENT_NAV;
+  const pendingRequests = usePendingRequestCount(role === "baymo_admin");
+
+  const badgeCount = (key: NavItem["badgeKey"]) =>
+    key === "requests" ? pendingRequests : 0;
 
   const isItemActive = (href: string) => {
     // Exact match, or a sub-route — but don't let "/admin" match every admin page
@@ -118,6 +163,7 @@ export function Sidebar({ role }: SidebarProps) {
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active = isItemActive(item.href);
+                const badge = badgeCount(item.badgeKey);
                 return (
                   <Link
                     key={item.href}
@@ -138,7 +184,15 @@ export function Sidebar({ role }: SidebarProps) {
                         active ? "text-brand-orange" : "text-sidebar-text/50"
                       )}
                     />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {badge > 0 && (
+                      <span
+                        className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-orange px-1.5 text-[11px] font-semibold leading-none text-white"
+                        title={`${badge} open request${badge === 1 ? "" : "s"}`}
+                      >
+                        {badge > 99 ? "99+" : badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
