@@ -1222,6 +1222,47 @@ export type Database = {
           },
         ]
       }
+      ai_followup_step_media: {
+        Row: {
+          created_at: string
+          id: string
+          media_description: string | null
+          media_type: string
+          media_url: string
+          playbook_step: number
+          sequence_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_description?: string | null
+          media_type: string
+          media_url: string
+          playbook_step: number
+          sequence_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_description?: string | null
+          media_type?: string
+          media_url?: string
+          playbook_step?: number
+          sequence_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_followup_step_media_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           client_id: string
@@ -1578,6 +1619,24 @@ export type Database = {
           id?: string | null
           name?: string | null
           taken_at?: string | null
+        }
+        Relationships: []
+      }
+      campaign_prompt_backup_20260814: {
+        Row: {
+          ai_message_instructions: string | null
+          backed_up_at: string | null
+          campaign_id: string | null
+        }
+        Insert: {
+          ai_message_instructions?: string | null
+          backed_up_at?: string | null
+          campaign_id?: string | null
+        }
+        Update: {
+          ai_message_instructions?: string | null
+          backed_up_at?: string | null
+          campaign_id?: string | null
         }
         Relationships: []
       }
@@ -3903,6 +3962,41 @@ export type Database = {
           },
         ]
       }
+      messenger_media_attachments: {
+        Row: {
+          client_id: string
+          fb_attachment_id: string
+          id: string
+          media_type: string
+          media_url: string
+          uploaded_at: string
+        }
+        Insert: {
+          client_id: string
+          fb_attachment_id: string
+          id?: string
+          media_type: string
+          media_url: string
+          uploaded_at?: string
+        }
+        Update: {
+          client_id?: string
+          fb_attachment_id?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_media_attachments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messenger_referrals: {
         Row: {
           ad_id: string | null
@@ -4452,6 +4546,8 @@ export type Database = {
           delay_hours: number
           id: string
           is_active: boolean | null
+          media_type: string | null
+          media_url: string | null
           message_content: string | null
           quick_replies: Json | null
           sequence_id: string
@@ -4465,6 +4561,8 @@ export type Database = {
           delay_hours?: number
           id?: string
           is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_content?: string | null
           quick_replies?: Json | null
           sequence_id: string
@@ -4478,6 +4576,8 @@ export type Database = {
           delay_hours?: number
           id?: string
           is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_content?: string | null
           quick_replies?: Json | null
           sequence_id?: string
