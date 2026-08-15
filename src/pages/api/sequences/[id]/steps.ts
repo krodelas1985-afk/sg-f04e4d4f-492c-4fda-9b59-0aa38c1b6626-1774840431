@@ -1,7 +1,29 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient } from "@supabase/ssr";
+import { adminClient } from "@/lib/apiAuth";
+import { ensureReusableAttachmentId, isMediaType } from "@/lib/messengerMedia";
 
 const VALID_STEP_TYPES = ["messenger", "email", "call"];
+
+// Media is accepted as a pair or not at all — the DB enforces the same rule,
+// but a 400 here names the problem instead of surfacing a check violation.
+type MediaInput = { url: string; type: "image" | "video" | "file" } | null;
+function validateMedia(
+  mediaUrl: unknown,
+  mediaType: unknown
+): { error?: string; value: MediaInput } {
+  const hasUrl = typeof mediaUrl === "string" && mediaUrl.trim() !== "";
+  const hasType = mediaType !== null && mediaType !== undefined;
+
+  if (!hasUrl && !hasType) return { value: null };
+  if (hasUrl !== hasType) {
+    return { error: "media_url and media_type must be set together", value: null };
+  }
+  if (!isMediaType(mediaType)) {
+    return { error: "media_type must be image, video, or file", value: null };
+  }
+  return { value: { url: (mediaUrl as string).trim(), type: mediaType } };
+}
 
 // Validate/normalize the optional quick_replies field (FB Messenger quick reply
 // buttons). Accepts null/undefined (cleared), otherwise an array of
@@ -48,6 +70,27 @@ function validateQuickReplies(
     cleaned.push({ title: title.trim(), payload: payload.trim() });
   }
   return { value: cleaned.length > 0 ? cleaned : null };
+}
+
+/**
+ * Registers the attachment with Meta so sends can use a reusable attachment_id
+ * instead of making Meta re-download the file on every send.
+ *
+ * Deliberately non-fatal: the step is already saved, and the sender falls back
+ * to `payload.url` when there is no id. We return the reason so the editor can
+ * warn rather than silently shipping the slow path.
+ */
+async function preuploadMedia(
+  clientId: string,
+  media: NonNullable<MediaInput>
+): Promise<string | null> {
+  const { error } = await ensureReusableAttachmentId(
+    adminClient(),
+    clientId,
+    media.url,
+    media.type
+  );
+  return error ?? null;
 }
 
 export default async function handler(
@@ -132,6 +175,8 @@ export default async function handler(
       delay_hours,
       step_order,
       quick_replies,
+      media_url,
+      media_type,
     } = req.body;
 
     if (!title || !step_type) {
@@ -143,6 +188,15 @@ export default async function handler(
     const qr = validateQuickReplies(quick_replies);
     if (qr.error) {
       return res.status(400).json({ error: qr.error });
+    }
+    const media = validateMedia(media_url, media_type);
+    if (media.error) {
+      return res.status(400).json({ error: media.error });
+    }
+    if (media.value && step_type !== "messenger") {
+      return res
+        .status(400)
+        .json({ error: "Attachments are only supported on messenger steps" });
     }
 
     // Auto-assign step_order = max + 1 when omitted
@@ -168,6 +222,8 @@ export default async function handler(
         delay_hours: delay_hours ?? 24,
         step_order: order,
         quick_replies: qr.value,
+        media_url: media.value?.url ?? null,
+        media_type: media.value?.type ?? null,
         is_active: true,
       })
       .select()
@@ -177,7 +233,12 @@ export default async function handler(
       console.error("Create step error:", error);
       return res.status(500).json({ error: "Failed to create step" });
     }
-    return res.status(201).json(data);
+
+    const mediaWarning = media.value
+      ? await preuploadMedia(sequence.client_id, media.value)
+      : null;
+
+    return res.status(201).json({ ...data, media_warning: mediaWarning });
   }
 
   if (req.method === "PATCH") {
@@ -190,6 +251,8 @@ export default async function handler(
       step_order,
       is_active,
       quick_replies,
+      media_url,
+      media_type,
     } = req.body;
 
     if (!stepId) {
@@ -214,6 +277,19 @@ export default async function handler(
       }
       updateData.quick_replies = qr.value;
     }
+
+    // media_url and media_type move together: sending either key rewrites the
+    // pair, so clearing an attachment is `media_url: null` and nothing else.
+    let mediaToUpload: MediaInput = null;
+    if (media_url !== undefined || media_type !== undefined) {
+      const media = validateMedia(media_url ?? null, media_type ?? null);
+      if (media.error) {
+        return res.status(400).json({ error: media.error });
+      }
+      updateData.media_url = media.value?.url ?? null;
+      updateData.media_type = media.value?.type ?? null;
+      mediaToUpload = media.value;
+    }
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await db
@@ -228,7 +304,12 @@ export default async function handler(
       console.error("Update step error:", error);
       return res.status(500).json({ error: "Failed to update step" });
     }
-    return res.status(200).json(data);
+
+    const mediaWarning = mediaToUpload
+      ? await preuploadMedia(sequence.client_id, mediaToUpload)
+      : null;
+
+    return res.status(200).json({ ...data, media_warning: mediaWarning });
   }
 
   if (req.method === "DELETE") {
