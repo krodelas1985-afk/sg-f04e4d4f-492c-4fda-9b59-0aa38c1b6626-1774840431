@@ -911,6 +911,7 @@ export default function CampaignDetailPage() {
               <CardContent>
                 <AiFollowUpSection
                   campaignId={id as string}
+                  clientId={campaign?.client_id ?? undefined}
                   getToken={getToken}
                   canEdit={canEdit}
                 />

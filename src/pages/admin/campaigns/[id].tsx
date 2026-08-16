@@ -923,6 +923,11 @@ export default function AdminCampaignDetailPage() {
             <CardContent>
               <AiFollowUpSection
                 campaignId={id as string}
+                // "unallocated" is the picker's no-client sentinel, not an id —
+                // an unassigned campaign has no storage folder to upload into.
+                clientId={
+                  clientId && clientId !== "unallocated" ? clientId : undefined
+                }
                 getToken={getToken}
                 canEdit={true}
               />

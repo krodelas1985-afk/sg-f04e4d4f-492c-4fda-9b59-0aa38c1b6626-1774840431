@@ -35,9 +35,14 @@ import {
   ArrowUp,
   ArrowDown,
   Save,
+  Paperclip,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TemplatePicker, type PickableTemplate } from "@/components/TemplatePicker";
+import {
+  MediaAttachmentField,
+  type MediaValue,
+} from "@/components/followup/MediaAttachmentField";
 
 // Option sets (mirror real lead values in the Supabase project)
 const STEP_TYPES = ["messenger", "email", "call"];
@@ -88,6 +93,8 @@ interface Step {
   delay_hours: number;
   is_active: boolean;
   quick_replies: QuickReply[] | null;
+  media_url: string | null;
+  media_type: "image" | "video" | "file" | null;
 }
 
 interface Rule {
@@ -217,12 +224,14 @@ export default function SequenceDetailPage() {
     message_content: string;
     delay_hours: number;
     quick_replies: QuickReply[];
+    media: MediaValue;
   }>({
     title: "",
     step_type: "messenger",
     message_content: "",
     delay_hours: 24,
     quick_replies: [],
+    media: null,
   });
   const [savingStep, setSavingStep] = useState(false);
   const [stepWindowError, setStepWindowError] = useState<string | null>(null);
@@ -435,6 +444,7 @@ export default function SequenceDetailPage() {
       message_content: "",
       delay_hours: 24,
       quick_replies: [],
+      media: null,
     });
     setStepDialogOpen(true);
   };
@@ -453,6 +463,10 @@ export default function SequenceDetailPage() {
             payload: qr.payload,
           }))
         : [],
+      media:
+        step.media_url && step.media_type
+          ? { url: step.media_url, type: step.media_type }
+          : null,
     });
     setStepDialogOpen(true);
   };
@@ -473,6 +487,21 @@ export default function SequenceDetailPage() {
       return `This Messenger step falls outside the 24-hour messaging window. The cumulative delay at this position is ${cumulative}h. Reduce the delay, move the step earlier, or use Email/Call instead.`;
     }
     return null;
+  };
+
+  // The step saves even when Meta refuses the attachment upload — the sender
+  // falls back to the public URL. Surface it anyway: a rejected upload usually
+  // means the file or the Page connection is wrong, and silence here would let
+  // a broken attachment sit in a live sequence unnoticed.
+  const warnIfMediaNotRegistered = async (res: Response) => {
+    const body = await res.json().catch(() => ({}));
+    if (body?.media_warning) {
+      toast({
+        title: "Attachment saved, but Facebook rejected it",
+        description: `${body.media_warning}. The step will still send, but check the file before this step runs.`,
+        variant: "destructive",
+      });
+    }
   };
 
   const saveStep = async () => {
@@ -503,6 +532,14 @@ export default function SequenceDetailPage() {
       stepForm.step_type === "messenger" && cleanedQuickReplies.length > 0
         ? cleanedQuickReplies
         : null;
+    // Attachments are Messenger-only, same as quick replies. Sending the pair
+    // as explicit nulls is what clears a previously-attached file.
+    const media =
+      stepForm.step_type === "messenger" ? stepForm.media : null;
+    const mediaPayload = {
+      media_url: media?.url ?? null,
+      media_type: media?.type ?? null,
+    };
     try {
       setSavingStep(true);
       if (editingStep) {
@@ -516,12 +553,14 @@ export default function SequenceDetailPage() {
             message_content: stepForm.message_content,
             delay_hours: Number(stepForm.delay_hours) || 0,
             quick_replies: quickRepliesPayload,
+            ...mediaPayload,
           }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || body.message || res.statusText || "Unknown error");
         }
+        await warnIfMediaNotRegistered(res);
       } else {
         const res = await fetch(`/api/sequences/${id}/steps`, {
           method: "POST",
@@ -532,12 +571,14 @@ export default function SequenceDetailPage() {
             message_content: stepForm.message_content,
             delay_hours: Number(stepForm.delay_hours) || 0,
             quick_replies: quickRepliesPayload,
+            ...mediaPayload,
           }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || body.message || res.statusText || "Unknown error");
         }
+        await warnIfMediaNotRegistered(res);
       }
       setStepDialogOpen(false);
       await fetchSteps();
@@ -908,6 +949,12 @@ export default function SequenceDetailPage() {
                             <span className="text-xs text-slate-400">
                               wait {step.delay_hours}h
                             </span>
+                            {step.media_url && (
+                              <span className="flex items-center gap-1 text-xs text-slate-400">
+                                <Paperclip className="h-3 w-3" />
+                                {step.media_type}
+                              </span>
+                            )}
                           </div>
                           {step.message_content && (
                             <p className="text-sm text-slate-500 mt-1 truncate">
@@ -1243,6 +1290,16 @@ export default function SequenceDetailPage() {
                 rows={4}
               />
             </div>
+            {stepForm.step_type === "messenger" && sequence && (
+              <MediaAttachmentField
+                clientId={sequence.client_id}
+                folder="sequence-media"
+                value={stepForm.media}
+                onChange={(media) => setStepForm({ ...stepForm, media })}
+                disabled={savingStep}
+                helpText="Sent just before the message text — Messenger shows the photo and the words as two bubbles."
+              />
+            )}
             {stepForm.step_type === "messenger" && (
               <div className="space-y-2">
                 <Label>Quick Replies (optional)</Label>

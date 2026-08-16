@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Sparkles, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PlaybookMediaEditor from "@/components/followup/PlaybookMediaEditor";
 
 // Client-facing AI Follow-Up settings for one campaign. Backed by the single
 // system-owned ai_adaptive sequence (see /api/campaigns/[id]/follow-up).
@@ -20,6 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   campaignId: string;
+  /** Owning client — needed to scope attachment uploads to their storage folder. */
+  clientId?: string;
   getToken: () => Promise<string>;
   canEdit: boolean;
 }
@@ -86,7 +89,12 @@ const DEFAULT_CONFIG: Config = {
 const cumulative = (ladder: number[]) =>
   ladder.reduce<number[]>((acc, h) => [...acc, (acc[acc.length - 1] ?? 0) + h], []);
 
-export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Props) {
+export default function AiFollowUpSection({
+  campaignId,
+  clientId,
+  getToken,
+  canEdit,
+}: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -449,6 +457,19 @@ export default function AiFollowUpSection({ campaignId, getToken, canEdit }: Pro
             <Save className="mr-2 h-4 w-4" />
             {saving ? "Saving…" : "Save follow-up settings"}
           </Button>
+        </div>
+      )}
+
+      {/* Attachments save themselves on change, so they sit below the settings
+          save button rather than inside its form. */}
+      {clientId && (
+        <div className="border-t pt-6">
+          <PlaybookMediaEditor
+            campaignId={campaignId}
+            clientId={clientId}
+            getToken={getToken}
+            canEdit={canEdit}
+          />
         </div>
       )}
     </div>
