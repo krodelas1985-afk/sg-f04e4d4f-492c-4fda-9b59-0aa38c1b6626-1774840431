@@ -119,9 +119,9 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
   // responder's continuation rate is visually separated from them.
   const rateData = useMemo(
     () => [
-      { surface: "AI Responder", rate: rate(responder.replied, responder.sent), sent: responder.sent, replied: responder.replied },
-      { surface: "AI Assist", rate: rate(assist.replied, assist.sent), sent: assist.sent, replied: assist.replied },
-      { surface: "AI Follow-Up", rate: rate(followup.replied, followup.sent), sent: followup.sent, replied: followup.replied },
+      { surface: "Responder", rate: rate(responder.replied, responder.sent), sent: responder.sent, replied: responder.replied },
+      { surface: "Assist", rate: rate(assist.replied, assist.sent), sent: assist.sent, replied: assist.replied },
+      { surface: "Follow-Up", rate: rate(followup.replied, followup.sent), sent: followup.sent, replied: followup.replied },
       { surface: "All AI", rate: rate(metrics?.all?.replied ?? 0, metrics?.all?.sent ?? 0), sent: metrics?.all?.sent ?? 0, replied: metrics?.all?.replied ?? 0 },
     ],
     [responder, assist, followup, metrics?.all]
@@ -243,6 +243,7 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
                           fill={`var(--color-${key})`}
                           fillOpacity={0.25}
                           strokeWidth={2}
+                          isAnimationActive={false}
                         />
                       ))}
                     </AreaChart>
@@ -283,7 +284,7 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
                         dataKey="surface"
                         tickLine={false}
                         axisLine={false}
-                        width={96}
+                        width={72}
                       />
                       <ChartTooltip
                         cursor={false}
@@ -294,7 +295,13 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
                           />
                         }
                       />
-                      <Bar dataKey="rate" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} barSize={22}>
+                      <Bar
+                        dataKey="rate"
+                        fill="hsl(var(--chart-1))"
+                        radius={[0, 4, 4, 0]}
+                        barSize={22}
+                        isAnimationActive={false}
+                      >
                         <LabelList
                           dataKey="rate"
                           position="right"
