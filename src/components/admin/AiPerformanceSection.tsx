@@ -14,7 +14,7 @@ import {
   MessagesSquare,
   Repeat,
   Sparkles,
-  TrendingUp,
+  Zap,
 } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,7 +118,6 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
   const days = metrics?.days ?? 30;
   const allSent = metrics?.all?.sent ?? 0;
   const leadsHandled = metrics?.leads_handled ?? 0;
-  const leadsReplied = metrics?.leads_replied ?? 0;
 
   const trendData = useMemo(
     () =>
@@ -172,14 +171,25 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
               label="Lead Conversations Handled"
               value={loading ? "..." : num(leadsHandled)}
               icon={MessagesSquare}
-              tone="navy"
+              tone="gray"
               hint={loading ? " " : `${num(allSent)} AI messages sent`}
+            />
+            <StatCard
+              label="AI Responder"
+              value={loading ? "..." : num(responder.sent)}
+              icon={Zap}
+              tone="navy"
+              hint={
+                loading
+                  ? " "
+                  : `${pct(responder.replied, responder.sent)} replied - ${num(responder.replied)} of ${num(responder.sent)}`
+              }
             />
             <StatCard
               label="AI Assist"
               value={loading ? "..." : num(assist.sent)}
               icon={Sparkles}
-              tone="orange"
+              tone="green"
               hint={
                 loading
                   ? " "
@@ -190,22 +200,11 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
               label="AI Follow-Up"
               value={loading ? "..." : num(followup.sent)}
               icon={Repeat}
-              tone="blue"
+              tone="orange"
               hint={
                 loading
                   ? " "
                   : `${pct(followup.replied, followup.sent)} replied - ${num(followup.replied)} of ${num(followup.sent)}`
-              }
-            />
-            <StatCard
-              label="AI Lead Response Rate"
-              value={loading ? "..." : pct(leadsReplied, leadsHandled)}
-              icon={TrendingUp}
-              tone="green"
-              hint={
-                loading
-                  ? " "
-                  : `${num(leadsReplied)} of ${num(leadsHandled)} leads replied`
               }
             />
           </div>
