@@ -66,10 +66,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("*", { count: "exact", head: true })
       .eq("status", "active");
 
+    // AI performance metrics across all workspaces. Degrade to null rather
+    // than failing the whole payload -- the three counts above must keep
+    // rendering even if this function has a bad day.
+    let ai: unknown = null;
+    try {
+      const { data: aiData, error: aiError } = await adminClient.rpc(
+        "get_admin_ai_metrics",
+        { p_days: 30 }
+      );
+      if (aiError) {
+        console.error("Error fetching AI metrics:", aiError);
+      } else {
+        ai = aiData;
+      }
+    } catch (aiCatch) {
+      console.error("Error fetching AI metrics:", aiCatch);
+    }
+
     return res.status(200).json({
       totalClients: clientsCount || 0,
       totalLeads: leadsCount || 0,
       activeCampaigns: campaignsCount || 0,
+      ai,
     });
   } catch (error) {
     console.error("Error fetching admin stats:", error);

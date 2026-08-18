@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
+import { AiPerformanceSection, type AiMetrics } from "@/components/admin/AiPerformanceSection";
 
 interface Stats {
   totalClients: number;
-  activeClients: number;
   totalLeads: number;
-  totalCampaigns: number;
   activeCampaigns?: number;
+  ai?: AiMetrics | null;
 }
 
 interface WebhookLog {
@@ -51,9 +51,8 @@ interface Campaign {
 export default function AdminOverview() {
   const [stats, setStats] = useState<Stats>({
     totalClients: 0,
-    activeClients: 0,
     totalLeads: 0,
-    totalCampaigns: 0,
+    activeCampaigns: 0,
   });
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -199,6 +198,8 @@ export default function AdminOverview() {
             tone="green"
           />
         </div>
+
+        <AiPerformanceSection metrics={stats?.ai ?? null} loading={loading} />
 
         {/* Webhook Logs Table */}
         <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
