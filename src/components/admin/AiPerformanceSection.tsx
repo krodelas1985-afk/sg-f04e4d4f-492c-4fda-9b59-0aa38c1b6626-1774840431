@@ -21,6 +21,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { AiResponseDonut } from "./AiResponseDonut";
+import { ResponderLatencyGauge } from "./ResponderLatencyGauge";
 import {
   ChartContainer,
   ChartLegend,
@@ -35,6 +37,9 @@ interface SurfaceTotals {
   sent: number;
   replied: number;
   leads: number;
+  /** Distinct leads that replied. Per-surface figures overlap and do NOT sum to
+   *  leads_handled -- one lead can be touched by several surfaces. */
+  leads_replied: number;
 }
 
 export interface AiMetrics {
@@ -48,6 +53,15 @@ export interface AiMetrics {
   all: { sent: number; replied: number };
   leads_handled: number;
   leads_replied: number;
+  /** W2 responder latency: inbound -> first responder reply for that inbound. */
+  response_time: {
+    samples: number;
+    avg_seconds: number;
+    median_seconds: number;
+    p90_seconds: number;
+    max_seconds: number;
+    within_60s: number;
+  } | null;
   daily: Array<{
     day: string;
     ai_responder: number;
@@ -57,7 +71,7 @@ export interface AiMetrics {
   }>;
 }
 
-const EMPTY_SURFACE: SurfaceTotals = { sent: 0, replied: 0, leads: 0 };
+const EMPTY_SURFACE: SurfaceTotals = { sent: 0, replied: 0, leads: 0, leads_replied: 0 };
 
 const chartConfig = {
   ai_responder: { label: "AI Responder", color: "hsl(var(--chart-1))" },
@@ -196,125 +210,135 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  AI Messages Sent &mdash; Last {days} Days
-                </CardTitle>
-                <CardDescription className="font-inter text-xs">
-                  {loading
-                    ? "Loading..."
-                    : `${num(periodSent)} messages sent by the AI in this window.`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-[240px] w-full" />
-                ) : (
-                  <ChartContainer config={chartConfig} className="aspect-auto h-[240px] w-full">
-                    <AreaChart data={trendData} margin={{ left: 4, right: 8, top: 4 }}>
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                        dataKey="label"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        minTickGap={24}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        width={32}
-                        allowDecimals={false}
-                      />
-                      <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="dot" />}
-                      />
-                      <ChartLegend content={<ChartLegendContent />} />
-                      {(["ai_responder", "ai_followup", "ai_assist"] as const).map((key) => (
-                        <Area
-                          key={key}
-                          dataKey={key}
-                          type="monotone"
-                          stackId="ai"
-                          stroke={`var(--color-${key})`}
-                          fill={`var(--color-${key})`}
-                          fillOpacity={0.25}
-                          strokeWidth={2}
-                          isAnimationActive={false}
+          {/* Wide chart + its companion visual, twice. The 2:1 split keeps the
+              time series readable while the donut and gauge stay square-ish. */}
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    AI Messages Sent &mdash; Last {days} Days
+                  </CardTitle>
+                  <CardDescription className="font-inter text-xs">
+                    {loading
+                      ? "Loading..."
+                      : `${num(periodSent)} messages sent by the AI in this window.`}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-[240px] w-full" />
+                  ) : (
+                    <ChartContainer config={chartConfig} className="aspect-auto h-[240px] w-full">
+                      <AreaChart data={trendData} margin={{ left: 4, right: 8, top: 4 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          minTickGap={24}
                         />
-                      ))}
-                    </AreaChart>
-                  </ChartContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Response Rate by AI Surface</CardTitle>
-                <CardDescription className="font-inter text-xs">
-                  AI Responder replies to a lead who just wrote in, so its rate is a
-                  conversation-continuation rate &mdash; not a cold-outreach benchmark.
-                  Follow-Up and Assist are the proactive surfaces.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-[240px] w-full" />
-                ) : (
-                  <ChartContainer config={chartConfig} className="aspect-auto h-[240px] w-full">
-                    <BarChart
-                      data={rateData}
-                      layout="vertical"
-                      margin={{ left: 4, right: 40, top: 4, bottom: 4 }}
-                    >
-                      <CartesianGrid horizontal={false} />
-                      <XAxis
-                        type="number"
-                        domain={[0, 100]}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v: number) => `${v}%`}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="surface"
-                        tickLine={false}
-                        axisLine={false}
-                        width={72}
-                      />
-                      <ChartTooltip
-                        cursor={false}
-                        content={
-                          <ChartTooltipContent
-                            indicator="line"
-                            formatter={(value) => `${value.toFixed(1)}%`}
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          width={32}
+                          allowDecimals={false}
+                        />
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="dot" />}
+                        />
+                        <ChartLegend content={<ChartLegendContent />} />
+                        {(["ai_responder", "ai_followup", "ai_assist"] as const).map((key) => (
+                          <Area
+                            key={key}
+                            dataKey={key}
+                            type="monotone"
+                            stackId="ai"
+                            stroke={`var(--color-${key})`}
+                            fill={`var(--color-${key})`}
+                            fillOpacity={0.25}
+                            strokeWidth={2}
+                            isAnimationActive={false}
                           />
-                        }
-                      />
-                      <Bar
-                        dataKey="rate"
-                        fill="hsl(var(--chart-1))"
-                        radius={[0, 4, 4, 0]}
-                        barSize={22}
-                        isAnimationActive={false}
+                        ))}
+                      </AreaChart>
+                    </ChartContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            <AiResponseDonut metrics={metrics} loading={loading} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Response Rate by AI Surface</CardTitle>
+                  <CardDescription className="font-inter text-xs">
+                    AI Responder replies to a lead who just wrote in, so its rate is a
+                    conversation-continuation rate &mdash; not a cold-outreach benchmark.
+                    Follow-Up and Assist are the proactive surfaces.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-[240px] w-full" />
+                  ) : (
+                    <ChartContainer config={chartConfig} className="aspect-auto h-[240px] w-full">
+                      <BarChart
+                        data={rateData}
+                        layout="vertical"
+                        margin={{ left: 4, right: 40, top: 4, bottom: 4 }}
                       >
-                        <LabelList
-                          dataKey="rate"
-                          position="right"
-                          className="fill-foreground"
-                          fontSize={11}
-                          formatter={(v: number) => `${v.toFixed(1)}%`}
+                        <CartesianGrid horizontal={false} />
+                        <XAxis
+                          type="number"
+                          domain={[0, 100]}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(v: number) => `${v}%`}
                         />
-                      </Bar>
-                    </BarChart>
-                  </ChartContainer>
-                )}
-              </CardContent>
-            </Card>
+                        <YAxis
+                          type="category"
+                          dataKey="surface"
+                          tickLine={false}
+                          axisLine={false}
+                          width={72}
+                        />
+                        <ChartTooltip
+                          cursor={false}
+                          content={
+                            <ChartTooltipContent
+                              indicator="line"
+                              formatter={(value) => `${value.toFixed(1)}%`}
+                            />
+                          }
+                        />
+                        <Bar
+                          dataKey="rate"
+                          fill="hsl(var(--chart-1))"
+                          radius={[0, 4, 4, 0]}
+                          barSize={22}
+                          isAnimationActive={false}
+                        >
+                          <LabelList
+                            dataKey="rate"
+                            position="right"
+                            className="fill-foreground"
+                            fontSize={11}
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ChartContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            <ResponderLatencyGauge metrics={metrics} loading={loading} />
           </div>
         </>
       )}
