@@ -5274,6 +5274,7 @@ export type Database = {
           messenger_id: string
         }[]
       }
+      get_admin_ai_metrics: { Args: { p_days?: number }; Returns: Json }
       get_campaign_context: { Args: { p_lead_id: string }; Returns: Json }
       get_current_usage: { Args: { p_client_id: string }; Returns: Json }
       get_leads_with_details: {
