@@ -341,12 +341,22 @@ Deno.serve(async (req) => {
     const ai = await aiRes.json();
     const rawReply = ai.choices?.[0]?.message?.content ?? "";
     const reply = stripStageDirections(rawReply);
+    // Report only a REAL stage-direction removal. Comparing reply !== rawReply
+    // is too sensitive: stripStageDirections also tidies trailing whitespace and
+    // collapsed blank lines, which fires on perfectly clean replies and would
+    // cry wolf on the one signal that is supposed to mean "the override failed".
+    const STAGE_DIRECTION_TEST =
+      /\[[^\]\n]{0,120}?\b(insert|attach|upload|image|images|photo|photos|picture|pictures|larawan|litrato|video|see below|link here)\b[^\]\n]{0,120}?\]/i;
+    const ORPHAN_LEADIN_TEST =
+      /^[ \t]*(here|heto|narito|eto)\b[^\n]{0,80}?\b(pictures?|photos?|larawan|litrato|images?|layout|video)\b[^\n]{0,40}:[ \t]*$/im;
+    const sanitizerFired =
+      STAGE_DIRECTION_TEST.test(rawReply) || ORPHAN_LEADIN_TEST.test(rawReply);
 
     return new Response(
       JSON.stringify({
         reply,
         raw_reply: rawReply,
-        sanitizer_fired: reply !== rawReply.trim(),
+        sanitizer_fired: sanitizerFired,
         unmet_kind: unmetKind,
         unmet_what: unmetWhat,
         unmet_block_applied: unmetBlock.length > 0,
