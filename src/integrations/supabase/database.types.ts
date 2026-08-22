@@ -866,6 +866,27 @@ export type Database = {
           },
         ]
       }
+      admin_ai_metrics_snapshot: {
+        Row: {
+          computed_at: string
+          days: number
+          id: number
+          payload: Json
+        }
+        Insert: {
+          computed_at?: string
+          days: number
+          id?: number
+          payload: Json
+        }
+        Update: {
+          computed_at?: string
+          days?: number
+          id?: number
+          payload?: Json
+        }
+        Relationships: []
+      }
       agent_documents: {
         Row: {
           body: string
@@ -1222,6 +1243,47 @@ export type Database = {
           },
         ]
       }
+      ai_followup_step_media: {
+        Row: {
+          created_at: string
+          id: string
+          media_description: string | null
+          media_type: string
+          media_url: string
+          playbook_step: number
+          sequence_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_description?: string | null
+          media_type: string
+          media_url: string
+          playbook_step: number
+          sequence_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_description?: string | null
+          media_type?: string
+          media_url?: string
+          playbook_step?: number
+          sequence_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_followup_step_media_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           client_id: string
@@ -1371,6 +1433,63 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bamo_entity_registry: {
+        Row: {
+          canonical_name: string
+          country_code: string
+          created_at: string
+          created_by_profile_id: string | null
+          entity_type: string
+          id: string
+          notes: string | null
+          registration_number: string | null
+          status: string
+          superseded_by_entity_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_name: string
+          country_code?: string
+          created_at?: string
+          created_by_profile_id?: string | null
+          entity_type: string
+          id?: string
+          notes?: string | null
+          registration_number?: string | null
+          status?: string
+          superseded_by_entity_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_name?: string
+          country_code?: string
+          created_at?: string
+          created_by_profile_id?: string | null
+          entity_type?: string
+          id?: string
+          notes?: string | null
+          registration_number?: string | null
+          status?: string
+          superseded_by_entity_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bamo_entity_registry_created_by_profile_id_fkey"
+            columns: ["created_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bamo_entity_registry_superseded_by_entity_id_fkey"
+            columns: ["superseded_by_entity_id"]
+            isOneToOne: false
+            referencedRelation: "bamo_entity_registry"
             referencedColumns: ["id"]
           },
         ]
@@ -1578,6 +1697,24 @@ export type Database = {
           id?: string | null
           name?: string | null
           taken_at?: string | null
+        }
+        Relationships: []
+      }
+      campaign_prompt_backup_20260814: {
+        Row: {
+          ai_message_instructions: string | null
+          backed_up_at: string | null
+          campaign_id: string | null
+        }
+        Insert: {
+          ai_message_instructions?: string | null
+          backed_up_at?: string | null
+          campaign_id?: string | null
+        }
+        Update: {
+          ai_message_instructions?: string | null
+          backed_up_at?: string | null
+          campaign_id?: string | null
         }
         Relationships: []
       }
@@ -3903,6 +4040,41 @@ export type Database = {
           },
         ]
       }
+      messenger_media_attachments: {
+        Row: {
+          client_id: string
+          fb_attachment_id: string
+          id: string
+          media_type: string
+          media_url: string
+          uploaded_at: string
+        }
+        Insert: {
+          client_id: string
+          fb_attachment_id: string
+          id?: string
+          media_type: string
+          media_url: string
+          uploaded_at?: string
+        }
+        Update: {
+          client_id?: string
+          fb_attachment_id?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_media_attachments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messenger_referrals: {
         Row: {
           ad_id: string | null
@@ -4120,6 +4292,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bamo_account_id: string | null
           client_id: string | null
           company: string | null
           company_logo_url: string | null
@@ -4130,6 +4303,7 @@ export type Database = {
           is_active: boolean | null
           location_city: string | null
           location_province: string | null
+          origin_product: string | null
           phone: string | null
           prc_number: string | null
           role: string | null
@@ -4138,6 +4312,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bamo_account_id?: string | null
           client_id?: string | null
           company?: string | null
           company_logo_url?: string | null
@@ -4148,6 +4323,7 @@ export type Database = {
           is_active?: boolean | null
           location_city?: string | null
           location_province?: string | null
+          origin_product?: string | null
           phone?: string | null
           prc_number?: string | null
           role?: string | null
@@ -4156,6 +4332,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bamo_account_id?: string | null
           client_id?: string | null
           company?: string | null
           company_logo_url?: string | null
@@ -4166,6 +4343,7 @@ export type Database = {
           is_active?: boolean | null
           location_city?: string | null
           location_province?: string | null
+          origin_product?: string | null
           phone?: string | null
           prc_number?: string | null
           role?: string | null
@@ -4452,6 +4630,8 @@ export type Database = {
           delay_hours: number
           id: string
           is_active: boolean | null
+          media_type: string | null
+          media_url: string | null
           message_content: string | null
           quick_replies: Json | null
           sequence_id: string
@@ -4465,6 +4645,8 @@ export type Database = {
           delay_hours?: number
           id?: string
           is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_content?: string | null
           quick_replies?: Json | null
           sequence_id: string
@@ -4478,6 +4660,8 @@ export type Database = {
           delay_hours?: number
           id?: string
           is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_content?: string | null
           quick_replies?: Json | null
           sequence_id?: string
@@ -5219,6 +5403,7 @@ export type Database = {
       check_push_dispatch_secret: { Args: { p: string }; Returns: boolean }
       client_has_active_campaign: { Args: never; Returns: boolean }
       compose_kb_content: { Args: { f: Json }; Returns: string }
+      compute_admin_ai_metrics: { Args: { p_days?: number }; Returns: Json }
       compute_agent_performance_scores: {
         Args: { p_client_id?: string }
         Returns: number
@@ -5503,10 +5688,40 @@ export type Database = {
           status: string
         }[]
       }
+      refresh_admin_ai_metrics: {
+        Args: { p_days?: number }
+        Returns: undefined
+      }
       refresh_canned_inbound_phrases: { Args: never; Returns: undefined }
+      request_bamo_entity: {
+        Args: {
+          p_canonical_name: string
+          p_country_code?: string
+          p_created_by_profile_id?: string
+          p_entity_type: string
+          p_notes?: string
+          p_registration_number?: string
+        }
+        Returns: {
+          bamo_entity_id: string
+          created: boolean
+        }[]
+      }
       request_followup_disable: {
         Args: { p_campaign_id: string }
         Returns: Json
+      }
+      resolve_bamo_entity: {
+        Args: { p_entity_id: string }
+        Returns: {
+          bamo_entity_id: string
+          canonical_name: string
+          entity_type: string
+          registration_number: string
+          requested_entity_id: string
+          status: string
+          was_superseded: boolean
+        }[]
       }
       resolve_lead_recipients: {
         Args: { p_assigned: string; p_client_id: string }
@@ -5521,6 +5736,17 @@ export type Database = {
       }
       run_appointment_reminders: { Args: never; Returns: undefined }
       run_deferred_task_sweep: { Args: never; Returns: undefined }
+      search_bamo_entities: {
+        Args: { p_entity_type?: string; p_limit?: number; p_query: string }
+        Returns: {
+          bamo_entity_id: string
+          canonical_name: string
+          entity_type: string
+          match_quality: string
+          registration_number: string
+          status: string
+        }[]
+      }
       set_lead_disposition: {
         Args: {
           p_disposition: string

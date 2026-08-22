@@ -256,6 +256,12 @@ $$;
 -- =============================================================================
 ALTER TABLE public.bamo_entity_registry ENABLE ROW LEVEL SECURITY;
 
+-- CRITICAL: the CRM's public schema grants anon/authenticated on new tables by
+-- DEFAULT (Supabase default privileges). Strip that first, then grant precisely
+-- - or a registry of company registration data is anon-reachable at the grant
+-- level. (The post-check below fails the migration if this is skipped.)
+REVOKE ALL ON public.bamo_entity_registry FROM PUBLIC, anon, authenticated;
+
 -- BaMo staff may read the registry from the CRM UI. Nobody edits it through
 -- the table - creation and supersession go through the functions, so that
 -- every change has a code path that can enforce §33.
