@@ -63,13 +63,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq("is_active", true)
           .single();
 
-        // Fall back to env var for backward compatibility during migration
-        const clientId: string | undefined =
-          clientRecord?.id ?? process.env.BAMO_CLIENT_ID;
-        const fbToken: string | undefined =
-          clientRecord?.fb_page_token ?? process.env.FB_PAGE_ACCESS_TOKEN;
+        // Fail closed for an unknown Page ID. The old environment-variable
+        // fallback could route a disconnected or unrecognized Page into the
+        // default client's workspace, which is a cross-client privacy risk.
+        // Every connected Page must have an explicit clients.fb_page_id row.
+        const clientId: string | undefined = clientRecord?.id;
+        const fbToken: string | undefined = clientRecord?.fb_page_token ?? undefined;
 
-        if (!clientId) continue;
+        if (!clientId) {
+          console.warn(`Ignoring Messenger event for unrecognized Page ${pageId}`);
+          continue;
+        }
 
         // ── STANDBY CHANNEL — Cristy Joy pilot only ──────────────────
         // Her page's messages arrive on `standby` instead of `messaging`
