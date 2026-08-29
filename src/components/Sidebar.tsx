@@ -16,6 +16,7 @@ import {
   Bell,
   Sparkles,
   Send,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,11 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   /** Key into the pending-count map; renders a badge when the count is > 0. */
   badgeKey?: "requests";
+  /**
+   * When set, only these roles see the item. Absent means every role in the
+   * group sees it, which is the case for all the original client nav.
+   */
+  roles?: string[];
 }
 
 interface NavGroup {
@@ -60,6 +66,16 @@ const CLIENT_NAV: NavGroup[] = [
   {
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      // The workspace roll-up. Agents get the per-person Dashboard above; only
+      // the people accountable for the whole team see team-wide numbers. The
+      // RPC enforces the same rule, so hiding the link is convenience, not
+      // security.
+      {
+        href: "/overview",
+        label: "Overview",
+        icon: BarChart3,
+        roles: ["client_admin", "manager"],
+      },
       { href: "/leads", label: "Leads", icon: Users },
       { href: "/inbox", label: "Inbox", icon: MessageSquare },
       { href: "/tasks", label: "Tasks", icon: CheckSquare },
@@ -160,7 +176,9 @@ export function Sidebar({ role }: SidebarProps) {
               </p>
             )}
             <div className="space-y-0.5">
-              {group.items.map((item) => {
+              {group.items
+                .filter((item) => !item.roles || item.roles.includes(role))
+                .map((item) => {
                 const Icon = item.icon;
                 const active = isItemActive(item.href);
                 const badge = badgeCount(item.badgeKey);
