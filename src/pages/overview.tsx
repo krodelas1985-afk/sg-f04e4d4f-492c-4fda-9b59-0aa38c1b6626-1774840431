@@ -76,16 +76,26 @@ interface Overview {
     mean_per_month: number | null;
     median_per_month: number | null;
   };
-  forecast:
-    | { available: true; low: number; high: number; mid: number; basis: string }
-    | {
-        available: false;
-        reason: "needs_won" | "needs_history";
-        won_total: number;
-        won_required: number;
-        months_with_data: number;
-        months_required: number;
-      };
+  /**
+   * One flat shape rather than a discriminated union on `available`: this
+   * project compiles with strictNullChecks off, under which narrowing a union
+   * by a boolean discriminant does not hold, in a ternary or an `if`. The
+   * fields below are populated according to `available`.
+   */
+  forecast: {
+    available: boolean;
+    // available: true
+    low?: number;
+    high?: number;
+    mid?: number;
+    basis?: string;
+    // available: false
+    reason?: "needs_won" | "needs_history";
+    won_total?: number;
+    won_required?: number;
+    months_with_data?: number;
+    months_required?: number;
+  };
   signals: {
     speed_to_lead_seconds: number | null;
     appts_set_30d: number;
@@ -117,6 +127,24 @@ function monthLabel(ym: string): string {
   const d = new Date(Date.UTC(y, (m || 1) - 1, 1));
   const short = d.toLocaleDateString("en-PH", { month: "short", timeZone: "UTC" });
   return m === 1 ? `${short} ${String(y).slice(2)}` : short;
+}
+
+type Forecast = Overview["forecast"];
+
+/**
+ * Kept out of the markup because the suppressed case -- which is where almost
+ * every workspace sits today -- carries more copy than the available one.
+ */
+function forecastRange(f: Forecast): string | null {
+  return f.available ? `${f.low}–${f.high}` : null;
+}
+
+function forecastHint(f: Forecast): string {
+  if (f.available) return `Midpoint ${f.mid} · based on your last 3 months`;
+  if (f.reason === "needs_won") {
+    return `Unlocks after ${f.won_required} closed sales — ${f.won_total} tagged so far`;
+  }
+  return `Unlocks after ${f.months_required} months — ${f.months_with_data} so far`;
 }
 
 function formatDuration(seconds: number | null): string | null {
@@ -371,21 +399,13 @@ export default function OverviewPage() {
               icon={Sparkles}
               tone={forecast.available ? "orange" : "gray"}
               value={
-                forecast.available ? (
-                  `${forecast.low}–${forecast.high}`
-                ) : (
+                forecastRange(forecast) ?? (
                   <span className="text-[19px] font-semibold leading-9 text-muted-foreground">
                     Not enough history
                   </span>
                 )
               }
-              hint={
-                forecast.available
-                  ? `Midpoint ${forecast.mid} · based on your last 3 months`
-                  : forecast.reason === "needs_won"
-                  ? `Unlocks after ${forecast.won_required} closed sales — ${forecast.won_total} tagged so far`
-                  : `Unlocks after ${forecast.months_required} months — ${forecast.months_with_data} so far`
-              }
+              hint={forecastHint(forecast)}
             />
 
             <StatCard
