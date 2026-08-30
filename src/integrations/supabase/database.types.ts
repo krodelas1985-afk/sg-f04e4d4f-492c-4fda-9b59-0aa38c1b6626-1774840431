@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -5536,6 +5536,7 @@ export type Database = {
       }
       get_admin_ai_metrics: { Args: { p_days?: number }; Returns: Json }
       get_campaign_context: { Args: { p_lead_id: string }; Returns: Json }
+      get_client_overview: { Args: { p_months?: number }; Returns: Json }
       get_current_usage: { Args: { p_client_id: string }; Returns: Json }
       get_leads_with_details: {
         Args: {
@@ -5650,6 +5651,38 @@ export type Database = {
       increment_creative_usage: {
         Args: { p_client_id: string; p_creative_type: string }
         Returns: undefined
+      }
+      kb_catalog_clients: {
+        Args: never
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          client_id: string
+          client_name: string
+          kb_count: number
+          last_updated: string
+        }[]
+      }
+      kb_catalog_get: {
+        Args: { p_kb_id: string }
+        Returns: {
+          content: string
+          kb_id: string
+          source_label: string
+          title: string
+          updated_at: string
+        }[]
+      }
+      kb_catalog_list: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          content_chars: number
+          kb_id: string
+          scope: string
+          source_label: string
+          title: string
+          updated_at: string
+        }[]
       }
       lead_assigned_to_me: { Args: { p_lead_id: string }; Returns: boolean }
       lead_grade_has_answer: { Args: { v: string }; Returns: boolean }
