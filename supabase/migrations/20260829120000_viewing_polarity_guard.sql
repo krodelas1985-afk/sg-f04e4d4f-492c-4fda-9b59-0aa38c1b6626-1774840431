@@ -37,6 +37,12 @@
 --      request pre-suppressed: visible in the CRM, never emailed, never counted.
 --
 -- Part 4 cleans up the appointments already created this way.
+--
+-- AFTER APPLYING: regenerate src/integrations/supabase/database.types.ts against
+-- zyfkjxepykwpfzmkxitb and commit it. viewing_text_polarity is a new public function and
+-- will appear there. Do not hand-add it beforehand -- that puts the committed types ahead
+-- of the database, which is the same drift the CLAUDE.md gotcha is about, pointing the
+-- other way.
 
 -- ===========================================================================
 -- 1. The classifier
