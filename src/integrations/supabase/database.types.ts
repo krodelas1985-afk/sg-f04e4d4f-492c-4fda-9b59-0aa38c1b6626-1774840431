@@ -1494,6 +1494,81 @@ export type Database = {
           },
         ]
       }
+      bamo_registry_auth_log: {
+        Row: {
+          first_seen_at: string
+          last_seen_at: string
+          minute_bucket: string
+          occurrences: number
+          operation: string
+          outcome: string
+          presented_caller: string
+        }
+        Insert: {
+          first_seen_at?: string
+          last_seen_at?: string
+          minute_bucket: string
+          occurrences?: number
+          operation: string
+          outcome: string
+          presented_caller: string
+        }
+        Update: {
+          first_seen_at?: string
+          last_seen_at?: string
+          minute_bucket?: string
+          occurrences?: number
+          operation?: string
+          outcome?: string
+          presented_caller?: string
+        }
+        Relationships: []
+      }
+      bamo_registry_callers: {
+        Row: {
+          caller: string
+          created_at: string
+          description: string | null
+          is_active: boolean
+          updated_at: string
+          vault_secret_name: string
+        }
+        Insert: {
+          caller: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          updated_at?: string
+          vault_secret_name: string
+        }
+        Update: {
+          caller?: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          updated_at?: string
+          vault_secret_name?: string
+        }
+        Relationships: []
+      }
+      bamo_registry_nonces: {
+        Row: {
+          caller: string
+          nonce: string
+          seen_at: string
+        }
+        Insert: {
+          caller: string
+          nonce: string
+          seen_at?: string
+        }
+        Update: {
+          caller?: string
+          nonce?: string
+          seen_at?: string
+        }
+        Relationships: []
+      }
       campaign_knowledge_base: {
         Row: {
           approved_at: string | null
@@ -5763,6 +5838,20 @@ export type Database = {
       set_my_assignment_settings: {
         Args: { p_mode: string; p_sources: string[] }
         Returns: undefined
+      }
+      verify_bamo_registry_request: {
+        Args: {
+          p_body: string
+          p_caller: string
+          p_nonce: string
+          p_operation?: string
+          p_signature: string
+          p_timestamp: string
+        }
+        Returns: {
+          authorized: boolean
+          reason: string
+        }[]
       }
       viewing_outcome_due_at: { Args: { p_scheduled: string }; Returns: string }
     }
