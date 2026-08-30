@@ -38,3 +38,6 @@ next-env.d.ts
 # firebase
 firebase-service-account.json
 .env*
+
+# Supabase CLI machine-local state (project link, version cache)
+supabase/.temp/
