@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -5128,6 +5128,8 @@ export type Database = {
           first_sent_at: string | null
           id: string
           lead_id: string
+          prep_reminder_due_at: string | null
+          prep_reminder_sent_at: string | null
           recipients: string | null
           reminder_due_at: string | null
           reminder_sent_at: string | null
@@ -5145,6 +5147,8 @@ export type Database = {
           first_sent_at?: string | null
           id?: string
           lead_id: string
+          prep_reminder_due_at?: string | null
+          prep_reminder_sent_at?: string | null
           recipients?: string | null
           reminder_due_at?: string | null
           reminder_sent_at?: string | null
@@ -5162,6 +5166,8 @@ export type Database = {
           first_sent_at?: string | null
           id?: string
           lead_id?: string
+          prep_reminder_due_at?: string | null
+          prep_reminder_sent_at?: string | null
           recipients?: string | null
           reminder_due_at?: string | null
           reminder_sent_at?: string | null
@@ -5193,6 +5199,7 @@ export type Database = {
           email: string | null
           expires_at: string
           id: string
+          kind: string
           profile_id: string | null
           request_id: string
           token: string
@@ -5204,6 +5211,7 @@ export type Database = {
           email?: string | null
           expires_at?: string
           id?: string
+          kind?: string
           profile_id?: string | null
           request_id: string
           token: string
@@ -5215,6 +5223,7 @@ export type Database = {
           email?: string | null
           expires_at?: string
           id?: string
+          kind?: string
           profile_id?: string | null
           request_id?: string
           token?: string
@@ -5523,6 +5532,7 @@ export type Database = {
         Args: { p_lead_id: string }
         Returns: string
       }
+      expire_unconfirmed_viewing_requests: { Args: never; Returns: number }
       fetch_due_ai_followups: {
         Args: { p_limit?: number }
         Returns: {
@@ -5536,6 +5546,7 @@ export type Database = {
       }
       get_admin_ai_metrics: { Args: { p_days?: number }; Returns: Json }
       get_campaign_context: { Args: { p_lead_id: string }; Returns: Json }
+      get_client_overview: { Args: { p_months?: number }; Returns: Json }
       get_current_usage: { Args: { p_client_id: string }; Returns: Json }
       get_leads_with_details: {
         Args: {
@@ -5651,9 +5662,45 @@ export type Database = {
         Args: { p_client_id: string; p_creative_type: string }
         Returns: undefined
       }
+      kb_catalog_clients: {
+        Args: never
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          client_id: string
+          client_name: string
+          kb_count: number
+          last_updated: string
+        }[]
+      }
+      kb_catalog_get: {
+        Args: { p_kb_id: string }
+        Returns: {
+          content: string
+          kb_id: string
+          source_label: string
+          title: string
+          updated_at: string
+        }[]
+      }
+      kb_catalog_list: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          content_chars: number
+          kb_id: string
+          scope: string
+          source_label: string
+          title: string
+          updated_at: string
+        }[]
+      }
       lead_assigned_to_me: { Args: { p_lead_id: string }; Returns: boolean }
       lead_grade_has_answer: { Args: { v: string }; Returns: boolean }
       mark_viewing_outcome_sent: {
+        Args: { p_error?: string; p_recipients: string; p_request_id: string }
+        Returns: undefined
+      }
+      mark_viewing_prep_reminder_sent: {
         Args: { p_error?: string; p_recipients: string; p_request_id: string }
         Returns: undefined
       }
@@ -5686,6 +5733,14 @@ export type Database = {
         }[]
       }
       mint_viewing_outcome_tokens: {
+        Args: { p_request_id: string }
+        Returns: {
+          email: string
+          profile_id: string
+          token: string
+        }[]
+      }
+      mint_viewing_prep_tokens: {
         Args: { p_request_id: string }
         Returns: {
           email: string
@@ -5736,6 +5791,21 @@ export type Database = {
           source_text: string
         }[]
       }
+      pending_viewing_prep_reminders: {
+        Args: { p_limit?: number }
+        Returns: {
+          appointment_id: string
+          client_id: string
+          client_name: string
+          date_known: boolean
+          lead_id: string
+          lead_name: string
+          recipient_emails: string
+          request_id: string
+          scheduled_at: string
+          source_text: string
+        }[]
+      }
       reassign_task: {
         Args: { p_task_id: string; p_user_id: string }
         Returns: undefined
@@ -5759,6 +5829,15 @@ export type Database = {
         Returns: {
           lead_name: string
           recorded_polarity: string
+          scheduled_at: string
+          status: string
+        }[]
+      }
+      redeem_viewing_prep_token: {
+        Args: { p_answer: string; p_ip?: string; p_token: string }
+        Returns: {
+          lead_name: string
+          recorded_answer: string
           scheduled_at: string
           status: string
         }[]
@@ -5854,6 +5933,10 @@ export type Database = {
         }[]
       }
       viewing_outcome_due_at: { Args: { p_scheduled: string }; Returns: string }
+      viewing_prep_reminder_due_at: {
+        Args: { p_scheduled: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
