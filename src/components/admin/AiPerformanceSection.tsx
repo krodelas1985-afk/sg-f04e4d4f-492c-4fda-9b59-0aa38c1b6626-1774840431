@@ -53,6 +53,10 @@ export interface AiMetrics {
   all: { sent: number; replied: number };
   leads_handled: number;
   leads_replied: number;
+  /** When the nightly snapshot was built. `live` is true only on the fallback
+   *  path (snapshot missing or >36h stale). */
+  computed_at?: string;
+  live?: boolean;
   /** W2 responder latency: inbound -> first responder reply for that inbound. */
   response_time: {
     samples: number;
@@ -119,6 +123,23 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
   const allSent = metrics?.all?.sent ?? 0;
   const leadsHandled = metrics?.leads_handled ?? 0;
 
+  // These figures are rebuilt nightly, not on page load -- say so, so nobody
+  // reads a four-hour-old number as this minute's.
+  const updatedLabel = useMemo(() => {
+    if (loading || !metrics?.computed_at) return null;
+    const at = new Date(metrics.computed_at);
+    if (Number.isNaN(at.getTime())) return null;
+    const when = at.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    return metrics.live
+      ? `Computed just now (nightly snapshot unavailable).`
+      : `Updated ${when} - refreshed nightly, not live.`;
+  }, [loading, metrics?.computed_at, metrics?.live]);
+
   const trendData = useMemo(
     () =>
       (metrics?.daily ?? []).map((row) => ({
@@ -154,6 +175,11 @@ export function AiPerformanceSection({ metrics, loading }: AiPerformanceSectionP
           {windowHours} hours of an AI message. Counts are all-time; the trend
           chart covers the last {days} days.
         </p>
+        {updatedLabel && (
+          <p className="mt-0.5 font-inter text-xs text-muted-foreground">
+            {updatedLabel}
+          </p>
+        )}
       </div>
 
       {!loading && !metrics ? (
