@@ -5759,6 +5759,17 @@ export type Database = {
           status: string
         }[]
       }
+      peek_viewing_prep_token: {
+        Args: { p_answer: string; p_token: string }
+        Returns: {
+          date_known: boolean
+          lead_name: string
+          recorded_answer: string
+          scheduled_at: string
+          source_text: string
+          status: string
+        }[]
+      }
       pending_lead_alerts: {
         Args: { p_limit?: number }
         Returns: {
