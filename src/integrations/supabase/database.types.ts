@@ -3050,6 +3050,57 @@ export type Database = {
           },
         ]
       }
+      integration_events: {
+        Row: {
+          client_id: string | null
+          connection_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          message: string | null
+          metadata: Json
+          provider: string
+          status: string
+        }
+        Insert: {
+          client_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          provider?: string
+          status: string
+        }
+        Update: {
+          client_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          provider?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integration_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "meta_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kb_chunks: {
         Row: {
           campaign_id: string | null
@@ -4190,6 +4241,481 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      meta_connections: {
+        Row: {
+          ad_account: Json | null
+          client_id: string
+          connected_at: string
+          created_at: string
+          data_access_expires_at: string | null
+          fb_user_id: string
+          fb_user_name: string | null
+          granted_scopes: string[]
+          id: string
+          last_verified_at: string
+          purpose: string
+          revoked_at: string | null
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+          user_access_token_encrypted: string | null
+        }
+        Insert: {
+          ad_account?: Json | null
+          client_id: string
+          connected_at?: string
+          created_at?: string
+          data_access_expires_at?: string | null
+          fb_user_id: string
+          fb_user_name?: string | null
+          granted_scopes?: string[]
+          id?: string
+          last_verified_at?: string
+          purpose?: string
+          revoked_at?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token_encrypted?: string | null
+        }
+        Update: {
+          ad_account?: Json | null
+          client_id?: string
+          connected_at?: string
+          created_at?: string
+          data_access_expires_at?: string | null
+          fb_user_id?: string
+          fb_user_name?: string | null
+          granted_scopes?: string[]
+          id?: string
+          last_verified_at?: string
+          purpose?: string
+          revoked_at?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token_encrypted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_data_deletion_requests: {
+        Row: {
+          completed_at: string | null
+          confirmation_code: string
+          fb_user_id_hash: string
+          id: string
+          requested_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          confirmation_code: string
+          fb_user_id_hash: string
+          id?: string
+          requested_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          confirmation_code?: string
+          fb_user_id_hash?: string
+          id?: string
+          requested_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      meta_oauth_sessions: {
+        Row: {
+          browser_session_hash: string | null
+          client_id: string
+          created_at: string
+          error_code: string | null
+          expires_at: string
+          id: string
+          pending_ad_accounts_encrypted: string | null
+          pending_data_access_expires_at: string | null
+          pending_fb_user_id: string | null
+          pending_fb_user_name: string | null
+          pending_granted_scopes: string[]
+          pending_pages_encrypted: string | null
+          pending_token_expires_at: string | null
+          pending_user_token_encrypted: string | null
+          state_hash: string | null
+          status: string
+          ticket_hash: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          browser_session_hash?: string | null
+          client_id: string
+          created_at?: string
+          error_code?: string | null
+          expires_at: string
+          id?: string
+          pending_ad_accounts_encrypted?: string | null
+          pending_data_access_expires_at?: string | null
+          pending_fb_user_id?: string | null
+          pending_fb_user_name?: string | null
+          pending_granted_scopes?: string[]
+          pending_pages_encrypted?: string | null
+          pending_token_expires_at?: string | null
+          pending_user_token_encrypted?: string | null
+          state_hash?: string | null
+          status?: string
+          ticket_hash?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          browser_session_hash?: string | null
+          client_id?: string
+          created_at?: string
+          error_code?: string | null
+          expires_at?: string
+          id?: string
+          pending_ad_accounts_encrypted?: string | null
+          pending_data_access_expires_at?: string | null
+          pending_fb_user_id?: string | null
+          pending_fb_user_name?: string | null
+          pending_granted_scopes?: string[]
+          pending_pages_encrypted?: string | null
+          pending_token_expires_at?: string | null
+          pending_user_token_encrypted?: string | null
+          state_hash?: string | null
+          status?: string
+          ticket_hash?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_oauth_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_pages: {
+        Row: {
+          client_id: string
+          connected_at: string
+          connection_id: string
+          created_at: string
+          id: string
+          last_verified_at: string
+          legacy_bridge_token_hash: string | null
+          page_access_token_encrypted: string | null
+          page_id: string
+          page_name: string
+          page_tasks: string[]
+          subscribed_fields: string[]
+          subscription_status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          connected_at?: string
+          connection_id: string
+          created_at?: string
+          id?: string
+          last_verified_at?: string
+          legacy_bridge_token_hash?: string | null
+          page_access_token_encrypted?: string | null
+          page_id: string
+          page_name: string
+          page_tasks?: string[]
+          subscribed_fields?: string[]
+          subscription_status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          connected_at?: string
+          connection_id?: string
+          created_at?: string
+          id?: string
+          last_verified_at?: string
+          legacy_bridge_token_hash?: string | null
+          page_access_token_encrypted?: string | null
+          page_id?: string
+          page_name?: string
+          page_tasks?: string[]
+          subscribed_fields?: string[]
+          subscription_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_pages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_pages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "meta_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      n8n_autofix_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          max_fixes_per_day_total: number
+          max_fixes_per_workflow_per_day: number
+          notes: string | null
+          updated_at: string
+          verify_min_executions: number
+          verify_window_minutes: number
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          max_fixes_per_day_total?: number
+          max_fixes_per_workflow_per_day?: number
+          notes?: string | null
+          updated_at?: string
+          verify_min_executions?: number
+          verify_window_minutes?: number
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          max_fixes_per_day_total?: number
+          max_fixes_per_workflow_per_day?: number
+          notes?: string | null
+          updated_at?: string
+          verify_min_executions?: number
+          verify_window_minutes?: number
+        }
+        Relationships: []
+      }
+      n8n_failure_events: {
+        Row: {
+          action_taken: string
+          approval_token: string | null
+          category: string | null
+          confidence: number | null
+          created_at: string
+          detector: string
+          error_message: string | null
+          execution_id: string | null
+          fingerprint: string
+          first_seen_at: string
+          http_code: string | null
+          id: number
+          last_seen_at: string
+          node_name: string | null
+          notified_at: string | null
+          occurrence_count: number
+          proposed_fix: string | null
+          resolved_at: string | null
+          root_cause: string | null
+          severity: string | null
+          updated_at: string
+          workflow_id: string
+          workflow_name: string | null
+        }
+        Insert: {
+          action_taken?: string
+          approval_token?: string | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          detector: string
+          error_message?: string | null
+          execution_id?: string | null
+          fingerprint: string
+          first_seen_at?: string
+          http_code?: string | null
+          id?: number
+          last_seen_at?: string
+          node_name?: string | null
+          notified_at?: string | null
+          occurrence_count?: number
+          proposed_fix?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          severity?: string | null
+          updated_at?: string
+          workflow_id: string
+          workflow_name?: string | null
+        }
+        Update: {
+          action_taken?: string
+          approval_token?: string | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string
+          detector?: string
+          error_message?: string | null
+          execution_id?: string | null
+          fingerprint?: string
+          first_seen_at?: string
+          http_code?: string | null
+          id?: number
+          last_seen_at?: string
+          node_name?: string | null
+          notified_at?: string | null
+          occurrence_count?: number
+          proposed_fix?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          severity?: string | null
+          updated_at?: string
+          workflow_id?: string
+          workflow_name?: string | null
+        }
+        Relationships: []
+      }
+      n8n_fix_journal: {
+        Row: {
+          after_json: Json | null
+          applied_at: string | null
+          before_json: Json
+          created_at: string
+          error: string | null
+          event_id: number | null
+          fingerprint: string | null
+          id: number
+          node_name: string | null
+          params: Json | null
+          recipe: string
+          rolled_back_at: string | null
+          status: string
+          trigger: string
+          updated_at: string
+          verification: Json | null
+          verified_at: string | null
+          workflow_id: string
+          workflow_name: string | null
+        }
+        Insert: {
+          after_json?: Json | null
+          applied_at?: string | null
+          before_json: Json
+          created_at?: string
+          error?: string | null
+          event_id?: number | null
+          fingerprint?: string | null
+          id?: number
+          node_name?: string | null
+          params?: Json | null
+          recipe: string
+          rolled_back_at?: string | null
+          status?: string
+          trigger?: string
+          updated_at?: string
+          verification?: Json | null
+          verified_at?: string | null
+          workflow_id: string
+          workflow_name?: string | null
+        }
+        Update: {
+          after_json?: Json | null
+          applied_at?: string | null
+          before_json?: Json
+          created_at?: string
+          error?: string | null
+          event_id?: number | null
+          fingerprint?: string | null
+          id?: number
+          node_name?: string | null
+          params?: Json | null
+          recipe?: string
+          rolled_back_at?: string | null
+          status?: string
+          trigger?: string
+          updated_at?: string
+          verification?: Json | null
+          verified_at?: string | null
+          workflow_id?: string
+          workflow_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_fix_journal_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "n8n_failure_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "n8n_fix_journal_recipe_fkey"
+            columns: ["recipe"]
+            isOneToOne: false
+            referencedRelation: "n8n_fix_recipes"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
+      n8n_fix_recipes: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          name: string
+          param_max: number | null
+          param_min: number | null
+          reversible: boolean
+          touches: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          enabled?: boolean
+          name: string
+          param_max?: number | null
+          param_min?: number | null
+          reversible?: boolean
+          touches: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          name?: string
+          param_max?: number | null
+          param_min?: number | null
+          reversible?: boolean
+          touches?: string
+        }
+        Relationships: []
+      }
+      n8n_sweeper_state: {
+        Row: {
+          detector: string
+          last_execution_id: number
+          last_run_at: string
+        }
+        Insert: {
+          detector: string
+          last_execution_id?: number
+          last_run_at?: string
+        }
+        Update: {
+          detector?: string
+          last_execution_id?: number
+          last_run_at?: string
+        }
+        Relationships: []
       }
       notification_preferences: {
         Row: {
@@ -5485,6 +6011,25 @@ export type Database = {
         Returns: undefined
       }
       check_push_dispatch_secret: { Args: { p: string }; Returns: boolean }
+      claim_autofix: {
+        Args: {
+          p_before_json: Json
+          p_event_id?: number
+          p_fingerprint: string
+          p_node_name?: string
+          p_param?: number
+          p_params?: Json
+          p_recipe: string
+          p_trigger?: string
+          p_workflow_id: string
+          p_workflow_name?: string
+        }
+        Returns: {
+          allowed: boolean
+          journal_id: number
+          reason: string
+        }[]
+      }
       client_has_active_campaign: { Args: never; Returns: boolean }
       compose_kb_content: { Args: { f: Json }; Returns: string }
       compute_admin_ai_metrics: { Args: { p_days?: number }; Returns: Json }
@@ -5548,6 +6093,7 @@ export type Database = {
       get_campaign_context: { Args: { p_lead_id: string }; Returns: Json }
       get_client_overview: { Args: { p_months?: number }; Returns: Json }
       get_current_usage: { Args: { p_client_id: string }; Returns: Json }
+      get_fix_rollback_payload: { Args: { p_id: number }; Returns: Json }
       get_leads_with_details: {
         Args: {
           p_assigned_user_id?: string
@@ -5696,6 +6242,10 @@ export type Database = {
       }
       lead_assigned_to_me: { Args: { p_lead_id: string }; Returns: boolean }
       lead_grade_has_answer: { Args: { v: string }; Returns: boolean }
+      listing_place: {
+        Args: { p_city: string; p_location: string }
+        Returns: string
+      }
       mark_viewing_outcome_sent: {
         Args: { p_error?: string; p_recipients: string; p_request_id: string }
         Returns: undefined
@@ -5835,6 +6385,28 @@ export type Database = {
           status: string
         }[]
       }
+      record_n8n_failure: {
+        Args: {
+          p_category?: string
+          p_detector: string
+          p_error_message: string
+          p_execution_id?: string
+          p_fingerprint: string
+          p_http_code?: string
+          p_node_name: string
+          p_severity?: string
+          p_suppress_hours?: number
+          p_workflow_id: string
+          p_workflow_name: string
+        }
+        Returns: {
+          event_id: number
+          first_seen_at: string
+          is_new: boolean
+          occurrence_count: number
+          should_notify: boolean
+        }[]
+      }
       redeem_viewing_outcome_token: {
         Args: { p_ip?: string; p_polarity: string; p_token: string }
         Returns: {
@@ -5858,6 +6430,15 @@ export type Database = {
         Returns: undefined
       }
       refresh_canned_inbound_phrases: { Args: never; Returns: undefined }
+      remove_meta_connection: {
+        Args: {
+          p_client_id: string
+          p_connection_id: string
+          p_fb_user_id: string
+          p_revoke: boolean
+        }
+        Returns: boolean
+      }
       request_bamo_entity: {
         Args: {
           p_canonical_name: string
@@ -5901,6 +6482,25 @@ export type Database = {
       }
       run_appointment_reminders: { Args: never; Returns: undefined }
       run_deferred_task_sweep: { Args: never; Returns: undefined }
+      save_meta_page_connection: {
+        Args: {
+          p_client_id: string
+          p_data_access_expires_at: string
+          p_fb_user_id: string
+          p_fb_user_name: string
+          p_granted_scopes: string[]
+          p_page_id: string
+          p_page_name: string
+          p_page_tasks: string[]
+          p_page_token_encrypted: string
+          p_page_token_legacy: string
+          p_session_id: string
+          p_subscribed_fields: string[]
+          p_token_expires_at: string
+          p_user_token_encrypted: string
+        }
+        Returns: string
+      }
       search_bamo_entities: {
         Args: { p_entity_type?: string; p_limit?: number; p_query: string }
         Returns: {
@@ -5928,6 +6528,46 @@ export type Database = {
       set_my_assignment_settings: {
         Args: { p_mode: string; p_sources: string[] }
         Returns: undefined
+      }
+      sweep_expired_meta_oauth_sessions: {
+        Args: { p_batch_size?: number }
+        Returns: number
+      }
+      update_fix_status: {
+        Args: {
+          p_after_json?: Json
+          p_error?: string
+          p_id: number
+          p_status: string
+          p_verification?: Json
+        }
+        Returns: {
+          after_json: Json | null
+          applied_at: string | null
+          before_json: Json
+          created_at: string
+          error: string | null
+          event_id: number | null
+          fingerprint: string | null
+          id: number
+          node_name: string | null
+          params: Json | null
+          recipe: string
+          rolled_back_at: string | null
+          status: string
+          trigger: string
+          updated_at: string
+          verification: Json | null
+          verified_at: string | null
+          workflow_id: string
+          workflow_name: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "n8n_fix_journal"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       verify_bamo_registry_request: {
         Args: {
@@ -5966,12 +6606,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5995,11 +6635,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6020,11 +6660,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6045,11 +6685,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6062,11 +6702,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
