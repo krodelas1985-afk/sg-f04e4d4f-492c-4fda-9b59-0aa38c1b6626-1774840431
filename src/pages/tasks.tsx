@@ -56,13 +56,29 @@ export default function TasksPage() {
     return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   };
 
-  // Fetch data on mount
+  // Honour ?tab= from the dashboard's "Tasks due" links, which point at the tab
+  // holding the tasks they counted. This page is statically optimised, so the
+  // query only exists once the router is ready -- the tab is resolved before the
+  // first fetch rather than after it, or the page would load Today (often empty)
+  // and then flash over to Overdue.
+  const [tabResolved, setTabResolved] = useState(false);
   useEffect(() => {
+    if (!router.isReady || tabResolved) return;
+    const tab = router.query.tab;
+    if (typeof tab === "string" && ["today", "upcoming", "overdue", "completed"].includes(tab)) {
+      setActiveTab(tab);
+    }
+    setTabResolved(true);
+  }, [router.isReady, router.query.tab, tabResolved]);
+
+  // Fetch data once the tab is known, and again whenever a filter changes
+  useEffect(() => {
+    if (!tabResolved) return;
     fetchCurrentUser();
     fetchTasks();
     fetchLeads();
     fetchProfiles();
-  }, [activeTab, taskTypeFilter, assignedToFilter]);
+  }, [tabResolved, activeTab, taskTypeFilter, assignedToFilter]);
 
   const fetchCurrentUser = async () => {
     try {
