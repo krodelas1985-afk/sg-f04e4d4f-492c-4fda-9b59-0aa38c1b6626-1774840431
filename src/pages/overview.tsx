@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import {
@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   BarChart3,
   CalendarCheck,
+  ChevronRight,
   Clock,
   Sparkles,
   Trophy,
@@ -21,7 +22,16 @@ import {
 } from "lucide-react";
 
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { LeadSlideOver } from "@/components/LeadSlideOver";
+import {
+  OverviewDetailSheet,
+  type DetailKind,
+  type DetailRequest,
+} from "@/components/overview/OverviewDetailSheet";
 import { createClient } from "@/lib/supabase/client";
+import { homeRouteFor } from "@/lib/homeRoute";
+import { formatDuration, type ClientOverview } from "@/lib/overviewDetails";
+import { cn } from "@/lib/utils";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,84 +48,18 @@ import {
 } from "@/components/ui/chart";
 
 /**
- * Workspace Overview — the client_admin / manager counterpart to /admin.
+ * Workspace Overview — the client_admin / manager counterpart to /admin, and
+ * where a client_admin's CRM opens (lib/homeRoute).
  *
  * Every figure here can be legitimately absent, and the difference between
  * "measured, and the answer is zero" and "never set up" is the whole point of
  * the page. get_client_overview returns a `states` object precisely so this
- * component never has to infer that difference from a 0 -- see the empty-state
- * table in the plan. As of 2026-08-29 six of seven workspaces have no agents at
- * all, so these branches are the common path, not the edge case.
+ * component never has to infer that difference from a 0.
+ *
+ * Every card opens a detail panel (OverviewDetailSheet), including the empty
+ * ones: an empty tile is exactly when someone wants to know why, and what would
+ * fill it.
  */
-
-interface Overview {
-  generated_at: string;
-  window_months: number;
-  team: {
-    active_agents: number;
-    agents_in_pool: number;
-    open_assigned: number;
-    open_unassigned: number;
-    stale_assigned: number;
-    leads_per_agent: number | null;
-  };
-  top_agents: Array<{
-    user_id: string;
-    name: string;
-    won_90d: number;
-    composite: number | null;
-    is_grace: boolean | null;
-    assigned_count: number | null;
-    response_secs: number | null;
-  }>;
-  pipeline: Array<{ status: string; count: number }>;
-  closed_by_month: Array<{ month: string; won: number }>;
-  sales: {
-    won_total: number;
-    months_with_data: number;
-    mean_per_month: number | null;
-    median_per_month: number | null;
-  };
-  /**
-   * One flat shape rather than a discriminated union on `available`: this
-   * project compiles with strictNullChecks off, under which narrowing a union
-   * by a boolean discriminant does not hold, in a ternary or an `if`. The
-   * fields below are populated according to `available`.
-   */
-  forecast: {
-    available: boolean;
-    // available: true
-    low?: number;
-    high?: number;
-    mid?: number;
-    basis?: string;
-    // available: false
-    reason?: "needs_won" | "needs_history";
-    won_total?: number;
-    won_required?: number;
-    months_with_data?: number;
-    months_required?: number;
-  };
-  signals: {
-    speed_to_lead_seconds: number | null;
-    appts_set_30d: number;
-    appts_completed: number;
-    appts_no_show: number;
-    appts_awaiting_outcome: number;
-    show_rate: number | null;
-    ai_messages_30d: number;
-    closed_out_this_month: number;
-  };
-  states: {
-    no_agents: boolean;
-    agents_not_routing: boolean;
-    no_assigned_leads: boolean;
-    no_won: boolean;
-    thin_history: boolean;
-    no_scores: boolean;
-    outcomes_unanswered: boolean;
-  };
-}
 
 const chartConfig: ChartConfig = {
   won: { label: "Closed sales", color: "hsl(var(--chart-1))" },
@@ -129,7 +73,7 @@ function monthLabel(ym: string): string {
   return m === 1 ? `${short} ${String(y).slice(2)}` : short;
 }
 
-type Forecast = Overview["forecast"];
+type Forecast = ClientOverview["forecast"];
 
 /**
  * Kept out of the markup because the suppressed case -- which is where almost
@@ -147,20 +91,75 @@ function forecastHint(f: Forecast): string {
   return `Unlocks after ${f.months_required} months — ${f.months_with_data} so far`;
 }
 
-function formatDuration(seconds: number | null): string | null {
-  if (seconds === null || seconds === undefined) return null;
-  if (seconds < 90) return `${Math.round(seconds)}s`;
-  const mins = seconds / 60;
-  if (mins < 90) return `${Math.round(mins)}m`;
-  return `${(mins / 60).toFixed(1)}h`;
+/**
+ * A link inside a clickable card must do its own job only. Without this, one
+ * click both navigates and opens the card's panel.
+ */
+const keepToLink = (e: MouseEvent) => e.stopPropagation();
+
+/**
+ * A Card that opens a detail panel. Keyboard users get the same affordance as a
+ * click, but keys pressed on something focusable *inside* the card -- a link, a
+ * button -- are left to that element.
+ */
+function ClickableCard({
+  onOpen,
+  className,
+  children,
+}: {
+  onOpen: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className={cn(
+        "cursor-pointer transition-all hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange",
+        className
+      )}
+    >
+      {children}
+    </Card>
+  );
 }
 
 export default function OverviewPage() {
   const router = useRouter();
   const { profile, loading: profileLoading } = useUserProfile();
-  const [data, setData] = useState<Overview | null>(null);
+  const [data, setData] = useState<ClientOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Which card's panel is open, which lead is open in the slide-over, and the
+  // panel to go back to when that lead is closed.
+  const [detail, setDetail] = useState<DetailRequest | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const [returnTo, setReturnTo] = useState<DetailRequest | null>(null);
+
+  const open = (kind: DetailKind, stage?: string) => setDetail({ kind, stage });
+
+  // The lead slide-over can't stack on the panel (see OverviewDetailSheet), so
+  // the panel steps aside and comes back when the lead is closed.
+  const openLead = (id: string) => {
+    setReturnTo(detail);
+    setDetail(null);
+    setLeadId(id);
+  };
+  const closeLead = () => {
+    setLeadId(null);
+    setDetail(returnTo);
+    setReturnTo(null);
+  };
 
   // Agents and viewers have no business here; the RPC refuses them anyway, but
   // bouncing early avoids showing a permission error to someone who simply
@@ -168,7 +167,7 @@ export default function OverviewPage() {
   useEffect(() => {
     if (profileLoading) return;
     if (profile && profile.role !== "client_admin" && profile.role !== "manager") {
-      router.replace("/dashboard");
+      router.replace(homeRouteFor(profile.role));
     }
   }, [profile, profileLoading, router]);
 
@@ -183,7 +182,7 @@ export default function OverviewPage() {
         });
         if (cancelled) return;
         if (rpcError) throw rpcError;
-        setData(result as unknown as Overview);
+        setData(result as unknown as ClientOverview);
       } catch (e: any) {
         if (cancelled) return;
         console.error("Error loading overview:", e);
@@ -250,7 +249,7 @@ export default function OverviewPage() {
       <div className="space-y-6 p-6">
         <PageHeader
           title="Overview"
-          description="How your team and your pipeline are doing this month."
+          description="How your team and your pipeline are doing this month. Select any card to see what's behind it."
         />
 
         {/* ---------------------------------------------------------- team */}
@@ -259,6 +258,7 @@ export default function OverviewPage() {
             label="Agents"
             icon={Users}
             tone={states.no_agents ? "gray" : "navy"}
+            onClick={() => open("agents")}
             value={
               states.no_agents ? (
                 <span className="text-[19px] font-semibold leading-9 text-muted-foreground">
@@ -270,7 +270,7 @@ export default function OverviewPage() {
             }
             hint={
               states.no_agents ? (
-                <Link href="/users" className="text-brand-orange hover:underline">
+                <Link href="/users" onClick={keepToLink} className="text-brand-orange hover:underline">
                   Add your team
                 </Link>
               ) : states.agents_not_routing ? (
@@ -285,12 +285,11 @@ export default function OverviewPage() {
             label="Unassigned leads"
             icon={UserPlus}
             tone={team.open_unassigned > 0 ? "orange" : "gray"}
+            onClick={() => open("unassigned")}
             value={team.open_unassigned}
             hint={
               team.open_unassigned > 0 ? (
-                <Link href="/leads" className="text-brand-orange hover:underline">
-                  Nobody owns these
-                </Link>
+                <span className="text-brand-orange">Nobody owns these</span>
               ) : (
                 "Every open lead has an owner"
               )
@@ -301,6 +300,7 @@ export default function OverviewPage() {
             label="Leads per agent"
             icon={BarChart3}
             tone="gray"
+            onClick={() => open("leads_per_agent")}
             value={
               states.no_agents ? (
                 <span className="text-[19px] font-semibold leading-9 text-muted-foreground">
@@ -321,6 +321,7 @@ export default function OverviewPage() {
             label="Going cold"
             icon={Clock}
             tone={team.stale_assigned > 0 ? "red" : "green"}
+            onClick={() => open("going_cold")}
             value={team.stale_assigned}
             hint="Owned, open, untouched 14+ days"
           />
@@ -328,7 +329,7 @@ export default function OverviewPage() {
 
         {/* ------------------------------------------------- closed sales */}
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
+          <ClickableCard className="lg:col-span-2" onOpen={() => open("closed_sales")}>
             <CardHeader>
               <CardTitle className="text-base">Closed sales</CardTitle>
               <CardDescription>
@@ -343,7 +344,9 @@ export default function OverviewPage() {
                   description="When a lead buys, open them and set their status to Won. That one tag is what fills this chart — and the averages and forecast below it."
                   action={
                     <Button asChild variant="outline">
-                      <Link href="/leads?status=Negotiating">Tag a closed sale</Link>
+                      <Link href="/leads?status=Negotiating" onClick={keepToLink}>
+                        Tag a closed sale
+                      </Link>
                     </Button>
                   }
                 />
@@ -367,13 +370,14 @@ export default function OverviewPage() {
                 </ChartContainer>
               )}
             </CardContent>
-          </Card>
+          </ClickableCard>
 
           <div className="space-y-4">
             <StatCard
               label="Average per month"
               icon={BarChart3}
               tone="navy"
+              onClick={() => open("average")}
               value={
                 states.no_won ? (
                   <span className="text-[19px] font-semibold leading-9 text-muted-foreground">
@@ -398,6 +402,7 @@ export default function OverviewPage() {
               label="Expected next month"
               icon={Sparkles}
               tone={forecast.available ? "orange" : "gray"}
+              onClick={() => open("forecast")}
               value={
                 forecastRange(forecast) ?? (
                   <span className="text-[19px] font-semibold leading-9 text-muted-foreground">
@@ -412,6 +417,7 @@ export default function OverviewPage() {
               label="Closed out this month"
               icon={CalendarCheck}
               tone="gray"
+              onClick={() => open("closed_out")}
               value={signals.closed_out_this_month}
               hint="Leads marked Won or Lost — the rest are still open"
             />
@@ -424,31 +430,38 @@ export default function OverviewPage() {
             <CardHeader>
               <CardTitle className="text-base">Pipeline</CardTitle>
               <CardDescription>
-                Open leads by stage. These are workload counts, not a revenue forecast.
+                Open leads by stage. These are workload counts, not a revenue forecast. Select a
+                stage to see who&rsquo;s in it.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-1">
               {data.pipeline.map((stage) => (
-                <div key={stage.status} className="flex items-center gap-3">
+                <button
+                  type="button"
+                  key={stage.status}
+                  onClick={() => open("stage", stage.status)}
+                  className="group flex w-full items-center gap-3 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                >
                   <span className="w-24 shrink-0 text-[13px] font-medium text-muted-foreground">
                     {stage.status}
                   </span>
-                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
+                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <span
+                      className="block h-full rounded-full bg-primary"
                       style={{ width: `${(stage.count / maxPipeline) * 100}%` }}
                     />
-                  </div>
+                  </span>
                   <span className="w-10 shrink-0 text-right text-[13px] font-semibold tabular-nums">
                     {stage.count}
                   </span>
-                </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground" />
+                </button>
               ))}
             </CardContent>
           </Card>
 
           {/* -------------------------------------------------- top agents */}
-          <Card>
+          <ClickableCard onOpen={() => open("top_agents")}>
             <CardHeader>
               <CardTitle className="text-base">Top agents</CardTitle>
               <CardDescription>
@@ -463,7 +476,9 @@ export default function OverviewPage() {
                   description="Add the people on your team and they'll show up here as they work leads."
                   action={
                     <Button asChild variant="outline">
-                      <Link href="/users">Add your team</Link>
+                      <Link href="/users" onClick={keepToLink}>
+                        Add your team
+                      </Link>
                     </Button>
                   }
                 />
@@ -500,7 +515,7 @@ export default function OverviewPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </ClickableCard>
         </div>
 
         {/* ------------------------------------------------------ signals */}
@@ -509,6 +524,7 @@ export default function OverviewPage() {
             label="Speed to lead"
             icon={Clock}
             tone="gray"
+            onClick={() => open("speed")}
             value={
               speed ?? (
                 <span className="text-[19px] font-semibold leading-9 text-muted-foreground">
@@ -522,6 +538,7 @@ export default function OverviewPage() {
             label="Viewings booked"
             icon={CalendarCheck}
             tone="navy"
+            onClick={() => open("viewings_booked")}
             value={signals.appts_set_30d}
             hint="Last 30 days"
           />
@@ -529,6 +546,7 @@ export default function OverviewPage() {
             label="Turned up"
             icon={CalendarCheck}
             tone="gray"
+            onClick={() => open("turned_up")}
             value={
               signals.show_rate !== null ? (
                 `${Math.round(signals.show_rate * 100)}%`
@@ -550,11 +568,22 @@ export default function OverviewPage() {
             label="Handled by BaMo"
             icon={Sparkles}
             tone="orange"
+            onClick={() => open("ai_messages")}
             value={signals.ai_messages_30d}
             hint="Messages your AI sent in the last 30 days"
           />
         </div>
       </div>
+
+      <OverviewDetailSheet
+        request={detail}
+        clientId={profile?.client_id ?? null}
+        overview={data}
+        onClose={() => setDetail(null)}
+        onOpenLead={openLead}
+      />
+
+      {leadId && <LeadSlideOver leadId={leadId} isOpen={!!leadId} onClose={closeLead} />}
     </DashboardLayout>
   );
 }

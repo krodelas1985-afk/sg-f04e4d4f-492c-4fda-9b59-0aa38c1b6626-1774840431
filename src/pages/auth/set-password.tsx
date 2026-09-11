@@ -89,8 +89,8 @@ export default function SetPassword() {
       return;
     }
 
-    // Redirect to dashboard after successful password set
-    router.push("/dashboard");
+    // Send them home -- "/" routes by role (lib/homeRoute).
+    router.push("/");
   };
 
   // Loading state

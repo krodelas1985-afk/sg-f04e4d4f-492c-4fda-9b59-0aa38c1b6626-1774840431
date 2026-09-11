@@ -40,7 +40,7 @@ export default function ConfirmPage() {
           router.replace("/auth/set-password");
         } else {
           // Other verification types (email confirmation, etc.)
-          router.replace("/dashboard");
+          router.replace("/"); // "/" routes by role (lib/homeRoute)
         }
       } catch (err) {
         console.error("Verification error:", err);

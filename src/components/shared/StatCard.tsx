@@ -38,11 +38,27 @@ export function StatCard({
 }: StatCardProps) {
   const t = toneStyles[tone];
   return (
+    // A clickable card is a button to keyboard and screen-reader users too. Keys
+    // pressed on a link inside the card are left to that link.
     <Card
       onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "p-4 transition-all",
-        onClick && "cursor-pointer hover:shadow-md hover:-translate-y-px",
+        onClick &&
+          "cursor-pointer hover:shadow-md hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange",
         active && "ring-2 ring-brand-orange",
         className
       )}
