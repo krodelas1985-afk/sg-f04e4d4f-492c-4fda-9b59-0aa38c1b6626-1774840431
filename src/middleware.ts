@@ -110,6 +110,10 @@ export const config = {
     "/",
     "/login",
     "/dashboard/:path*",
+    // Overview is where a client_admin's CRM opens. It was missing from this
+    // list when it shipped, which left the page reachable signed out (the RPC
+    // refused to return data, but the route itself was not gated).
+    "/overview/:path*",
     "/leads/:path*",
     "/inbox/:path*",
     "/campaigns/:path*",
@@ -117,5 +121,14 @@ export const config = {
     "/users/:path*",
     "/settings/:path*",
     "/admin/:path*",
+    // This matcher is an allowlist: a page not listed here never runs the
+    // middleware, so it renders signed out. These signed-in pages were missing.
+    // Deliberately NOT listed (public by design): /privacy, /auth/*,
+    // /viewing-outcome and /viewing-confirm (the emailed token is the
+    // authorisation), and /api/* (handled inside the middleware).
+    "/sequences/:path*",
+    "/templates/:path*",
+    "/announcements/:path*",
+    "/follow-up/:path*",
   ],
 };
