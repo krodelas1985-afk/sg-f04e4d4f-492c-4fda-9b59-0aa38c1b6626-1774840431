@@ -17,6 +17,8 @@ import {
   ChevronRight,
   CheckCircle2,
   AlertCircle,
+  Check,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -31,6 +33,10 @@ import { TemperatureBadge, ChannelBadge } from "@/components/shared/badges";
  * 2026-09-11 -- so the card said "All caught up" for every client, while Cristy
  * alone had 33 pending tasks past their due date. It now lists what actually
  * needs someone: tasks that are due, and leads whose last message is theirs.
+ *
+ * It also flags the leads the alert emailer already wrote to the agent about --
+ * a lead turning Hot, or asking for a viewing. Those emails land in an inbox and
+ * are easy to lose; the flag keeps them in the CRM until someone clears it.
  *
  * Scoping is left to RLS, exactly as on the Tasks and Leads pages: an agent sees
  * tasks on their own leads (or assigned to or created by them), a client_admin
@@ -47,7 +53,24 @@ const ATTENTION_ROWS = 5;
  */
 const AWAITING_WINDOW_DAYS = 7;
 
+/**
+ * How far back the flags look. An alert nobody cleared in two weeks is not a
+ * to-do any more, and leaving them forever would grow the card without bound
+ * for anyone who never clicks "mark read".
+ */
+const FLAG_WINDOW_DAYS = 14;
+
+/** Rows fetched per flag query -- more than we show, so the count is real. */
+const FLAG_FETCH_LIMIT = 100;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** lead_alert_emails.alert_kind -> what the agent was emailed about. */
+const ALERT_KIND_LABEL: Record<string, string> = {
+  hot: "Turned Hot",
+  viewing: "Asked for a viewing",
+  hot_viewing: "Turned Hot and asked for a viewing",
+};
 
 const TASK_TYPE_LABEL: Record<string, string> = {
   takeover: "Take over",
@@ -60,6 +83,14 @@ interface AttentionTask {
   task_type: string | null;
   due_date: string;
   lead_id: string | null;
+  lead: { id: string; name: string | null; lead_temperature: string | null } | null;
+}
+
+interface AlertFlag {
+  id: string;
+  alert_kind: string;
+  created_at: string;
+  lead_id: string;
   lead: { id: string; name: string | null; lead_temperature: string | null } | null;
 }
 
@@ -87,6 +118,8 @@ export default function DashboardPage() {
   });
   const [clientName, setClientName] = useState<string>("");
   const [dueTasks, setDueTasks] = useState<AttentionTask[]>([]);
+  const [flags, setFlags] = useState<AlertFlag[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [awaiting, setAwaiting] = useState<AwaitingLead[]>([]);
   const [recentConversations, setRecentConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +134,7 @@ export default function DashboardPage() {
 
       // Fetch the logged-in user's full_name for the greeting
       const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -118,9 +152,19 @@ export default function DashboardPage() {
       const dayStart = new Date(`${today}T00:00:00+08:00`);
       const dayEnd = new Date(dayStart.getTime() + DAY_MS);
       const awaitingSince = new Date(Date.now() - AWAITING_WINDOW_DAYS * DAY_MS).toISOString();
+      const flagSince = new Date(Date.now() - FLAG_WINDOW_DAYS * DAY_MS).toISOString();
 
-      const [totalLeads, newToday, hotLeads, tasksDue, tasksOverdue, dueTaskRows, recentInbound] =
-        await Promise.all([
+      const [
+        totalLeads,
+        newToday,
+        hotLeads,
+        tasksDue,
+        tasksOverdue,
+        dueTaskRows,
+        recentInbound,
+        alertRows,
+        readRows,
+      ] = await Promise.all([
           supabase.from("leads").select("id", { count: "exact", head: true }),
           supabase
             .from("leads")
@@ -159,6 +203,17 @@ export default function DashboardPage() {
             .gte("last_inbound_at", awaitingSince)
             .order("last_inbound_at", { ascending: false })
             .limit(500),
+          // Only alerts that actually went out. 'suppressed' never reached anyone
+          // and 'failed' is the emailer's problem to retry, not the agent's.
+          supabase
+            .from("lead_alert_emails")
+            .select("id, alert_kind, created_at, lead_id, lead:leads(id, name, lead_temperature)")
+            .eq("status", "sent")
+            .gte("created_at", flagSince)
+            .order("created_at", { ascending: false })
+            .limit(FLAG_FETCH_LIMIT),
+          // RLS returns this user's rows only, so no filter is needed here.
+          supabase.from("lead_alert_reads").select("alert_id"),
         ]);
 
       setMetrics({
@@ -174,6 +229,19 @@ export default function DashboardPage() {
           ...t,
           lead: Array.isArray(t.lead) ? t.lead[0] ?? null : t.lead ?? null,
         }))
+      );
+
+      // Newest flag on top, and drop the ones this user has already cleared.
+      const readIds = new Set(
+        ((readRows.data || []) as { alert_id: string }[]).map((r) => r.alert_id)
+      );
+      setFlags(
+        ((alertRows.data || []) as any[])
+          .filter((a) => !readIds.has(a.id))
+          .map((a) => ({
+            ...a,
+            lead: Array.isArray(a.lead) ? a.lead[0] ?? null : a.lead ?? null,
+          }))
       );
 
       setAwaiting(
@@ -246,7 +314,23 @@ export default function DashboardPage() {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 
   const firstName = clientName ? clientName.split(" ")[0] : "";
-  const attentionCount = metrics.tasks_due + awaiting.length;
+  /**
+   * Clearing a flag is per person: the row is hidden for whoever clicked, not
+   * for the colleague who was copied on the same alert email. The row goes
+   * immediately and is put back if the write fails, so a dropped connection
+   * cannot silently lose a hot lead.
+   */
+  const markFlagRead = async (alertId: string) => {
+    if (!userId) return;
+    const previous = flags;
+    setFlags((current) => current.filter((f) => f.id !== alertId));
+    const { error } = await createClient()
+      .from("lead_alert_reads")
+      .insert({ user_id: userId, alert_id: alertId } as any);
+    if (error) setFlags(previous);
+  };
+
+  const attentionCount = flags.length + metrics.tasks_due + awaiting.length;
   // Land on the tab that actually holds the tasks being counted.
   const tasksHref = `/tasks?tab=${metrics.tasks_overdue > 0 ? "overdue" : "today"}`;
 
@@ -369,10 +453,29 @@ export default function DashboardPage() {
                   className="py-6"
                   icon={CheckCircle2}
                   title="All caught up"
-                  description={`No tasks are due, and no lead from the last ${AWAITING_WINDOW_DAYS} days is waiting on a reply.`}
+                  description={`No new flags, no tasks due, and no lead from the last ${AWAITING_WINDOW_DAYS} days waiting on a reply.`}
                 />
               ) : (
                 <>
+                  {flags.length > 0 && (
+                    <AttentionSection
+                      title="Flagged leads"
+                      meta={`${flags.length} unread · last ${FLAG_WINDOW_DAYS} days`}
+                    >
+                      {flags.slice(0, ATTENTION_ROWS).map((flag) => (
+                        <FlagRow
+                          key={flag.id}
+                          onOpen={() => router.push(`/leads/${flag.lead_id}`)}
+                          onDismiss={() => markFlagRead(flag.id)}
+                          leadName={flag.lead?.name || null}
+                          kind={flag.alert_kind}
+                          when={formatTimeAgo(flag.created_at)}
+                          temperature={flag.lead?.lead_temperature ?? null}
+                        />
+                      ))}
+                    </AttentionSection>
+                  )}
+
                   {metrics.tasks_due > 0 && (
                     <AttentionSection
                       title="Tasks due"
@@ -529,6 +632,65 @@ function AttentionSection({
       </div>
       <div className="divide-y">{children}</div>
     </section>
+  );
+}
+
+/**
+ * A flag row carries its own dismiss control, so unlike AttentionRow it cannot
+ * be a single <button> -- a button inside a button is invalid HTML and the
+ * inner click never fires reliably.
+ */
+function FlagRow({
+  onOpen,
+  onDismiss,
+  leadName,
+  kind,
+  when,
+  temperature,
+}: {
+  onOpen: () => void;
+  onDismiss: () => void;
+  leadName: string | null;
+  kind: string;
+  when: string;
+  temperature: string | null;
+}) {
+  const label = ALERT_KIND_LABEL[kind] || "Alert sent";
+  const isViewing = kind === "viewing" || kind === "hot_viewing";
+  return (
+    <div className="group flex w-full items-center gap-3 py-2.5 transition-colors hover:bg-accent/40">
+      <span className="h-9 w-1 shrink-0 rounded-full bg-brand-orange" />
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+      >
+        <InitialsAvatar name={leadName} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">
+            {leadName || "Unnamed lead"}
+          </span>
+          <span className="mt-0.5 flex items-center gap-1 truncate font-inter text-[11px] text-muted-foreground">
+            {isViewing ? (
+              <CalendarClock className="h-3 w-3 shrink-0" />
+            ) : (
+              <Flame className="h-3 w-3 shrink-0" />
+            )}
+            {label} · emailed {when}
+          </span>
+        </span>
+      </button>
+      <TemperatureBadge value={temperature} />
+      <button
+        type="button"
+        onClick={onDismiss}
+        title="Mark read"
+        aria-label={`Mark the ${label.toLowerCase()} flag for ${leadName || "this lead"} as read`}
+        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-brand-orange/10 hover:text-brand-orange-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+      >
+        <Check className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 

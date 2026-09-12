@@ -3240,6 +3240,32 @@ export type Database = {
           },
         ]
       }
+      lead_alert_reads: {
+        Row: {
+          alert_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_alert_reads_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "lead_alert_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_assignment_events: {
         Row: {
           actor_id: string | null
