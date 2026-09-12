@@ -76,9 +76,9 @@ export async function middleware(request: NextRequest) {
   if (publicRoutes.includes(pathname) || pathname.startsWith("/api/")) {
     // If user is already authenticated and tries to access /login, redirect to appropriate home
     if (user && pathname === "/login") {
-      // Don't fetch role here - let the login page handle the redirect
-      // Just redirect to dashboard as default, login page will re-redirect if needed
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      // Role isn't fetched here. "/" routes by role (lib/homeRoute), so a
+      // signed-in client_admin lands on Overview and an agent on Dashboard.
+      return NextResponse.redirect(new URL("/", request.url));
     }
     return response;
   }
@@ -96,9 +96,9 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    // If not baymo_admin, redirect to dashboard
+    // Not BaMo staff: send them to their own home ("/" routes by role).
     if (profile?.role !== "baymo_admin") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 

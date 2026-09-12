@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
@@ -6,7 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, UserPlus, Flame, Calendar, MessageSquare, Megaphone, Inbox, ChevronRight, CheckCircle2 } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  Flame,
+  ListChecks,
+  MessageSquare,
+  Megaphone,
+  Inbox,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
@@ -14,16 +25,69 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { TemperatureBadge, ChannelBadge } from "@/components/shared/badges";
 
+/**
+ * "Needs your attention" used to list leads by next_follow_up_date. Nothing in
+ * the app or the automations ever sets that column -- 0 of 1,609 leads had one on
+ * 2026-09-11 -- so the card said "All caught up" for every client, while Cristy
+ * alone had 33 pending tasks past their due date. It now lists what actually
+ * needs someone: tasks that are due, and leads whose last message is theirs.
+ *
+ * Scoping is left to RLS, exactly as on the Tasks and Leads pages: an agent sees
+ * tasks on their own leads (or assigned to or created by them), a client_admin
+ * sees the workspace.
+ */
+
+/** Rows per attention section. The section header always states the real total. */
+const ATTENTION_ROWS = 5;
+
+/**
+ * How far back "waiting on a reply" looks. Older threads that ended on the
+ * lead's "ok po" a minute after a reply are history, not a to-do -- on
+ * 2026-09-11 all twelve of Cristy's unanswered threads were 3-7 weeks old.
+ */
+const AWAITING_WINDOW_DAYS = 7;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const TASK_TYPE_LABEL: Record<string, string> = {
+  takeover: "Take over",
+  "re-engagement": "Re-engage",
+};
+
+interface AttentionTask {
+  id: string;
+  title: string;
+  task_type: string | null;
+  due_date: string;
+  lead_id: string | null;
+  lead: { id: string; name: string | null; lead_temperature: string | null } | null;
+}
+
+interface AwaitingLead {
+  id: string;
+  name: string | null;
+  lead_temperature: string | null;
+  last_inbound_at: string;
+  last_contacted_at: string | null;
+}
+
+/** Whole days a task is late. Both dates are YYYY-MM-DD, so both parse as UTC midnight. */
+function daysLate(dueDate: string, today: string): number {
+  return Math.round((Date.parse(today) - Date.parse(dueDate)) / DAY_MS);
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [metrics, setMetrics] = useState({
     total_leads: 0,
     new_today: 0,
     hot_leads: 0,
-    followups_today: 0,
+    tasks_due: 0,
+    tasks_overdue: 0,
   });
   const [clientName, setClientName] = useState<string>("");
-  const [followUps, setFollowUps] = useState<any[]>([]);
+  const [dueTasks, setDueTasks] = useState<AttentionTask[]>([]);
+  const [awaiting, setAwaiting] = useState<AwaitingLead[]>([]);
   const [recentConversations, setRecentConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,90 +110,79 @@ export default function DashboardPage() {
         if ((profile as any)?.full_name) setClientName((profile as any).full_name);
       }
 
-      // Get today's date in Asia/Manila timezone
+      // Today in Asia/Manila. due_date is a plain date, so it compares against this
+      // string directly. created_at is a timestamp, so it needs real instants: the
+      // old "YYYY-MM-DDT00:00:00" had no zone and was read as UTC, which started
+      // "New Today" at 08:00 Manila and dropped every lead from midnight to 8am.
       const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+      const dayStart = new Date(`${today}T00:00:00+08:00`);
+      const dayEnd = new Date(dayStart.getTime() + DAY_MS);
+      const awaitingSince = new Date(Date.now() - AWAITING_WINDOW_DAYS * DAY_MS).toISOString();
 
-      // Fetch metrics
-      const [totalLeads, newToday, hotLeads, followupsToday] = await Promise.all([
-        supabase.from("leads").select("id", { count: "exact", head: true }),
-        supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .gte("created_at", `${today}T00:00:00`)
-          .lt("created_at", `${today}T23:59:59`),
-        supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .eq("lead_temperature", "Hot"),
-        supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .eq("next_follow_up_date", today),
-      ]);
+      const [totalLeads, newToday, hotLeads, tasksDue, tasksOverdue, dueTaskRows, recentInbound] =
+        await Promise.all([
+          supabase.from("leads").select("id", { count: "exact", head: true }),
+          supabase
+            .from("leads")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", dayStart.toISOString())
+            .lt("created_at", dayEnd.toISOString()),
+          supabase
+            .from("leads")
+            .select("id", { count: "exact", head: true })
+            .eq("lead_temperature", "Hot"),
+          // Same definition as the Tasks page's Today + Overdue tabs.
+          supabase
+            .from("tasks")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+            .lte("due_date", today),
+          supabase
+            .from("tasks")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+            .lt("due_date", today),
+          // Freshest first: a long-stale queue shouldn't bury the one that just came due.
+          supabase
+            .from("tasks")
+            .select("id, title, task_type, due_date, lead_id, lead:leads(id, name, lead_temperature)")
+            .eq("status", "pending")
+            .lte("due_date", today)
+            .order("due_date", { ascending: false })
+            .limit(ATTENTION_ROWS),
+          // PostgREST can't compare two columns, so "last message is the lead's" is
+          // checked below on the leads who messaged in the window.
+          supabase
+            .from("leads")
+            .select("id, name, lead_temperature, last_inbound_at, last_contacted_at")
+            .not("status", "in", '("Won","Lost","Unqualified")')
+            .gte("last_inbound_at", awaitingSince)
+            .order("last_inbound_at", { ascending: false })
+            .limit(500),
+        ]);
 
       setMetrics({
         total_leads: totalLeads.count || 0,
         new_today: newToday.count || 0,
         hot_leads: hotLeads.count || 0,
-        followups_today: followupsToday.count || 0,
+        tasks_due: tasksDue.count || 0,
+        tasks_overdue: tasksOverdue.count || 0,
       });
 
-      // Fetch follow-ups (overdue + due today)
-      const { data: overdueLeads } = await supabase
-        .from("leads")
-        .select(`
-          id,
-          name,
-          lead_temperature,
-          status,
-          campaign_id,
-          next_follow_up_date,
-          campaign:campaigns(name)
-        `)
-        .lt("next_follow_up_date", today)
-        .not("next_follow_up_date", "is", null);
-
-      const { data: dueTodayLeads } = await supabase
-        .from("leads")
-        .select(`
-          id,
-          name,
-          lead_temperature,
-          status,
-          campaign_id,
-          next_follow_up_date,
-          campaign:campaigns(name)
-        `)
-        .eq("next_follow_up_date", today);
-
-      // Get last contacted info for each lead
-      const allFollowUpLeads = [...(overdueLeads || []), ...(dueTodayLeads || [])];
-      const leadsWithContacts = await Promise.all(
-        allFollowUpLeads.map(async (lead) => {
-          const { data: lastConversation } = await supabase
-            .from("conversations")
-            .select("created_at")
-            .eq("lead_id", lead.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-
-          return {
-            ...lead,
-            last_contacted_at: lastConversation?.created_at,
-            is_overdue: lead.next_follow_up_date < today,
-          };
-        })
+      setDueTasks(
+        ((dueTaskRows.data || []) as any[]).map((t) => ({
+          ...t,
+          lead: Array.isArray(t.lead) ? t.lead[0] ?? null : t.lead ?? null,
+        }))
       );
 
-      // Sort by stage priority within groups
-      const stagePriority = { Hot: 1, Warm: 2, Cold: 3, Unqualified: 4 };
-      const sortedFollowUps = leadsWithContacts.sort((a, b) => {
-        if (a.is_overdue !== b.is_overdue) return a.is_overdue ? -1 : 1;
-        return (stagePriority[a.lead_temperature] || 5) - (stagePriority[b.lead_temperature] || 5);
-      });
-
-      setFollowUps(sortedFollowUps);
+      setAwaiting(
+        ((recentInbound.data || []) as AwaitingLead[]).filter(
+          (l) =>
+            !l.last_contacted_at ||
+            new Date(l.last_inbound_at).getTime() > new Date(l.last_contacted_at).getTime()
+        )
+      );
 
       // Fetch recent conversations (last 5 leads)
       const { data: conversations } = await supabase
@@ -190,9 +243,12 @@ export default function DashboardPage() {
     month: "long",
     day: "numeric",
   });
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 
   const firstName = clientName ? clientName.split(" ")[0] : "";
-  const overdueCount = followUps.filter((l) => l.is_overdue).length;
+  const attentionCount = metrics.tasks_due + awaiting.length;
+  // Land on the tab that actually holds the tasks being counted.
+  const tasksHref = `/tasks?tab=${metrics.tasks_overdue > 0 ? "overdue" : "today"}`;
 
   return (
     <DashboardLayout>
@@ -203,9 +259,9 @@ export default function DashboardPage() {
           description={
             <>
               {todayLabel}
-              {overdueCount > 0 && (
+              {metrics.tasks_overdue > 0 && (
                 <span className="ml-2 font-medium text-destructive">
-                  · {overdueCount} overdue follow-up{overdueCount !== 1 ? "s" : ""}
+                  · {metrics.tasks_overdue} overdue task{metrics.tasks_overdue !== 1 ? "s" : ""}
                 </span>
               )}
             </>
@@ -265,80 +321,128 @@ export default function DashboardPage() {
                 tone="red"
                 onClick={() => router.push("/leads?filter=hot")}
               />
+              {/* Was "Follow-ups Due Today", counted from next_follow_up_date -- which is
+                  never set, so it read 0 for every client. Counts real tasks now. */}
               <StatCard
-                label="Follow-ups Due Today"
-                value={metrics.followups_today}
-                icon={Calendar}
-                tone="blue"
-                onClick={() => router.push("/leads")}
+                label="Tasks due"
+                value={metrics.tasks_due}
+                icon={ListChecks}
+                tone={metrics.tasks_overdue > 0 ? "red" : "blue"}
+                hint={
+                  metrics.tasks_overdue > 0
+                    ? `${metrics.tasks_overdue} overdue`
+                    : metrics.tasks_due > 0
+                    ? "Due today"
+                    : "Nothing due"
+                }
+                onClick={() => router.push(tasksHref)}
               />
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* items-start: each card sizes to its own content. Stretched to the height of
+            Recent Conversations, an empty attention card was a large blank box. */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start">
           {/* Needs attention */}
           <Card className="lg:col-span-3">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Calendar className="h-4 w-4 text-brand-orange" />
+                <AlertCircle className="h-4 w-4 text-brand-orange" />
                 Needs your attention
-                {followUps.length > 0 && (
+                {attentionCount > 0 && (
                   <span className="ml-1 rounded-full bg-brand-orange/10 px-2 py-0.5 text-xs font-semibold text-brand-orange-dark">
-                    {followUps.length}
+                    {attentionCount}
                   </span>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="space-y-5 pt-0">
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
-              ) : followUps.length === 0 ? (
+              ) : attentionCount === 0 ? (
                 <EmptyState
+                  className="py-6"
                   icon={CheckCircle2}
                   title="All caught up"
-                  description="No follow-ups are due today. New ones will appear here."
+                  description={`No tasks are due, and no lead from the last ${AWAITING_WINDOW_DAYS} days is waiting on a reply.`}
                 />
               ) : (
-                <div className="divide-y">
-                  {followUps.map((lead) => (
-                    <div
-                      key={lead.id}
-                      onClick={() => router.push(`/leads/${lead.id}`)}
-                      className="group flex cursor-pointer items-center gap-3 py-2.5 transition-colors hover:bg-accent/40"
+                <>
+                  {metrics.tasks_due > 0 && (
+                    <AttentionSection
+                      title="Tasks due"
+                      meta={
+                        metrics.tasks_overdue > 0
+                          ? `${metrics.tasks_overdue} overdue`
+                          : `${metrics.tasks_due} due today`
+                      }
+                      action={
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-xs text-brand-orange"
+                          onClick={() => router.push(tasksHref)}
+                        >
+                          {metrics.tasks_due > dueTasks.length
+                            ? `View all ${metrics.tasks_due}`
+                            : "Open Tasks"}
+                        </Button>
+                      }
                     >
-                      <span
-                        className={cn(
-                          "h-9 w-1 shrink-0 rounded-full",
-                          lead.is_overdue ? "bg-destructive" : "bg-brand-orange/60"
-                        )}
-                      />
-                      <InitialsAvatar name={lead.name} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-medium">{lead.name || "Unnamed lead"}</span>
-                          {lead.is_overdue && (
-                            <Badge variant="destructive" className="h-5 px-1.5 text-[11px]">
-                              Overdue
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 font-inter text-[11px] text-muted-foreground">
-                          <span>{lead.campaign?.name || "No campaign"}</span>
-                          {lead.last_contacted_at && (
-                            <span>· last contacted {formatTimeAgo(lead.last_contacted_at)}</span>
-                          )}
-                        </div>
-                      </div>
-                      <TemperatureBadge value={lead.lead_temperature} />
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </div>
-                  ))}
-                </div>
+                      {dueTasks.map((task) => {
+                        const late = daysLate(task.due_date, today);
+                        return (
+                          <AttentionRow
+                            key={task.id}
+                            onClick={() =>
+                              router.push(task.lead_id ? `/leads/${task.lead_id}` : tasksHref)
+                            }
+                            accent={late > 0 ? "late" : "due"}
+                            avatarName={task.lead?.name || task.title}
+                            title={task.title}
+                            subtitle={
+                              TASK_TYPE_LABEL[task.task_type || ""] || task.task_type || "Task"
+                            }
+                            right={
+                              late > 0 ? (
+                                <Badge variant="destructive" className="h-5 px-1.5 text-[11px]">
+                                  {late}d overdue
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
+                                  Due today
+                                </Badge>
+                              )
+                            }
+                          />
+                        );
+                      })}
+                    </AttentionSection>
+                  )}
+
+                  {awaiting.length > 0 && (
+                    <AttentionSection
+                      title="Waiting on a reply"
+                      meta={`${awaiting.length} lead${awaiting.length !== 1 ? "s" : ""} · last ${AWAITING_WINDOW_DAYS} days`}
+                    >
+                      {awaiting.slice(0, ATTENTION_ROWS).map((lead) => (
+                        <AttentionRow
+                          key={lead.id}
+                          onClick={() => router.push(`/inbox?lead=${lead.id}`)}
+                          accent="due"
+                          avatarName={lead.name}
+                          title={lead.name || "Unnamed lead"}
+                          subtitle={`Messaged ${formatTimeAgo(lead.last_inbound_at)}, no reply since`}
+                          right={<TemperatureBadge value={lead.lead_temperature} />}
+                        />
+                      ))}
+                    </AttentionSection>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -396,5 +500,74 @@ export default function DashboardPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function AttentionSection({
+  title,
+  meta,
+  action,
+  children,
+}: {
+  title: string;
+  meta?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h3 className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {title}
+          </h3>
+          {meta && (
+            <span className="truncate font-inter text-[11px] text-muted-foreground">{meta}</span>
+          )}
+        </div>
+        {action}
+      </div>
+      <div className="divide-y">{children}</div>
+    </section>
+  );
+}
+
+function AttentionRow({
+  onClick,
+  accent,
+  avatarName,
+  title,
+  subtitle,
+  right,
+}: {
+  onClick: () => void;
+  accent: "late" | "due";
+  avatarName: string | null;
+  title: string;
+  subtitle: ReactNode;
+  right?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-3 py-2.5 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+    >
+      <span
+        className={cn(
+          "h-9 w-1 shrink-0 rounded-full",
+          accent === "late" ? "bg-destructive" : "bg-brand-orange/60"
+        )}
+      />
+      <InitialsAvatar name={avatarName} />
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{title}</span>
+        <span className="mt-0.5 block truncate font-inter text-[11px] text-muted-foreground">
+          {subtitle}
+        </span>
+      </div>
+      {right}
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
   );
 }

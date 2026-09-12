@@ -162,12 +162,19 @@ export default function LeadsPage() {
     fetchClientId();
   }, []);
 
-  // Honor deep-links from the dashboard (/leads?filter=hot, /leads?action=add)
+  // Honor deep-links from the dashboard and overview
+  // (/leads?filter=hot, /leads?action=add, /leads?status=Negotiating)
   useEffect(() => {
     if (!router.isReady) return;
-    const { filter, action } = router.query;
+    const { filter, action, status } = router.query;
     if (filter === "hot") setStageFilter("Hot");
     if (action === "add") setShowFullAdd(true);
+    // Overview's "Tag a closed sale" and pipeline "Open all in Leads" links send
+    // ?status= -- which this page used to ignore, so they landed on the full
+    // list. Only values the constraint allows are accepted: p_status is plain
+    // equality, and anything else would match nothing and look like an empty
+    // workspace.
+    if (typeof status === "string" && STATUS_OPTIONS.includes(status)) setStatusFilter(status);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady]);
 

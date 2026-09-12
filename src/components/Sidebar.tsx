@@ -19,6 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { homeRouteFor } from "@/lib/homeRoute";
 
 interface SidebarProps {
   role: string;
@@ -65,17 +66,17 @@ const ADMIN_NAV: NavGroup[] = [
 const CLIENT_NAV: NavGroup[] = [
   {
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      // The workspace roll-up. Agents get the per-person Dashboard above; only
-      // the people accountable for the whole team see team-wide numbers. The
-      // RPC enforces the same rule, so hiding the link is convenience, not
-      // security.
+      // The workspace roll-up, and where a client_admin's CRM opens
+      // (lib/homeRoute). Agents don't see it -- the per-person Dashboard below is
+      // their first item. The RPC enforces the same rule, so hiding the link is
+      // convenience, not security.
       {
         href: "/overview",
         label: "Overview",
         icon: BarChart3,
         roles: ["client_admin", "manager"],
       },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/leads", label: "Leads", icon: Users },
       { href: "/inbox", label: "Inbox", icon: MessageSquare },
       { href: "/tasks", label: "Tasks", icon: CheckSquare },
@@ -156,7 +157,7 @@ export function Sidebar({ role }: SidebarProps) {
     <aside className="flex h-screen w-60 shrink-0 flex-col bg-sidebar-bg">
       {/* Logo */}
       <div className="px-5 pb-5 pt-6">
-        <Link href={role === "baymo_admin" ? "/admin" : "/dashboard"} className="block">
+        <Link href={homeRouteFor(role)} className="block">
           <span className="text-xl font-bold tracking-tight text-white">
             Ba<span className="text-brand-orange">Mo</span>
           </span>

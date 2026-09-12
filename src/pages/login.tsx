@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "@/lib/supabase/client";
+import { homeRouteFor } from "@/lib/homeRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +55,7 @@ export default function Login() {
       }
 
       // Redirect based on role
-      const redirectPath = profile?.role === "baymo_admin" ? "/admin" : "/dashboard";
+      const redirectPath = homeRouteFor(profile?.role);
       window.location.href = redirectPath;
     } catch (err) {
       console.error("Login error:", err);
