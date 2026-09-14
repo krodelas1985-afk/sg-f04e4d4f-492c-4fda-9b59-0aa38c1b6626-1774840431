@@ -98,6 +98,15 @@ export default function Inbox() {
   // search, a filter, the refresh after sending) leave the list on screen.
   const hasLoadedLeadsRef = useRef(false);
 
+  // The Realtime channel is opened once per client_id, so its handler would
+  // otherwise close over the first render's fetchers, filter and selection.
+  // These refs are rewritten on every render and are what the handler reads.
+  const liveRef = useRef({
+    selectedLeadId: null as string | null,
+    fetchLeads: () => {},
+    fetchConversations: () => {},
+  });
+
   useEffect(() => {
     fetchCurrentUser();
   }, []);
@@ -134,6 +143,72 @@ export default function Inbox() {
     const t = setInterval(() => setWindowNow(new Date()), 60 * 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Deliberately no dependency array: the channel handler below reads these
+  // through the ref, so they have to track every render.
+  useEffect(() => {
+    liveRef.current.selectedLeadId = selectedLead?.id ?? null;
+    liveRef.current.fetchLeads = fetchLeads;
+    liveRef.current.fetchConversations = fetchConversations;
+  });
+
+  // Live inbox. Every new message — a lead replying through the Messenger
+  // webhook, a campaign send, another agent on the same workspace — is an
+  // INSERT on conversations, so one subscription covers all of them.
+  //
+  // Realtime applies the conversations RLS policy per subscriber, so the
+  // client_id filter here is a bandwidth optimisation rather than the security
+  // boundary: an agent still only receives messages for leads assigned to them.
+  useEffect(() => {
+    if (!clientId) return;
+
+    const supabase = createClient();
+    let listRefresh: ReturnType<typeof setTimeout> | null = null;
+
+    const channel = supabase
+      .channel(`inbox:${clientId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "conversations",
+          filter: `client_id=eq.${clientId}`,
+        },
+        (payload) => {
+          const row = payload.new as { lead_id?: string } | null;
+
+          // Refetch the open thread rather than appending the payload row: the
+          // agent's own sends echo back here too, and a refetch cannot
+          // duplicate or misorder them.
+          if (row?.lead_id && row.lead_id === liveRef.current.selectedLeadId) {
+            liveRef.current.fetchConversations();
+          }
+
+          // Coalesce the list refresh so a burst (a campaign blast, a lead
+          // sending three messages in a row) costs one query, not one each.
+          if (listRefresh) clearTimeout(listRefresh);
+          listRefresh = setTimeout(() => liveRef.current.fetchLeads(), 400);
+        }
+      )
+      .subscribe((status) => {
+        // A channel that fails to join goes quiet rather than throwing, and the
+        // inbox then looks exactly like it did before this feature existed. Say
+        // so in the console so it is diagnosable instead of invisible. CLOSED is
+        // not included: it is also how a normal unsubscribe reports itself.
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn(
+            `Inbox realtime channel is not receiving updates (${status}). ` +
+              "New messages will only appear on reload."
+          );
+        }
+      });
+
+    return () => {
+      if (listRefresh) clearTimeout(listRefresh);
+      supabase.removeChannel(channel);
+    };
+  }, [clientId]);
 
   // Resolve the Business Suite thread link for the selected Messenger lead. The
   // Page ID belongs to the LEAD's client, so it is resolved server-side per
