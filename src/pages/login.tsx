@@ -54,6 +54,15 @@ export default function Login() {
         return;
       }
 
+      // A "Sign in with BaMo" request sent the person here first; return them to
+      // it. Only the consent page is honoured - any other `next` would make this
+      // an open redirect.
+      const next = typeof router.query.next === "string" ? router.query.next : "";
+      if (next.startsWith("/oauth/consent?")) {
+        window.location.href = next;
+        return;
+      }
+
       // Redirect based on role
       const redirectPath = homeRouteFor(profile?.role);
       window.location.href = redirectPath;

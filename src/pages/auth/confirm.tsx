@@ -24,13 +24,29 @@ export default function ConfirmPage() {
 
       const supabase = createClient();
       try {
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: token_hash as string,
-          type: type as any,
+        // Verified on the server so the click can be recorded as mailbox proof
+        // (see /api/auth/verify-link); the page then signs in with the session
+        // the server returns, exactly as verifyOtp in the browser used to.
+        const response = await fetch("/api/auth/verify-link", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token_hash, type }),
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          setError(result?.error || "This link is invalid or has expired.");
+          setVerifying(false);
+          return;
+        }
+
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
         });
 
-        if (verifyError) {
-          setError(verifyError.message);
+        if (sessionError) {
+          setError(sessionError.message);
           setVerifying(false);
           return;
         }
