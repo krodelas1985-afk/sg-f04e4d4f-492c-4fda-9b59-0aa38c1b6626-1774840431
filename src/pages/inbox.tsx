@@ -35,6 +35,25 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
+// The inbox is ordered newest-message-first. `leads.last_message_at` is
+// maintained by the `conversations_update_lead_last_message` trigger on every
+// conversation insert (inbound or outbound), so it is the authoritative key;
+// the embedded conversation and the lead's own `created_at` are only fallbacks
+// for rows written before that trigger existed.
+const leadSortTime = (lead: any) => {
+  const candidates = [
+    lead?.last_message_at,
+    lead?.latest_conversation?.[0]?.created_at,
+    lead?.created_at,
+  ];
+
+  return candidates.reduce<number>((newest, value) => {
+    if (!value) return newest;
+    const time = new Date(value).getTime();
+    return Number.isNaN(time) ? newest : Math.max(newest, time);
+  }, 0);
+};
+
 export default function Inbox() {
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLead, setSelectedLead] = useState<any>(null);
@@ -49,6 +68,9 @@ export default function Inbox() {
   // Filters
   const [filterType, setFilterType] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  // Search now runs in the database, so debounce it rather than issuing a
+  // request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Reply input
   const [replyMessage, setReplyMessage] = useState("");
@@ -72,17 +94,34 @@ export default function Inbox() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Only the first load blanks the page with a spinner; later refetches (a
+  // search, a filter, the refresh after sending) leave the list on screen.
+  const hasLoadedLeadsRef = useRef(false);
+
+  // The Realtime channel is opened once per client_id, so its handler would
+  // otherwise close over the first render's fetchers, filter and selection.
+  // These refs are rewritten on every render and are what the handler reads.
+  const liveRef = useRef({
+    selectedLeadId: null as string | null,
+    fetchLeads: () => {},
+    fetchConversations: () => {},
+  });
 
   useEffect(() => {
     fetchCurrentUser();
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     if (clientId) {
       fetchLeads();
       fetchMessageTemplates();
     }
-  }, [clientId, filterType, searchQuery]);
+  }, [clientId, filterType, debouncedSearch]);
 
   useEffect(() => {
     if (selectedLead) {
@@ -104,6 +143,72 @@ export default function Inbox() {
     const t = setInterval(() => setWindowNow(new Date()), 60 * 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Deliberately no dependency array: the channel handler below reads these
+  // through the ref, so they have to track every render.
+  useEffect(() => {
+    liveRef.current.selectedLeadId = selectedLead?.id ?? null;
+    liveRef.current.fetchLeads = fetchLeads;
+    liveRef.current.fetchConversations = fetchConversations;
+  });
+
+  // Live inbox. Every new message — a lead replying through the Messenger
+  // webhook, a campaign send, another agent on the same workspace — is an
+  // INSERT on conversations, so one subscription covers all of them.
+  //
+  // Realtime applies the conversations RLS policy per subscriber, so the
+  // client_id filter here is a bandwidth optimisation rather than the security
+  // boundary: an agent still only receives messages for leads assigned to them.
+  useEffect(() => {
+    if (!clientId) return;
+
+    const supabase = createClient();
+    let listRefresh: ReturnType<typeof setTimeout> | null = null;
+
+    const channel = supabase
+      .channel(`inbox:${clientId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "conversations",
+          filter: `client_id=eq.${clientId}`,
+        },
+        (payload) => {
+          const row = payload.new as { lead_id?: string } | null;
+
+          // Refetch the open thread rather than appending the payload row: the
+          // agent's own sends echo back here too, and a refetch cannot
+          // duplicate or misorder them.
+          if (row?.lead_id && row.lead_id === liveRef.current.selectedLeadId) {
+            liveRef.current.fetchConversations();
+          }
+
+          // Coalesce the list refresh so a burst (a campaign blast, a lead
+          // sending three messages in a row) costs one query, not one each.
+          if (listRefresh) clearTimeout(listRefresh);
+          listRefresh = setTimeout(() => liveRef.current.fetchLeads(), 400);
+        }
+      )
+      .subscribe((status) => {
+        // A channel that fails to join goes quiet rather than throwing, and the
+        // inbox then looks exactly like it did before this feature existed. Say
+        // so in the console so it is diagnosable instead of invisible. CLOSED is
+        // not included: it is also how a normal unsubscribe reports itself.
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn(
+            `Inbox realtime channel is not receiving updates (${status}). ` +
+              "New messages will only appear on reload."
+          );
+        }
+      });
+
+    return () => {
+      if (listRefresh) clearTimeout(listRefresh);
+      supabase.removeChannel(channel);
+    };
+  }, [clientId]);
 
   // Resolve the Business Suite thread link for the selected Messenger lead. The
   // Page ID belongs to the LEAD's client, so it is resolved server-side per
@@ -210,12 +315,12 @@ export default function Inbox() {
   const fetchLeads = async () => {
     if (!clientId) return;
     
-    setLoading(true);
+    if (!hasLoadedLeadsRef.current) setLoading(true);
     const supabase = createClient();
 
     try {
       // Get leads with their latest conversation
-      const { data: leadsData } = await supabase
+      let query = supabase
         .from("leads")
         .select(`
           *,
@@ -225,43 +330,62 @@ export default function Inbox() {
             channel
           )
         `)
-        .eq("client_id", clientId)
-        .order("updated_at", { ascending: false });
+        .eq("client_id", clientId);
 
-      let filtered = leadsData || [];
-
-      // Apply filters
+      // Filters and search run in the database. Filtering the fetched page
+      // client-side missed anything past PostgREST's row cap, which is why a
+      // lead could be found by name but was nowhere in the unfiltered list.
       if (filterType === "Unread") {
-        filtered = filtered.filter(lead => (lead.unread_count || 0) > 0);
-      } else if (filterType === "Hot") {
-        filtered = filtered.filter(lead => lead.lead_temperature === "Hot");
-      } else if (filterType === "Warm") {
-        filtered = filtered.filter(lead => lead.lead_temperature === "Warm");
+        query = query.gt("unread_count", 0);
+      } else if (filterType === "Hot" || filterType === "Warm") {
+        query = query.eq("lead_temperature", filterType);
       }
 
-      // Apply search
-      if (searchQuery) {
-        filtered = filtered.filter(lead =>
-          lead.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      // Commas and parens would be parsed as `or()` syntax rather than as part
+      // of the search term.
+      const term = debouncedSearch.replace(/[,()*%\\]/g, " ").trim();
+      if (term) {
+        query = query.or(
+          `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`
         );
       }
 
-      // Sort by latest message
-      filtered.sort((a, b) => {
-        const aTime = a.latest_conversation?.[0]?.created_at || a.created_at;
-        const bTime = b.latest_conversation?.[0]?.created_at || b.created_at;
-        return new Date(bTime).getTime() - new Date(aTime).getTime();
-      });
+      const { data: leadsData, error } = await query
+        // Without an explicit order and limit on the embed, PostgREST returns
+        // every conversation for every lead in arbitrary order, so
+        // `latest_conversation[0]` was whichever row came back first — usually
+        // the OLDEST. That is what kept long-running threads pinned to the
+        // bottom of the inbox no matter how recently they were messaged.
+        .order("created_at", {
+          referencedTable: "latest_conversation",
+          ascending: false,
+        })
+        .limit(1, { referencedTable: "latest_conversation" })
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
 
-      setLeads(filtered);
-      
-      // Auto-select first lead if none selected
-      if (!selectedLead && filtered.length > 0) {
-        setSelectedLead(filtered[0]);
-      }
+      if (error) throw error;
+
+      // Sort by latest message
+      const sorted = [...(leadsData || [])].sort(
+        (a, b) => leadSortTime(b) - leadSortTime(a)
+      );
+
+      setLeads(sorted);
+
+      // Keep the open thread selected across refetches (one now runs right
+      // after sending) and refresh its row, so the header and the Messenger
+      // window read from current data. Auto-select the first lead only when
+      // nothing is selected yet.
+      setSelectedLead((prev: any) => {
+        if (!prev) return sorted[0] ?? null;
+        const fresh = sorted.find((lead) => lead.id === prev.id);
+        return fresh ? { ...prev, ...fresh } : prev;
+      });
     } catch (error) {
       console.error("Error fetching leads:", error);
     } finally {
+      hasLoadedLeadsRef.current = true;
       setLoading(false);
     }
   };
@@ -446,6 +570,9 @@ export default function Inbox() {
 
       setReplyMessage("");
       fetchConversations();
+      // Re-pull the list so this thread moves to the top and its preview line
+      // shows the message that was just sent.
+      fetchLeads();
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
