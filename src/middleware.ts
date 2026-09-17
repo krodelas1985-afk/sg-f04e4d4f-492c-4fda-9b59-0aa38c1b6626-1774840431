@@ -85,7 +85,13 @@ export async function middleware(request: NextRequest) {
 
   // Require authentication for all other routes
   if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const login = new URL("/login", request.url);
+    // "Sign in with BaMo" must survive the detour through /login, or the person
+    // signs in and lands on their dashboard with the other site still waiting.
+    if (pathname === "/oauth/consent") {
+      login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    }
+    return NextResponse.redirect(login);
   }
 
   // Admin route protection - fetch role to check access
@@ -130,5 +136,8 @@ export const config = {
     "/templates/:path*",
     "/announcements/:path*",
     "/follow-up/:path*",
+    // "Sign in with BaMo" consent (Identity Standard §56). Signed-in only: the
+    // CRM password is typed on /login, never on another product.
+    "/oauth/:path*",
   ],
 };

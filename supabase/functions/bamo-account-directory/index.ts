@@ -25,7 +25,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const MAX_BODY_BYTES = 16_384; // must match c_max_body_bytes in the verifier
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const OPERATIONS = new Set(['ping', 'list_professionals', 'get_professional']);
+const OPERATIONS = new Set(['ping', 'list_professionals', 'get_professional', 'get_by_subject']);
 
 function json(status: number, payload: unknown): Response {
   return new Response(JSON.stringify(payload), {
@@ -120,6 +120,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
         return json(502, { error: 'directory_error' });
       }
       return json(200, { professionals: data ?? [] });
+    }
+
+    if (operation === 'get_by_subject') {
+      // "Sign in with BaMo" (Identity Standard §56.5, plan R4): the Marketplace
+      // holds the CRM user id as the OIDC subject and needs the bamo_account_id,
+      // plus whether this person's mailbox is proven (plan R1, re-checked on the
+      // Marketplace's own server).
+      const subject = typeof body.subject === 'string' ? body.subject : '';
+      if (!UUID_RE.test(subject)) return json(400, { error: 'subject_required' });
+
+      const { data, error } = await supabase.rpc('account_directory_get_by_subject', { p_crm_user_id: subject });
+      if (error) {
+        console.error(`[account-directory] get_by_subject failed: ${error.message}`);
+        return json(502, { error: 'directory_error' });
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return json(404, { error: 'not_found' });
+      return json(200, { account: row });
     }
 
     // operation === 'get_professional'
