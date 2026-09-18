@@ -11,7 +11,7 @@
  */
 export const BAMO_OAUTH_PRODUCTS: Record<string, { name: string }> = {
   "https://cbnvuergvdnfzeixbiwt.supabase.co/auth/v1/callback": { name: "BaMo Marketplace" },
-  // BaMo Network is added here when its client is registered (plan Phase 6).
+  "https://xzzlxpbkikqcznafwtfx.supabase.co/auth/v1/callback": { name: "BaMo Network" },
 };
 
 export function bamoProductFor(redirectUri: string | null | undefined) {
